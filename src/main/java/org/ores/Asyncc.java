@@ -74,32 +74,9 @@ class Counter {
 	}
 }
 
-interface Foo {
-	public void run(Star b);
-}
 
-//interface Gnar {
-//	public void run(Star b);
-//}
-
-interface Bar {
-	public void done();
-}
-
-interface Star {
-	public void map(Bar b);
-}
 
 public class Asyncc {
-	
-	public static void foo() {
-		Foo f = star -> {
-		  star.map(() -> {
-
-			});
-		};
-	}
-
 	
 	public static class KeyValue<V> {
 		
@@ -240,8 +217,7 @@ public class Asyncc {
 	
 	public static <T, E> void Series(
 		Map<String, AsyncTask<T, E>> tasks,
-		IAsyncCallback<Map<String, T>, E> f
-	) {
+		IAsyncCallback<Map<String, T>, E> f) {
 		
 		Map<String, T> results = new HashMap<>();
 		ShortCircuit s = new ShortCircuit();
@@ -257,8 +233,7 @@ public class Asyncc {
 	public static <T, E> void ParallelLimit(
 		int limit,
 		Map<String, AsyncTask<T, E>> tasks,
-		IAsyncCallback<Map<String, T>, E> f
-	) {
+		IAsyncCallback<Map<String, T>, E> f) {
 		
 		Map<String, T> results = new HashMap<>();
 		boolean error = false;
@@ -347,8 +322,7 @@ public class Asyncc {
 	public static <T, E> void ParallelLimit(
 		int limit,
 		List<AsyncTask> tasks,
-		IAsyncCallback<List<T>, E> f
-	) {
+		IAsyncCallback<List<T>, E> f) {
 		
 		Limit lim = new Limit(limit);
 		ShortCircuit s = new ShortCircuit();
@@ -366,8 +340,7 @@ public class Asyncc {
 		Counter c,
 		ShortCircuit s,
 		Limit lim,
-		IAsyncCallback<Map<String, T>, E> f
-	) {
+		IAsyncCallback<Map<String, T>, E> f) {
 		
 		if (c.getStartedCount() >= m.size()) {
 			return;
@@ -425,8 +398,7 @@ public class Asyncc {
 		Counter c,
 		ShortCircuit s,
 		Limit lim,
-		IAsyncCallback<List<T>, E> f
-	) {
+		IAsyncCallback<List<T>, E> f) {
 		
 		if (c.getStartedCount() >= tasks.size()) {
 //      f.run(null, results);
@@ -482,8 +454,7 @@ public class Asyncc {
 		List<T> results,
 		ShortCircuit s,
 		Counter c,
-		IAsyncCallback<List<T>, E> f
-	) {
+		IAsyncCallback<List<T>, E> f) {
 		
 		final int startedCount = c.getStartedCount();
 		
@@ -521,8 +492,7 @@ public class Asyncc {
 	
 	public static <T, E> void Series(
 		List<AsyncTask<T, E>> tasks,
-		IAsyncCallback<List<T>, E> f
-	) {
+		IAsyncCallback<List<T>, E> f) {
 		
 		List<T> results = new ArrayList<T>(Collections.nCopies(tasks.size(), null));
 		
