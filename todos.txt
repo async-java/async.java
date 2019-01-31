@@ -1,0 +1,3 @@
+https://www.mkyong.com/maven/how-to-create-a-jar-file-with-maven/
+
+https://www.rainerhahnekamp.com/en/publishing-a-java-library-to-maven-central/
