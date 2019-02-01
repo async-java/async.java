@@ -195,6 +195,10 @@ public class Asyncc {
 				@Override
 				public void done(E e, T v) {
 					
+					if(s.isShortCircuited()){
+						return;
+					}
+					
 					if (e != null) {
 						s.setShortCircuited(true);
 						f.done((E) e, Collections.emptyList());  // List.of()?
@@ -263,14 +267,18 @@ public class Asyncc {
 				@Override
 				public void done(E e, T v) {
 					
+					if(s.isShortCircuited()){
+						return;
+					}
+					
 					if (e != null) {
 						s.setShortCircuited(true);
-						f.done((E) e, Map.of());
+						f.done(e, Map.of());
 						return;
 					}
 					
 					c.incrementFinished();
-					results.put(key, (T) v);
+					results.put(key, v);
 					
 					if (c.getFinishedCount() == tasks.size()) {
 						f.done(null, results);
@@ -298,6 +306,10 @@ public class Asyncc {
 			tasks.get(i).run(new AsyncCallback<T, E>(s) {
 				@Override
 				public void done(E e, T v) {
+					
+					if(s.isShortCircuited()){
+						return;
+					}
 					
 					if (e != null) {
 						s.setShortCircuited(true);
@@ -360,7 +372,13 @@ public class Asyncc {
 			
 			@Override
 			public void done(E e, T v) {
+				
+				if(s.isShortCircuited()){
+					return;
+				}
+				
 				if (e != null) {
+					s.setShortCircuited(true);
 					f.done(e, Map.of());
 					return;
 				}
@@ -413,6 +431,10 @@ public class Asyncc {
 		t.run(new AsyncCallback<T, E>(s) {
 			@Override
 			public void done(E e, T v) {
+				
+				if(s.isShortCircuited()){
+					return;
+				}
 				
 				if (e != null) {
 					s.setShortCircuited(true);
@@ -470,7 +492,12 @@ public class Asyncc {
 			@Override
 			public void done(E e, T v) {
 				
+				if(s.isShortCircuited()){
+					return;
+				}
+				
 				if (e != null) {
+					s.setShortCircuited(true);
 					f.done( e, Collections.emptyList());
 					return;
 				}
