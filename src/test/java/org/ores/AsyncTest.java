@@ -8,13 +8,53 @@ import org.junit.runner.RunWith;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.unit.Async;
+
 import static java.util.Arrays.asList;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 
 @RunWith(VertxUnitRunner.class)
 public class AsyncTest {
+  
+  @Test
+  public void testInject(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.<Integer, Object>Inject(
+      Map.of(
+        "star", new Asyncc.Injectable(Set.of("bar"), v -> {
+          Object foo = v.get("foo");
+          Object bar = v.get("bar");
+          System.out.println("foo:");
+          System.out.println(foo);
+          System.out.println("bar:");
+          System.out.println(bar);
+          v.done(null, 7);
+        }),
+        "foo", new Asyncc.Injectable(Set.of("star"),v -> {
+          v.done(null, 3);
+          
+        }),
+        "bar", new Asyncc.Injectable(Set.of(), v -> {
+          Object foo = v.get("foo");
+          System.out.println("foo:");
+          System.out.println(foo);
+          v.done(null, 5);
+        })
+      
+      ),
+      (err, results) -> {
+        System.out.println(results);
+        z.complete();
+      }
+    );
+    
+    
+  }
+  
   
   @Test
   public void testMap(TestContext tc) {
@@ -72,13 +112,13 @@ public class AsyncTest {
     
     Async z = tc.async();
     
-    Asyncc.<Integer,Object>ParallelLimit(3, Map.of(
+    Asyncc.<Integer, Object>ParallelLimit(3, Map.of(
       
-      "foo",  v -> {
+      "foo", v -> {
         v.done(null, 2);
       },
       
-      "bar",  v -> {
+      "bar", v -> {
         v.done(null, 3);
       }
     
@@ -100,13 +140,13 @@ public class AsyncTest {
     
     Async z = tc.async();
     
-    Asyncc.<Integer,Object>Parallel(Map.of(
+    Asyncc.<Integer, Object>Parallel(Map.of(
       
-      "foo",  v -> {
+      "foo", v -> {
         v.done(null, 2);
       },
       
-      "bar",  v -> {
+      "bar", v -> {
         v.done(null, 3);
       }
     

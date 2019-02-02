@@ -1,3 +1,8 @@
 https://www.mkyong.com/maven/how-to-create-a-jar-file-with-maven/
 
 https://www.rainerhahnekamp.com/en/publishing-a-java-library-to-maven-central/
+
+contact Suguru Montegi - Suguru Motegi
+https://github.com/suguru03/neo-async
+
+do filterAndMap

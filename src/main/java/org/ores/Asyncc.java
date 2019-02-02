@@ -171,6 +171,7 @@ public class Asyncc {
 		return cb -> Asyncc.<T, E>Series(tasks, cb);
 	}
 	
+	
 	public static <T, E> AsyncTask<Map<String, T>, E> Parallel(Map<String, AsyncTask<T, E>> tasks) {
 		return cb -> Asyncc.<T, E>Parallel(tasks, cb);
 	}
@@ -230,7 +231,7 @@ public class Asyncc {
 		Iterator<Map.Entry<String, AsyncTask<T, E>>> entries = tasks.entrySet().iterator();
 		Limit lim = new Limit(1);
 		
-		Asyncc.<T, E>RunMapLimit(entries, tasks, new HashMap<>(), c, s, lim, f);
+		Asyncc.<T, E>RunMapLimit(entries, tasks, results, c, s, lim, f);
 		
 	}
 	
@@ -364,7 +365,7 @@ public class Asyncc {
 		
 		Map.Entry<String, AsyncTask<T, E>> entry = entries.next();
 		String key = entry.getKey();
-		AsyncTask<T, E> t = m.get(key);
+		AsyncTask<T, E> t = entry.getValue();
 		lim.increment();
 		c.incrementStarted();
 		
@@ -522,8 +523,6 @@ public class Asyncc {
 		IAsyncCallback<List<T>, E> f) {
 		
 		List<T> results = new ArrayList<T>(Collections.nCopies(tasks.size(), null));
-		
-		boolean error = false;
 		Counter c = new Counter();
 		ShortCircuit s = new ShortCircuit();
 		
@@ -533,5 +532,146 @@ public class Asyncc {
 		}
 		
 		Asyncc.<T, E>RunTasksSerially(tasks, results, s, c, f);
+	}
+	
+	public static interface IInjectable<T,E> {
+	  public void run(AsyncCallbackSet<T,E> cb);
+	}
+	
+	public static class Injectable<T,E> {
+		
+		Set<String> s;
+		IInjectable i;
+		
+	  public Injectable(Set<String> s, IInjectable<T,E> i){
+	  	this.s = s;
+	  	this.i = i;
+		}
+		
+		public Injectable(IInjectable<T,E> i){
+			this.s = Set.of();
+			this.i = i;
+		}
+		
+		public Set<String> getSet(){
+	  	return this.s;
+		}
+		
+		public IInjectable getInjectable(){
+	  	return this.i;
+		}
+	}
+	
+	public static <T, E> void checkForCircularDep(String key, Set<String> h, Map<String, Injectable<T, E>> tasks){
+		
+	    if(h.contains(key)){
+	    	throw new Error("The following key has a circular dep: " + key);
+			}
+	  
+	    for(String s: h){
+	    	checkForCircularDep(key, tasks.get(s).getSet(), tasks);
+			}
+	}
+	
+	public static <T, E> void Inject(
+		Map<String, Injectable<T, E>> tasks,
+		IAsyncCallback<Map<String, Object>, E> f) {
+		
+		Counter c = new Counter();
+		ShortCircuit s = new ShortCircuit();
+		Map<String, Object> results = new HashMap<>();
+		
+		if (tasks.size() < 1) {
+			f.done(null, Map.of());
+			return;
+		}
+		
+		for (Map.Entry<String, Injectable<T, E>> entry : tasks.entrySet()) {
+			
+			final String key = entry.getKey();
+			final Set<String> set = entry.getValue().getSet();
+			
+			checkForCircularDep(key, set, tasks);
+		}
+		
+		HashSet<String> started = new HashSet<>();
+		HashSet<String> completed = new HashSet<>();
+		
+		Asyncc.<T, E>RunInject(started, completed, tasks, results, c, s, f);
+	}
+	
+	public static abstract class AsyncCallbackSet<T, E> implements IAsyncCallback<T, E> {
+		private ShortCircuit s;
+		private Map<String, Object> values;
+		
+		public AsyncCallbackSet(ShortCircuit s, Map<String, Object> vals){
+			this.s = s;
+			this.values = vals;
+		}
+		
+		public boolean isShortCircuited(){
+			return this.s.isShortCircuited();
+		}
+		
+		public Object get(String s){
+			 return this.values.get(s);
+		}
+		
+	}
+	
+	private static <T,E>void RunInject(
+		HashSet<String> started,
+		HashSet<String> completed,
+		Map<String, Injectable<T, E>> m,
+		Map<String, Object> results,
+		Counter c,
+		ShortCircuit s,
+		IAsyncCallback<Map<String, Object>, E> f){
+		
+		
+		for (Map.Entry<String, Injectable<T, E>> entry : m.entrySet()) {
+			
+			final String key = entry.getKey();
+			final Set<String> set = entry.getValue().getSet();
+			
+			if(started.contains(key)){
+				continue;
+			}
+			
+			if(!completed.containsAll(set)){
+				continue;
+			}
+			
+			final IInjectable<T,E> v = entry.getValue().getInjectable();
+			
+			started.add(key);
+			
+			v.run(new AsyncCallbackSet<T,E>(s, results){
+				
+				@Override
+				public void done(E err, T v) {
+					
+					if(s.isShortCircuited()){
+						return;
+					}
+					
+					if(err != null){
+						s.setShortCircuited(true);
+						return;
+					}
+					
+					completed.add(key);
+					results.put(key, v);
+					
+					if(completed.size() == m.size()){
+						f.done(null, results);
+						return;
+					}
+					
+					RunInject(started,completed,m,results,c,s,f);
+				}
+			});
+			
+		}
 	}
 }
