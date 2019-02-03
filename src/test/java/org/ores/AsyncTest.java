@@ -8,6 +8,8 @@ import org.junit.runner.RunWith;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.unit.Async;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.util.Arrays.asList;
 
@@ -15,17 +17,19 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
-class ZoomCounter{
+class ZoomCounter {
   
   public Integer val = 0;
   
-  public ZoomCounter(){
+  public ZoomCounter() {
   
   }
-  public Integer getVal(){
+  
+  public Integer getVal() {
     return this.val;
   }
-  public Integer increment(){
+  
+  public Integer increment() {
     return ++this.val;
   }
 }
@@ -33,29 +37,32 @@ class ZoomCounter{
 @RunWith(VertxUnitRunner.class)
 public class AsyncTest {
   
+  final static Logger log = LoggerFactory.getLogger(AsyncTest.class);
+  
   @Test
   public void testQueue(TestContext tc) {
     
     Async z = tc.async();
-  
+
 //    Queue q = new Queue<Integer>((task, v) -> {
 //      v.run(null, null);
 //    });
-  
+
 //    Queue q = new Queue<Integer,Integer>(1, new ITaskHandler<Integer,Integer>() {
 //      @Override
 //      public void run(Task<Integer,Integer> t, IAsyncErrFirstCb<Integer> v) {
 //            v.run(null,5);
 //      }
 //    });
-  
-    ZoomCounter c = new ZoomCounter();
-   
     
-    var q = new Queue<Integer,Integer>(4, (task,v) -> {
-      v.done(null,task.getValue()*2+2);
+    ZoomCounter c = new ZoomCounter();
+    
+    var q = new Queue<Integer, Integer>(1, (task, v) -> {
+      v.done(null, task.getValue() * 2 + 2);
     });
-  
+    
+    System.out.println("The concurrency is: " + q.getConcurrency());
+    
     q.onSaturated(queue -> {
       System.out.println("saturated");
     });
@@ -65,14 +72,17 @@ public class AsyncTest {
     });
     
     q.onDrain(queue -> {
-      System.out.println("Calling zz complete" + c.increment());
-      System.out.println("Calling za complete");
-      z.complete();
+      System.out.println("Calling zz complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
+//      z.complete();
     });
     
     q.push(new Task<>(3, (err, v) -> {
       System.out.println(err);
       System.out.println(v);
+    }));
+    
+    q.push(new Task<>(5, (err, v) -> {
+      log.debug((String)err,v);
     }));
   
     q.push(new Task<>(5, (err, v) -> {
@@ -80,6 +90,27 @@ public class AsyncTest {
       System.out.println(v);
     }));
     
+    new Thread(() -> {
+      
+      try{
+        Thread.sleep(100);
+      }
+      catch(Exception err){
+        log.debug(err.toString());
+      }
+  
+      q.onDrain(queue -> {
+        System.out.println("Calling zz 2 complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
+      z.complete();
+      });
+  
+      q.push(new Task<>(3, (err, v) -> {
+        System.out.println(err);
+        System.out.println(v);
+      }));
+      
+      
+    }).start();
   }
   
   @Test
@@ -89,7 +120,7 @@ public class AsyncTest {
     
     Asyncc.<Object, Object>Inject(
       Map.of(
-        "star", new Asyncc.Injectable<Object,Object>(v -> {
+        "star", new Asyncc.Injectable<Object, Object>(v -> {
           Object foo = v.get("foo");
           Object bar = v.get("bar");
           System.out.println("foo:");
@@ -98,10 +129,10 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
-        "foo", new Asyncc.Injectable<Object,Object>(v -> {
+        "foo", new Asyncc.Injectable<Object, Object>(v -> {
           v.done(null, 3);
         }),
-        "bar", new Asyncc.Injectable<Object,Object>(Set.of("foo"), v -> {
+        "bar", new Asyncc.Injectable<Object, Object>(Set.of("foo"), v -> {
           Object foo = v.get("foo");
           System.out.println("foo:");
           System.out.println(foo);
@@ -133,7 +164,7 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
-        "foo", new Asyncc.Injectable<Integer, Object>(Set.of("star"),v -> {
+        "foo", new Asyncc.Injectable<Integer, Object>(Set.of("star"), v -> {
           v.done(null, 3);
           
         }),

@@ -1,6 +1,8 @@
 package org.ores;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.ListIterator;
 
 interface IAsyncErrFirstCb<T> {
@@ -94,13 +96,15 @@ abstract class AsyncCallback<T> implements IAsyncErrFirstCb<T>, ICallbacks<T> {
 
 public class Queue<T, V> {
   
+  private boolean isSaturated = false;
   private ArrayList<Task<T, V>> tasks = new ArrayList<>();
   private ITaskHandler<T, V> h;
-  private boolean paused;
+  private boolean isPaused;
   private CounterLimit c;
-  private ArrayList<IAsyncCb> drainCBs = new ArrayList<>();
-  private ArrayList<IAsyncCb> saturatedCBs = new ArrayList<>();
-  private ArrayList<IAsyncCb> unsaturatedCBs = new ArrayList<>();
+  private List<IAsyncCb> drainCBs = Collections.synchronizedList(new ArrayList<>());
+  private List<IAsyncCb> saturatedCBs = Collections.synchronizedList(new ArrayList<>());
+  private List<IAsyncCb> unsaturatedCBs = Collections.synchronizedList(new ArrayList<>());
+  private boolean isDrained = false;
   
   public static void main() {
     
@@ -130,6 +134,26 @@ public class Queue<T, V> {
     return this.c.getConcurrency();
   }
   
+  public List<IAsyncCb> getOnDrainCbs(){
+    return this.drainCBs;
+  }
+  
+  public boolean isDrained() {
+    return this.isDrained;
+  }
+  
+  public void setDrained(boolean drained) {
+    this.isDrained = drained;
+  }
+  
+  public List<IAsyncCb> getOnSaturatedCbs(){
+    return this.saturatedCBs;
+  }
+  
+  public List<IAsyncCb> getOnUnsaturatedCbs(){
+    return this.unsaturatedCBs;
+  }
+  
   public Integer setConcurrency(Integer v) {
     if (v < 1) {
       throw new Error("Concurrency value must be an integer greater than 0");
@@ -145,7 +169,7 @@ public class Queue<T, V> {
   
   public void push(Task<T, V> t) {
     this.tasks.add(t);
-    if (this.paused) {
+    if (this.isPaused) {
       return;
     }
     this.processTasks();
@@ -154,7 +178,7 @@ public class Queue<T, V> {
   public void push(Task<T, V> t, IAsyncErrFirstCb<V> cb) {
     t.addCallback(cb);
     this.tasks.add(t);
-    if (this.paused) {
+    if (this.isPaused) {
       return;
     }
     this.processTasks();
@@ -175,23 +199,23 @@ public class Queue<T, V> {
   
   public void unshift(Task<T, V> t) {
     this.tasks.add(0, t);
-    if (this.paused) {
+    if (this.isPaused) {
       return;
     }
     this.processTasks();
   }
   
   public void pause() {
-    this.paused = true;
+    this.isPaused = true;
   }
   
   public void resume() {
     
-    if (!this.paused) {
+    if (!this.isPaused) {
       return;
     }
     
-    this.paused = false;
+    this.isPaused = false;
     this.processTasks();
   }
   
@@ -201,7 +225,7 @@ public class Queue<T, V> {
   
   private synchronized void processTasks() {
     
-    if (this.paused) {
+    if (this.isPaused) {
       return;
     }
     
@@ -218,16 +242,16 @@ public class Queue<T, V> {
     
     this.c.incrementStarted();
     
-    System.out.println("the concurrency is:");
-    System.out.println(this.c.getConcurrency());
-    
-    if(!this.c.isBelowCapacity()){
-      for (IAsyncCb cb : this.saturatedCBs) {
+    if(!this.c.isBelowCapacity() && !this.isSaturated){
+      this.isSaturated = true;
+      for (IAsyncCb cb : this.getOnSaturatedCbs()) {
         cb.run(this);
       }
     }
     
     final var q = this;
+    
+    this.setDrained(false);
     
     this.h.run(t, new AsyncCallback<V>() {
       
@@ -269,25 +293,27 @@ public class Queue<T, V> {
             iter.remove();
             cb.done(e, v);
           }
+  
+  
+          if(q.tasks.size() < 1 && q.isSaturated){
+            q.isSaturated = false;
+            for (IAsyncCb cb : q.getOnUnsaturatedCbs()) {
+              cb.run(q);
+            }
+          }
           
-  
-//          if (q.paused) {
-//            return;
-//          }
-  
+          if(!q.isDrained() && q.isIdle() && q.tasks.size() < 1){
+            q.setDrained(true);
+            for (IAsyncCb cb : q.getOnDrainCbs()) {
+              cb.run(q);
+            }
+          }
+          
+          if(q.isPaused){
+            return;
+          }
+          
           q.processTasks();
-  
-          if(q.isIdle() && q.tasks.size() < 1){
-            for (IAsyncCb cb : q.drainCBs) {
-              cb.run(q);
-            }
-          }
-  
-          if(q.tasks.size() < 1){
-            for (IAsyncCb cb : q.unsaturatedCBs) {
-              cb.run(q);
-            }
-          }
           
           
         }).start();
