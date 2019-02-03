@@ -34,11 +34,12 @@ public class AsyncTest {
 //      }
 //    });
   
-    Queue q = new Queue<Integer,Integer>(1, (task,v) -> {
-      v.done(null,task.getValue()*2+1);
+    
+    var q = new Queue<Integer,Integer>(1, (task,v) -> {
+      v.done(null,task.getValue()*2+2);
     });
   
-    q.push(new Task<Integer, Integer>(3, (err, v) -> {
+    q.push(new Task<>(3, (err, v) -> {
       System.out.println(err);
       System.out.println(v);
       z.complete();
