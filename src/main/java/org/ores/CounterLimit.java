@@ -3,18 +3,13 @@ package org.ores;
 
 class CounterLimit {
   
-  private int limit;
-  private int started = 0;
-  private int finished = 0;
+  private Integer limit;
+  private Integer started = 0;
+  private Integer finished = 0;
   
   public CounterLimit(Integer limit){
     this.limit = limit;
   }
-  
-  public CounterLimit(){
-    this.limit = 1;
-  }
-  
   
   Integer getConcurrency(){
     return this.limit;
@@ -45,6 +40,6 @@ class CounterLimit {
   }
   
   boolean isIdle(){
-    return this.finished == this.started;
+    return this.finished >= this.started;
   }
 }

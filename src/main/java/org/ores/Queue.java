@@ -3,24 +3,29 @@ package org.ores;
 import java.util.ArrayList;
 import java.util.ListIterator;
 
-interface IAsyncCallback<T> {
+interface IAsyncErrFirstCb<T> {
   void done(Object e, T v);
 }
 
-interface ITaskHandler<T,V> {
-  void run(Task<T,V> t, IAsyncCallback<V> v);
+interface ITaskHandler<T, V> {
+  void run(Task<T, V> t, IAsyncErrFirstCb<V> v);
 }
 
 interface ICallbacks<T> {
   void resolve(T v);
+  
   void reject(Object e);
-//		 void done(E e, T... v);
+//		 void run(E e, T... v);
+}
+
+interface IAsyncCb {
+  void run(Queue q);
 }
 
 class Task<T, V> {
   
   private T value;
-  private ArrayList<IAsyncCallback<V>> cbs = new ArrayList<>();
+  private ArrayList<IAsyncErrFirstCb<V>> cbs = new ArrayList<>();
   private boolean isStarted = false;
   private boolean isFinished = false;
   
@@ -28,16 +33,16 @@ class Task<T, V> {
     this.value = value;
   }
   
-  public Task(T value, IAsyncCallback<V> cb) {
+  public Task(T value, IAsyncErrFirstCb<V> cb) {
     this.value = value;
     this.cbs.add(cb);
   }
   
-  public ArrayList<IAsyncCallback<V>> getCallbacks() {
+  public ArrayList<IAsyncErrFirstCb<V>> getCallbacks() {
     return this.cbs;
   }
   
-  public void addCallback(IAsyncCallback<V> cb) {
+  public void addCallback(IAsyncErrFirstCb<V> cb) {
     this.cbs.add(cb);
   }
   
@@ -68,35 +73,38 @@ class Task<T, V> {
   }
 }
 
-abstract class AsyncCallback<T> implements IAsyncCallback<T>, ICallbacks<T> {
+abstract class AsyncCallback<T> implements IAsyncErrFirstCb<T>, ICallbacks<T> {
   
   private ShortCircuit s;
-  
+
 //  public AsyncCallback(ShortCircuit s){
 //    this.s = s;
 //  }
   
-  public AsyncCallback(){
+  public AsyncCallback() {
   
   }
   
-  public boolean isShortCircuited(){
+  public boolean isShortCircuited() {
     return this.s.isShortCircuited();
   }
   
 }
 
 
-public class Queue<T,V> {
+public class Queue<T, V> {
   
   private ArrayList<Task<T, V>> tasks = new ArrayList<>();
-  private ITaskHandler<T,V> h;
+  private ITaskHandler<T, V> h;
   private boolean paused;
   private CounterLimit c;
+  private ArrayList<IAsyncCb> drainCBs = new ArrayList<>();
+  private ArrayList<IAsyncCb> saturatedCBs = new ArrayList<>();
+  private ArrayList<IAsyncCb> unsaturatedCBs = new ArrayList<>();
   
   public static void main() {
     
-    Queue q = new Queue<Integer,Integer>((task, v) -> {
+    Queue q = new Queue<Integer, Integer>((task, v) -> {
       v.done(null, null);
     });
     
@@ -108,12 +116,12 @@ public class Queue<T,V> {
   }
   
   
-  public Queue(Integer concurrency, ITaskHandler<T,V> h) {
+  public Queue(Integer concurrency, ITaskHandler<T, V> h) {
     this.h = h;
     this.c = new CounterLimit(concurrency);
   }
   
-  public Queue(ITaskHandler<T,V> h) {
+  public Queue(ITaskHandler<T, V> h) {
     this.c = new CounterLimit(1);
     this.h = h;
   }
@@ -131,6 +139,7 @@ public class Queue<T,V> {
   
   public void nudge() {
     // poke, prod, nudge, etc
+    // useful if the concurrency was just increased
     this.processTasks();
   }
   
@@ -142,7 +151,7 @@ public class Queue<T,V> {
     this.processTasks();
   }
   
-  public void push(Task<T, V> t, IAsyncCallback<V> cb) {
+  public void push(Task<T, V> t, IAsyncErrFirstCb<V> cb) {
     t.addCallback(cb);
     this.tasks.add(t);
     if (this.paused) {
@@ -150,6 +159,19 @@ public class Queue<T,V> {
     }
     this.processTasks();
   }
+  
+  public void onDrain(IAsyncCb cb) {
+    this.drainCBs.add(cb);
+  }
+  
+  public void onSaturated(IAsyncCb cb) {
+    this.saturatedCBs.add(cb);
+  }
+  
+  public void onUnsaturated(IAsyncCb cb) {
+    this.unsaturatedCBs.add(cb);
+  }
+  
   
   public void unshift(Task<T, V> t) {
     this.tasks.add(0, t);
@@ -195,18 +217,28 @@ public class Queue<T,V> {
     t._setStarted();  // signify that the task has started so it can't be removed anymore by the user
     
     this.c.incrementStarted();
-    Queue<T,V> q = this;
+    
+    System.out.println("the concurrency is:");
+    System.out.println(this.c.getConcurrency());
+    
+    if(!this.c.isBelowCapacity()){
+      for (IAsyncCb cb : this.saturatedCBs) {
+        cb.run(this);
+      }
+    }
+    
+    final var q = this;
     
     this.h.run(t, new AsyncCallback<V>() {
-  
+      
       @Override
       public void resolve(V v) {
-        this.done(null,v);
+        this.done(null, v);
       }
-  
+      
       @Override
       public void reject(Object e) {
-        this.done(e,null);
+        this.done(e, null);
       }
       
       @Override
@@ -216,31 +248,51 @@ public class Queue<T,V> {
           // callback was fired more than once
           return;
         }
+        
+        new Thread(() -> {
+          
+          try{
+            Thread.sleep(10);
+          }
+          catch (Exception err){
+            System.out.println("Thread sleep exception");
+          }
   
-        q.c.incrementFinished();
-        t._setFinished();
+          q.c.incrementFinished();
+          t._setFinished();
+          
+          ListIterator<IAsyncErrFirstCb<V>> iter = t.getCallbacks().listIterator();
+  
+          while (iter.hasNext()) {
+            IAsyncErrFirstCb<V> cb = iter.next();
+            iter.remove();
+            cb.done(e, v);
+          }
+  
+          if(q.isIdle() && q.tasks.size() < 1){
+            for (IAsyncCb cb : q.drainCBs) {
+              cb.run(q);
+            }
+          }
+  
+          if(q.tasks.size() < 1){
+            for (IAsyncCb cb : q.unsaturatedCBs) {
+              cb.run(q);
+            }
+          }
   
   
-        ListIterator<IAsyncCallback<V>> iter = t.getCallbacks().listIterator();
+          if (q.paused) {
+            return;
+          }
   
-        while (iter.hasNext()) {
-          IAsyncCallback<V> cb = iter.next();
-          iter.remove();
-          cb.done(e, v);
-        }
-  
-        //  for (IAsyncCallback cb : t.getCallbacks()) {
-        //    cb.done(e, v);
-        //  }
-  
-        if (q.paused) {
-          return;
-        }
-  
-        q.processTasks();
+          q.processTasks();
+          
+        }).start();
+        
       }
-  
-  
+      
+      
     });
     
     this.processTasks();

@@ -15,6 +15,21 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
+class ZoomCounter{
+  
+  public Integer val = 0;
+  
+  public ZoomCounter(){
+  
+  }
+  public Integer getVal(){
+    return this.val;
+  }
+  public Integer increment(){
+    return ++this.val;
+  }
+}
+
 @RunWith(VertxUnitRunner.class)
 public class AsyncTest {
   
@@ -24,25 +39,46 @@ public class AsyncTest {
     Async z = tc.async();
   
 //    Queue q = new Queue<Integer>((task, v) -> {
-//      v.done(null, null);
+//      v.run(null, null);
 //    });
   
 //    Queue q = new Queue<Integer,Integer>(1, new ITaskHandler<Integer,Integer>() {
 //      @Override
-//      public void run(Task<Integer,Integer> t, IAsyncCallback<Integer> v) {
-//            v.done(null,5);
+//      public void run(Task<Integer,Integer> t, IAsyncErrFirstCb<Integer> v) {
+//            v.run(null,5);
 //      }
 //    });
   
+    ZoomCounter c = new ZoomCounter();
+   
     
     var q = new Queue<Integer,Integer>(1, (task,v) -> {
       v.done(null,task.getValue()*2+2);
     });
   
+    q.onSaturated(queue -> {
+      System.out.println("saturated");
+    });
+    
+    q.onUnsaturated(queue -> {
+      System.out.println("unsaturated");
+    });
+    
+  
+    q.onDrain(queue -> {
+      System.out.println("Calling zz complete" + c.increment());
+      System.out.println("Calling za complete");
+      z.complete();
+    });
+    
     q.push(new Task<>(3, (err, v) -> {
       System.out.println(err);
       System.out.println(v);
-      z.complete();
+    }));
+  
+    q.push(new Task<>(5, (err, v) -> {
+      System.out.println(err);
+      System.out.println(v);
     }));
     
   }
@@ -132,7 +168,7 @@ public class AsyncTest {
       (kv, cb) -> {
         
         cb.done(null, kv.value + 2);
-//        cb.done("foo", kv.value + 2);
+//        cb.run("foo", kv.value + 2);
       },
       
       (e, results) -> {

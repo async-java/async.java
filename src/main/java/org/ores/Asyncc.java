@@ -30,7 +30,7 @@ public class Asyncc {
 	public static interface ICallbacks<T,E> {
 		 void resolve(T v);
 		 void reject(E e);
-//		 void done(E e, T... v);
+//		 void run(E e, T... v);
 	}
 	
 	public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T,E> {
