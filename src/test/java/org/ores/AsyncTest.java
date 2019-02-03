@@ -27,11 +27,15 @@ public class AsyncTest {
 //      v.done(null, null);
 //    });
   
-    Queue q = new Queue<Integer,Integer>(1, new ITaskHandler<Integer,Integer>() {
-      @Override
-      public void run(Task<Integer,Integer> t, IAsyncCallback<Integer> v) {
-            v.done(null,5);
-      }
+//    Queue q = new Queue<Integer,Integer>(1, new ITaskHandler<Integer,Integer>() {
+//      @Override
+//      public void run(Task<Integer,Integer> t, IAsyncCallback<Integer> v) {
+//            v.done(null,5);
+//      }
+//    });
+  
+    Queue q = new Queue<Integer,Integer>(1, (task,v) -> {
+      v.done(null,task.getValue()*2+1);
     });
   
     q.push(new Task<Integer, Integer>(3, (err, v) -> {
