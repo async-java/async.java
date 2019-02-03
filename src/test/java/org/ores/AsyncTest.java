@@ -19,6 +19,30 @@ import java.util.Set;
 public class AsyncTest {
   
   @Test
+  public void testQueue(TestContext tc) {
+    
+    Async z = tc.async();
+  
+//    Queue q = new Queue<Integer>((task, v) -> {
+//      v.done(null, null);
+//    });
+  
+    Queue q = new Queue<Integer,Integer>(1, new ITaskHandler<Integer,Integer>() {
+      @Override
+      public void run(Task<Integer,Integer> t, IAsyncCallback<Integer> v) {
+            v.done(null,5);
+      }
+    });
+  
+    q.push(new Task<Integer, Integer>(3, (err, v) -> {
+      System.out.println(err);
+      System.out.println(v);
+      z.complete();
+    }));
+    
+  }
+  
+  @Test
   public void testInjectCircular(TestContext tc) {
     
     Async z = tc.async();

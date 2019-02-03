@@ -15,6 +15,15 @@ class CounterLimit {
     this.limit = 1;
   }
   
+  
+  Integer getConcurrency(){
+    return this.limit;
+  }
+  
+  Integer setConcurrency(Integer val){
+    return this.limit = val;
+  }
+  
   void incrementStarted() {
     this.started++;
   }
@@ -33,5 +42,9 @@ class CounterLimit {
   
   boolean isBelowCapacity() {
     return this.limit > (this.started - this.finished);
+  }
+  
+  boolean isIdle(){
+    return this.finished == this.started;
   }
 }

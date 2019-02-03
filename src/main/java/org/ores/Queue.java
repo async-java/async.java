@@ -1,21 +1,26 @@
 package org.ores;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.ListIterator;
 
 interface IAsyncCallback<T> {
-  void done(Error e, T v);
+  void done(Object e, T v);
 }
 
-interface ITaskHandler<T> {
-  void run(T t, IAsyncCallback v);
+interface ITaskHandler<T,V> {
+  void run(Task<T,V> t, IAsyncCallback<V> v);
+}
+
+interface ICallbacks<T> {
+  void resolve(T v);
+  void reject(Object e);
+//		 void done(E e, T... v);
 }
 
 class Task<T, V> {
   
   private T value;
-  private IAsyncCallback<V> cb;
-  private boolean isHasCallback;
+  private ArrayList<IAsyncCallback<V>> cbs = new ArrayList<>();
   private boolean isStarted = false;
   private boolean isFinished = false;
   
@@ -25,74 +30,111 @@ class Task<T, V> {
   
   public Task(T value, IAsyncCallback<V> cb) {
     this.value = value;
-    this.cb = cb;
-    this.isHasCallback = true;
+    this.cbs.add(cb);
   }
   
-  public boolean hasCallback() {
-    return this.isHasCallback;
+  public ArrayList<IAsyncCallback<V>> getCallbacks() {
+    return this.cbs;
   }
   
-  public IAsyncCallback<V> getCallback() {
-    return this.cb;
+  public void addCallback(IAsyncCallback<V> cb) {
+    this.cbs.add(cb);
   }
   
   public T getValue() {
     return this.value;
   }
   
-  public void setStarted(){
-    if(this.isStarted){
+  public void _setStarted() {
+    if (this.isStarted) {
       throw new Error("Task already started.");
     }
     this.isStarted = true;
   }
   
-  public boolean isStarted(){
+  public boolean isStarted() {
     return this.isStarted;
   }
   
-  public void setFinished(){
-    if(this.isFinished){
+  public void _setFinished() {
+    if (this.isFinished) {
       throw new Error("Task already started.");
     }
     this.isFinished = true;
   }
   
-  public boolean isFinished(){
+  public boolean isFinished() {
     return this.isFinished;
   }
 }
 
-
-public class Queue<T> {
+abstract class AsyncCallback<T> implements IAsyncCallback<T>, ICallbacks<T> {
   
-  private ArrayList<Task<T, Object>> tasks = new ArrayList<>();
-  private ITaskHandler h;
+  private ShortCircuit s;
+  
+//  public AsyncCallback(ShortCircuit s){
+//    this.s = s;
+//  }
+  
+  public AsyncCallback(){
+  
+  }
+  
+  public boolean isShortCircuited(){
+    return this.s.isShortCircuited();
+  }
+  
+}
+
+
+public class Queue<T,V> {
+  
+  private ArrayList<Task<T, V>> tasks = new ArrayList<>();
+  private ITaskHandler<T,V> h;
   private boolean paused;
   private CounterLimit c;
   
   public static void main() {
-    new Queue<String>((task, v) -> {
+    
+    Queue q = new Queue<Integer,Integer>((task, v) -> {
       v.done(null, null);
     });
+    
+    q.push(new Task<Integer, Integer>(3, (err, v) -> {
+    
+    
+    }));
+    
   }
   
-  private Integer concurrency;
   
-  public Queue(Integer concurrency, ITaskHandler<T> h) {
-    this.concurrency = concurrency;
+  public Queue(Integer concurrency, ITaskHandler<T,V> h) {
     this.h = h;
     this.c = new CounterLimit(concurrency);
   }
   
-  public Queue(ITaskHandler<T> h) {
-    this.concurrency = 1;
+  public Queue(ITaskHandler<T,V> h) {
     this.c = new CounterLimit(1);
     this.h = h;
   }
   
-  public <V> void push(Task<T, Object> t) {
+  public Integer getConcurrency() {
+    return this.c.getConcurrency();
+  }
+  
+  public Integer setConcurrency(Integer v) {
+    if (v < 1) {
+      throw new Error("Concurrency value must be an integer greater than 0");
+    }
+    return this.c.setConcurrency(v);
+  }
+  
+  public void nudge() {
+    // poke, prod, nudge, etc
+    this.processTasks();
+  }
+  
+  public void push(Task<T, V> t) {
     this.tasks.add(t);
     if (this.paused) {
       return;
@@ -100,7 +142,16 @@ public class Queue<T> {
     this.processTasks();
   }
   
-  public void unshift(Task<T, Object> t) {
+  public void push(Task<T, V> t, IAsyncCallback<V> cb) {
+    t.addCallback(cb);
+    this.tasks.add(t);
+    if (this.paused) {
+      return;
+    }
+    this.processTasks();
+  }
+  
+  public void unshift(Task<T, V> t) {
     this.tasks.add(0, t);
     if (this.paused) {
       return;
@@ -123,7 +174,7 @@ public class Queue<T> {
   }
   
   public boolean isIdle() {
-    return true;
+    return this.c.isIdle();
   }
   
   private synchronized void processTasks() {
@@ -140,30 +191,60 @@ public class Queue<T> {
       return;
     }
     
-    Task<T, Object> t = this.tasks.remove(0);
-    t.setStarted();  // signify that the task has started so it can't be removed anymore by the user
+    Task<T, V> t = this.tasks.remove(0);
+    t._setStarted();  // signify that the task has started so it can't be removed anymore by the user
     
     this.c.incrementStarted();
+    Queue<T,V> q = this;
     
-    this.h.run(t, (e, v) -> {
-      
-      this.c.incrementFinished();
-      
-      if (t.hasCallback()) {
-        t.getCallback().done(e, v);
+    this.h.run(t, new AsyncCallback<V>() {
+  
+      @Override
+      public void resolve(V v) {
+        this.done(null,v);
+      }
+  
+      @Override
+      public void reject(Object e) {
+        this.done(e,null);
       }
       
-      if (this.paused) {
-        return;
+      @Override
+      public void done(Object e, V v) {
+        
+        if (t.isFinished()) {
+          // callback was fired more than once
+          return;
+        }
+  
+        q.c.incrementFinished();
+        t._setFinished();
+  
+  
+        ListIterator<IAsyncCallback<V>> iter = t.getCallbacks().listIterator();
+  
+        while (iter.hasNext()) {
+          IAsyncCallback<V> cb = iter.next();
+          iter.remove();
+          cb.done(e, v);
+        }
+  
+        //  for (IAsyncCallback cb : t.getCallbacks()) {
+        //    cb.done(e, v);
+        //  }
+  
+        if (q.paused) {
+          return;
+        }
+  
+        q.processTasks();
       }
-      
-      this.processTasks();
-      
+  
+  
     });
     
     this.processTasks();
     
   }
-  
   
 }
