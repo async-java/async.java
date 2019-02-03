@@ -3,80 +3,10 @@ package org.ores;
 import java.util.*;
 import static java.util.Arrays.asList;
 
-class ShortCircuit {
-	
-	private boolean isShortCircuited = false;
-	
-	public boolean isShortCircuited(){
-		return this.isShortCircuited;
-	}
-	
-	public boolean setShortCircuited(boolean v){
-		return this.isShortCircuited = v;
-	}
-	
-}
-
-
-class Limit {
-	private int val;
-	private int current = 0;
-	
-	 Limit(int val) {
-		this.val = val;
-	}
-	
-	public Limit() {
-		this.val = 1;
-	}
-	
-	public int getVal() {
-		return this.val;
-	}
-	
-	public int getCurrent() {
-		return this.current;
-	}
-	
-	 void increment() {
-		this.current++;
-	}
-	
-	 void decrement() {
-		this.current--;
-	}
-	
-	 boolean isBelowCapacity() {
-		return this.current < this.val;
-	}
-	
-}
-
-class Counter {
-	
-	private int started = 0;
-	private int finished = 0;
-	
-	void incrementStarted() {
-		this.started++;
-	}
-	
-	void incrementFinished() {
-		this.finished++;
-	}
-	
-	int getStartedCount() {
-		return this.started;
-	}
-	
-	int getFinishedCount() {
-		return this.finished;
-	}
-}
-
-
 
 public class Asyncc {
+	
+	public static Class<Queue> Queue = Queue.class;
 	
 	public static class KeyValue<V> {
 		
@@ -97,7 +27,13 @@ public class Asyncc {
 		public void done(E e, T v);
 	}
 	
-	public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E> {
+	public static interface ICallbacks<T,E> {
+		 void resolve(T v);
+		 void reject(E e);
+//		 void done(E e, T... v);
+	}
+	
+	public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T,E> {
 		private ShortCircuit s;
 		
 		public AsyncCallback(ShortCircuit s){
@@ -193,6 +129,17 @@ public class Asyncc {
 			KeyValue<V> kv = new KeyValue<V>(null, (V)items.get(i));
 			
 			m.map(kv, new AsyncCallback<T, E>(s) {
+				
+				@Override
+				public void resolve(T v){
+					this.done(null,v);
+				}
+				
+				@Override
+				public void reject(E e){
+					this.done(e, null);
+				}
+				
 				@Override
 				public void done(E e, T v) {
 					
@@ -266,6 +213,16 @@ public class Asyncc {
 			entry.getValue().run(new AsyncCallback<T, E>(s) {
 				
 				@Override
+				public void resolve(T v){
+					this.done(null,v);
+				}
+				
+				@Override
+				public void reject(E e){
+					this.done(e, null);
+				}
+				
+				@Override
 				public void done(E e, T v) {
 					
 					if(s.isShortCircuited()){
@@ -305,6 +262,17 @@ public class Asyncc {
 			final int index = i;
 			
 			tasks.get(i).run(new AsyncCallback<T, E>(s) {
+				
+				@Override
+				public void resolve(T v){
+					this.done(null,v);
+				}
+				
+				@Override
+				public void reject(E e){
+					this.done(e, null);
+				}
+				
 				@Override
 				public void done(E e, T v) {
 					
@@ -372,6 +340,16 @@ public class Asyncc {
 		t.run(new AsyncCallback<T, E>(s) {
 			
 			@Override
+			public void resolve(T v){
+				this.done(null,v);
+			}
+			
+			@Override
+			public void reject(E e){
+				this.done(e, null);
+			}
+			
+			@Override
 			public void done(E e, T v) {
 				
 				if(s.isShortCircuited()){
@@ -430,6 +408,17 @@ public class Asyncc {
 		c.incrementStarted();
 		
 		t.run(new AsyncCallback<T, E>(s) {
+			
+			@Override
+			public void resolve(T v){
+				this.done(null,v);
+			}
+			
+			@Override
+			public void reject(E e){
+				this.done(e, null);
+			}
+			
 			@Override
 			public void done(E e, T v) {
 				
@@ -490,6 +479,17 @@ public class Asyncc {
 		c.incrementStarted();
 		
 		t.run(new AsyncCallback<T, E>(s) {
+			
+			@Override
+			public void resolve(T v){
+				this.done(null,v);
+			}
+			
+			@Override
+			public void reject(E e){
+				this.done(e, null);
+			}
+			
 			@Override
 			public void done(E e, T v) {
 				
@@ -600,7 +600,7 @@ public class Asyncc {
 		Asyncc.<T, E>RunInject(started, completed, tasks, results, c, s, f);
 	}
 	
-	public static abstract class AsyncCallbackSet<T, E> implements IAsyncCallback<T, E> {
+	public static abstract class AsyncCallbackSet<T, E> implements IAsyncCallback<T, E>, ICallbacks<T,E> {
 		private ShortCircuit s;
 		private Map<String, Object> values;
 		
@@ -643,10 +643,19 @@ public class Asyncc {
 			}
 			
 			final IInjectable<T,E> v = entry.getValue().getInjectable();
-			
 			started.add(key);
 			
 			v.run(new AsyncCallbackSet<T,E>(s, results){
+				
+				@Override
+				public void resolve(T v){
+					this.done(null,v);
+				}
+				
+				@Override
+				public void reject(E e){
+					this.done(e, null);
+				}
 				
 				@Override
 				public void done(E err, T v) {

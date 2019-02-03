@@ -19,13 +19,13 @@ import java.util.Set;
 public class AsyncTest {
   
   @Test
-  public void testInject(TestContext tc) {
+  public void testInjectCircular(TestContext tc) {
     
     Async z = tc.async();
     
-    Asyncc.<Integer, Object>Inject(
+    Asyncc.<Object, Object>Inject(
       Map.of(
-        "star", new Asyncc.Injectable(Set.of("bar"), v -> {
+        "star", new Asyncc.Injectable<Object,Object>(v -> {
           Object foo = v.get("foo");
           Object bar = v.get("bar");
           System.out.println("foo:");
@@ -34,11 +34,46 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
-        "foo", new Asyncc.Injectable(Set.of("star"),v -> {
+        "foo", new Asyncc.Injectable<Object,Object>(v -> {
+          v.done(null, 3);
+        }),
+        "bar", new Asyncc.Injectable<Object,Object>(Set.of("foo"), v -> {
+          Object foo = v.get("foo");
+          System.out.println("foo:");
+          System.out.println(foo);
+          v.done(null, 5);
+        })
+      
+      ),
+      (err, results) -> {
+        System.out.println(results);
+        z.complete();
+      }
+    );
+    
+  }
+  
+  @Test
+  public void testInject(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.<Integer, Object>Inject(
+      Map.of(
+        "star", new Asyncc.Injectable<Integer, Object>(Set.of("bar"), v -> {
+          Object foo = v.get("foo");
+          Object bar = v.get("bar");
+          System.out.println("foo:");
+          System.out.println(foo);
+          System.out.println("bar:");
+          System.out.println(bar);
+          v.done(null, 7);
+        }),
+        "foo", new Asyncc.Injectable<Integer, Object>(Set.of("star"),v -> {
           v.done(null, 3);
           
         }),
-        "bar", new Asyncc.Injectable(Set.of(), v -> {
+        "bar", new Asyncc.Injectable<Integer, Object>(Set.of(), v -> {
           Object foo = v.get("foo");
           System.out.println("foo:");
           System.out.println(foo);
