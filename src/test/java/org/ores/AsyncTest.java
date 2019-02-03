@@ -52,7 +52,7 @@ public class AsyncTest {
     ZoomCounter c = new ZoomCounter();
    
     
-    var q = new Queue<Integer,Integer>(1, (task,v) -> {
+    var q = new Queue<Integer,Integer>(4, (task,v) -> {
       v.done(null,task.getValue()*2+2);
     });
   
@@ -64,7 +64,6 @@ public class AsyncTest {
       System.out.println("unsaturated");
     });
     
-  
     q.onDrain(queue -> {
       System.out.println("Calling zz complete" + c.increment());
       System.out.println("Calling za complete");

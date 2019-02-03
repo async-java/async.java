@@ -248,18 +248,19 @@ public class Queue<T, V> {
           // callback was fired more than once
           return;
         }
+  
+        t._setFinished();
         
         new Thread(() -> {
           
           try{
-            Thread.sleep(10);
+            Thread.sleep(25);
           }
           catch (Exception err){
             System.out.println("Thread sleep exception");
           }
   
           q.c.incrementFinished();
-          t._setFinished();
           
           ListIterator<IAsyncErrFirstCb<V>> iter = t.getCallbacks().listIterator();
   
@@ -268,6 +269,13 @@ public class Queue<T, V> {
             iter.remove();
             cb.done(e, v);
           }
+          
+  
+//          if (q.paused) {
+//            return;
+//          }
+  
+          q.processTasks();
   
           if(q.isIdle() && q.tasks.size() < 1){
             for (IAsyncCb cb : q.drainCBs) {
@@ -280,18 +288,11 @@ public class Queue<T, V> {
               cb.run(q);
             }
           }
-  
-  
-          if (q.paused) {
-            return;
-          }
-  
-          q.processTasks();
+          
           
         }).start();
         
       }
-      
       
     });
     
