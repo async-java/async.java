@@ -41,15 +41,15 @@ class AcceptRunnable implements Asyncc.IAcceptRunnable {
   Vertx vertx;
   Context context;
   
-  public AcceptRunnable(Vertx v, Context c){
+  public AcceptRunnable(Vertx v, Context c) {
     this.vertx = v;
-    this.context =c;
+    this.context = c;
   }
   
   @Override
   public void accept(Runnable r) {
     context.runOnContext(v -> {
-       r.run();
+      r.run();
     });
   }
 }
@@ -60,25 +60,90 @@ public class AsyncTest {
   final static Logger log = LoggerFactory.getLogger(AsyncTest.class);
   static Vertx vertx = Vertx.vertx();
   static Context context = vertx.getOrCreateContext();
-  static AcceptRunnable ar;
+  static AcceptRunnable ar = new AcceptRunnable(vertx, context);
   
   @Before
   public void onBefore() {
-  
-    ar = new AcceptRunnable(vertx, context);
+
+//    ar = new AcceptRunnable(vertx, context);
     Asyncc.setOnNext(ar);
-    
+
 //    vertx.runOnContext(v -> {
 //      log.info("WUT THE FAK");
 //    });
+
+//    context.runOnContext(v1 -> {
+//      System.out.println("One");
+//      context.runOnContext(v2 -> {
+//        System.out.println("Two");
+//      });
+//      System.out.println("Three");
+//    });
+  }
+  
+  public static <T,E> Asyncc.AsyncTask<T,E> zoom() {
+    return v -> {
+      v.done(null, null);
+    };
+  }
+  
+  @Test
+  public void runComposed1(TestContext tc) {
     
-    context.runOnContext(v1 -> {
-      System.out.println("One");
-      context.runOnContext(v2 -> {
-        System.out.println("Two");
+    Async v = tc.async();
+    
+    Asyncc.Series(asList(
+      zoom(),
+      Asyncc.Parallel(asList(
+        z -> {
+          z.done(null, null);
+        },
+        zoom()
+        )
+      )),
+      (e, results) -> {
+        v.complete();
       });
-      System.out.println("Three");
-    });
+    
+  }
+  
+  @Test
+  public void runComposed2(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    
+    Asyncc.Parallel(asList(
+      
+      v -> {
+        v.done(null, null);
+      },
+      
+      zoom()
+      
+      ),
+      (e, results) -> {
+        z.complete();
+      });
+    
+  }
+  
+  @Test
+  public void runComposed3(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.Parallel(
+      v -> {
+        v.done(null, null);
+      },
+      
+      zoom(),
+      
+      (e, results) -> {
+        z.complete();
+      });
+    
   }
   
   @Test
@@ -97,62 +162,62 @@ public class AsyncTest {
 //      }
 //    });
     
-    ZoomCounter c = new ZoomCounter();
-    
-    var q = new Queue<Integer, Integer>(1, (task, v) -> {
-      v.done(null, task.getValue() * 2 + 2);
-    });
-    
-    System.out.println("The concurrency is: " + q.getConcurrency());
-    
-    q.onSaturated(queue -> {
-      System.out.println("saturated");
-    });
-    
-    q.onUnsaturated(queue -> {
-      System.out.println("unsaturated");
-    });
-    
-    q.onDrain(queue -> {
-      System.out.println("Calling zz complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
-//      z.complete();
-    });
-    
-    q.push(new Queue.Task<>(3, (err, v) -> {
-      System.out.println(err);
-      System.out.println(v);
-    }));
-    
-    q.push(new Queue.Task<>(5, (err, v) -> {
-      log.debug((String) err, v);
-    }));
-    
-    q.push(new Queue.Task<>(5, (err, v) -> {
-      System.out.println(err);
-      System.out.println(v);
-    }));
-    
-    new Thread(() -> {
+    context.runOnContext(v1 -> {
       
-      try {
-        Thread.sleep(100);
-      } catch (Exception err) {
-        log.debug(err.toString());
-      }
+      var c = new ZoomCounter();
       
-      
-      q.push(new Queue.Task<>(3, (err, v) -> {
-        System.out.println(err);
-        System.out.println(v);
-      }));
-      
-      q.onDrain(queue -> {
-        System.out.println("Calling zz 2 complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
-        z.complete();
+      var q = new Queue<Integer, Integer>(1, (task, v) -> {
+        v.done(null, task.getValue() * 2 + 2);
       });
       
+      System.out.println("The concurrency is: " + q.getConcurrency());
       
-    }).start();
+      q.onSaturated(queue -> {
+        System.out.println("saturated");
+      });
+      
+      q.onUnsaturated(queue -> {
+        System.out.println("unsaturated");
+      });
+      
+      q.onDrain(queue -> {
+        System.out.println("Calling zz complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
+//      z.complete();
+      });
+      
+      q.push(new Queue.Task<>(3, (err, v) -> {
+        log.debug((String) err, v);
+      }));
+      
+      q.push(new Queue.Task<>(5, (err, v) -> {
+        log.debug((String) err, v);
+      }));
+      
+      q.push(new Queue.Task<>(5, (err, v) -> {
+        log.debug((String) err, v);
+      }));
+      
+      new Thread(() -> {
+        
+        try {
+          Thread.sleep(100);
+        } catch (Exception err) {
+          log.debug(err.toString());
+        }
+        
+        q.push(new Queue.Task<>(3, (err, v) -> {
+          log.debug((String) err, v);
+        }));
+        
+        q.onDrain(queue -> {
+          System.out.println("Calling zz 2 complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
+          z.complete();
+        });
+        
+        
+      }).start();
+      
+    });
   }
   
   @Test
