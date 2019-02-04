@@ -3,10 +3,16 @@ package org.ores;
 import java.util.*;
 import static java.util.Arrays.asList;
 
-
 public class Asyncc {
 	
 	public static Class<Queue> Queue = Queue.class;
+//	public static Class<Inject> Inject = Inject.class;
+	
+	
+	public static <T,E> void Inject(Map<String, Inject.Task<T, E>> tasks,
+															Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
+		 Inject.<T,E>Inject(tasks,f);
+	}
 	
 	public static class KeyValue<V> {
 		
@@ -107,7 +113,6 @@ public class Asyncc {
 		return cb -> Asyncc.<T, E>Series(tasks, cb);
 	}
 	
-	
 	public static <T, E> AsyncTask<Map<String, T>, E> Parallel(Map<String, AsyncTask<T, E>> tasks) {
 		return cb -> Asyncc.<T, E>Parallel(tasks, cb);
 	}
@@ -116,6 +121,7 @@ public class Asyncc {
 		return cb -> Asyncc.<T, E>Series(tasks, cb);
 	}
 	
+	@SuppressWarnings("Duplicates")
 	public static <V, T, E> void Map(List<?> items, Mapper<V, T, E> m, IAsyncCallback<List<T>, E> f) {
 		
 		List<T> results = new ArrayList<T>(Collections.<T>nCopies(items.size(), null));
@@ -149,12 +155,12 @@ public class Asyncc {
 					
 					if (e != null) {
 						s.setShortCircuited(true);
-						f.done((E) e, Collections.emptyList());  // List.of()?
+						f.done(e, Collections.emptyList());  // List.of()?
 						return;
 					}
 					
 					c.incrementFinished();
-					results.set(val, (T) v);
+					results.set(val, v);
 					
 					if (c.getFinishedCount() == items.size()) {
 						f.done(null, results);
@@ -188,7 +194,6 @@ public class Asyncc {
 		IAsyncCallback<Map<String, T>, E> f) {
 		
 		Map<String, T> results = new HashMap<>();
-		boolean error = false;
 		Counter c = new Counter();
 		ShortCircuit s = new ShortCircuit();
 		
@@ -199,10 +204,10 @@ public class Asyncc {
 		
 	}
 	
+	@SuppressWarnings("Duplicates")
 	public static <T, E> void Parallel(Map<String, AsyncTask<T, E>> tasks, IAsyncCallback<Map<String, T>, E> f) {
 		
 		Map<String, T> results = new HashMap<>();
-		boolean error = false;
 		Counter c = new Counter();
 		ShortCircuit s = new ShortCircuit();
 		
@@ -253,7 +258,6 @@ public class Asyncc {
 	public static <T, E> void Parallel(List<AsyncTask<T, E>> tasks, IAsyncCallback<List<T>, E> f) {
 		
 		List<T> results = new ArrayList<T>(Collections.<T>nCopies(tasks.size(), null));
-		boolean error = false;
 		Counter c = new Counter();
 		ShortCircuit s = new ShortCircuit();
 		
@@ -534,153 +538,5 @@ public class Asyncc {
 		Asyncc.<T, E>RunTasksSerially(tasks, results, s, c, f);
 	}
 	
-	public static interface IInjectable<T,E> {
-	  public void run(AsyncCallbackSet<T,E> cb);
-	}
 	
-	public static class Injectable<T,E> {
-		
-		Set<String> s;
-		IInjectable i;
-		
-	  public Injectable(Set<String> s, IInjectable<T,E> i){
-	  	this.s = s;
-	  	this.i = i;
-		}
-		
-		public Injectable(IInjectable<T,E> i){
-			this.s = Set.of();
-			this.i = i;
-		}
-		
-		public Set<String> getSet(){
-	  	return this.s;
-		}
-		
-		public IInjectable getInjectable(){
-	  	return this.i;
-		}
-	}
-	
-	public static <T, E> void checkForCircularDep(String key, Set<String> h, Map<String, Injectable<T, E>> tasks){
-		
-	    if(h.contains(key)){
-	    	throw new Error("The following key has a circular dep: " + key);
-			}
-	  
-	    for(String s: h){
-	    	checkForCircularDep(key, tasks.get(s).getSet(), tasks);
-			}
-	}
-	
-	public static <T, E> void Inject(
-		Map<String, Injectable<T, E>> tasks,
-		IAsyncCallback<Map<String, Object>, E> f) {
-		
-		Counter c = new Counter();
-		ShortCircuit s = new ShortCircuit();
-		Map<String, Object> results = new HashMap<>();
-		
-		if (tasks.size() < 1) {
-			f.done(null, Map.of());
-			return;
-		}
-		
-		for (Map.Entry<String, Injectable<T, E>> entry : tasks.entrySet()) {
-			
-			final String key = entry.getKey();
-			final Set<String> set = entry.getValue().getSet();
-			
-			checkForCircularDep(key, set, tasks);
-		}
-		
-		HashSet<String> started = new HashSet<>();
-		HashSet<String> completed = new HashSet<>();
-		
-		Asyncc.<T, E>RunInject(started, completed, tasks, results, c, s, f);
-	}
-	
-	public static abstract class AsyncCallbackSet<T, E> implements IAsyncCallback<T, E>, ICallbacks<T,E> {
-		private ShortCircuit s;
-		private Map<String, Object> values;
-		
-		public AsyncCallbackSet(ShortCircuit s, Map<String, Object> vals){
-			this.s = s;
-			this.values = vals;
-		}
-		
-		public boolean isShortCircuited(){
-			return this.s.isShortCircuited();
-		}
-		
-		public Object get(String s){
-			 return this.values.get(s);
-		}
-		
-	}
-	
-	private static <T,E>void RunInject(
-		HashSet<String> started,
-		HashSet<String> completed,
-		Map<String, Injectable<T, E>> m,
-		Map<String, Object> results,
-		Counter c,
-		ShortCircuit s,
-		IAsyncCallback<Map<String, Object>, E> f){
-		
-		
-		for (Map.Entry<String, Injectable<T, E>> entry : m.entrySet()) {
-			
-			final String key = entry.getKey();
-			final Set<String> set = entry.getValue().getSet();
-			
-			if(started.contains(key)){
-				continue;
-			}
-			
-			if(!completed.containsAll(set)){
-				continue;
-			}
-			
-			final IInjectable<T,E> v = entry.getValue().getInjectable();
-			started.add(key);
-			
-			v.run(new AsyncCallbackSet<T,E>(s, results){
-				
-				@Override
-				public void resolve(T v){
-					this.done(null,v);
-				}
-				
-				@Override
-				public void reject(E e){
-					this.done(e, null);
-				}
-				
-				@Override
-				public void done(E err, T v) {
-					
-					if(s.isShortCircuited()){
-						return;
-					}
-					
-					if(err != null){
-						s.setShortCircuited(true);
-						return;
-					}
-					
-					completed.add(key);
-					results.put(key, v);
-					
-					if(completed.size() == m.size()){
-						f.done(null, results);
-						return;
-					}
-					
-					RunInject(started,completed,m,results,c,s,f);
-				}
-			});
-			
-		}
-	}
 }

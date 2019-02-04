@@ -5,99 +5,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
-interface IAsyncErrFirstCb<T> {
-  void done(Object e, T v);
-}
-
-interface ITaskHandler<T, V> {
-  void run(Task<T, V> t, IAsyncErrFirstCb<V> v);
-}
-
-interface ICallbacks<T> {
-  void resolve(T v);
-  
-  void reject(Object e);
-//		 void run(E e, T... v);
-}
-
-interface IAsyncCb {
-  void run(Queue q);
-}
-
-class Task<T, V> {
-  
-  private T value;
-  private ArrayList<IAsyncErrFirstCb<V>> cbs = new ArrayList<>();
-  private boolean isStarted = false;
-  private boolean isFinished = false;
-  
-  public Task(T value) {
-    this.value = value;
-  }
-  
-  public Task(T value, IAsyncErrFirstCb<V> cb) {
-    this.value = value;
-    this.cbs.add(cb);
-  }
-  
-  public ArrayList<IAsyncErrFirstCb<V>> getCallbacks() {
-    return this.cbs;
-  }
-  
-  public void addCallback(IAsyncErrFirstCb<V> cb) {
-    this.cbs.add(cb);
-  }
-  
-  public T getValue() {
-    return this.value;
-  }
-  
-  public void _setStarted() {
-    if (this.isStarted) {
-      throw new Error("Task already started.");
-    }
-    this.isStarted = true;
-  }
-  
-  public boolean isStarted() {
-    return this.isStarted;
-  }
-  
-  public void _setFinished() {
-    if (this.isFinished) {
-      throw new Error("Task already started.");
-    }
-    this.isFinished = true;
-  }
-  
-  public boolean isFinished() {
-    return this.isFinished;
-  }
-}
-
-abstract class AsyncCallback<T> implements IAsyncErrFirstCb<T>, ICallbacks<T> {
-  
-  private ShortCircuit s;
-
-//  public AsyncCallback(ShortCircuit s){
-//    this.s = s;
-//  }
-  
-  public AsyncCallback() {
-  
-  }
-  
-  public boolean isShortCircuited() {
-    return this.s.isShortCircuited();
-  }
-  
-}
-
 
 public class Queue<T, V> {
   
   private boolean isSaturated = false;
-  private ArrayList<Task<T, V>> tasks = new ArrayList<>();
+  private List<Task<T, V>> tasks = Collections.synchronizedList(new ArrayList<>());
   private ITaskHandler<T, V> h;
   private boolean isPaused;
   private CounterLimit c;
@@ -105,6 +17,96 @@ public class Queue<T, V> {
   private List<IAsyncCb> saturatedCBs = Collections.synchronizedList(new ArrayList<>());
   private List<IAsyncCb> unsaturatedCBs = Collections.synchronizedList(new ArrayList<>());
   private boolean isDrained = false;
+  
+  
+  public interface IAsyncErrFirstCb<T> {
+    void done(Object e, T v);
+  }
+  
+  public interface ITaskHandler<T, V> {
+    void run(Task<T, V> t, IAsyncErrFirstCb<V> v);
+  }
+  
+  public interface ICallbacks<T> {
+    void resolve(T v);
+    
+    void reject(Object e);
+//		 void run(E e, T... v);
+  }
+  
+  public interface IAsyncCb {
+    void run(Queue q);
+  }
+  
+  
+  public abstract static class AsyncCallback<T> implements IAsyncErrFirstCb<T>, ICallbacks<T> {
+    
+    private ShortCircuit s;
+
+//  public AsyncCallback(ShortCircuit s){
+//    this.s = s;
+//  }
+    
+    public AsyncCallback() {
+    
+    }
+    
+    public boolean isShortCircuited() {
+      return this.s.isShortCircuited();
+    }
+    
+  }
+  
+  public static class Task<T, V> {
+    
+    private T value;
+    private ArrayList<IAsyncErrFirstCb<V>> cbs = new ArrayList<>();
+    private boolean isStarted = false;
+    private boolean isFinished = false;
+    
+    public Task(T value) {
+      this.value = value;
+    }
+    
+    public Task(T value, IAsyncErrFirstCb<V> cb) {
+      this.value = value;
+      this.cbs.add(cb);
+    }
+    
+    public ArrayList<IAsyncErrFirstCb<V>> getCallbacks() {
+      return this.cbs;
+    }
+    
+    public void addCallback(IAsyncErrFirstCb<V> cb) {
+      this.cbs.add(cb);
+    }
+    
+    public T getValue() {
+      return this.value;
+    }
+    
+    public void _setStarted() {
+      if (this.isStarted) {
+        throw new Error("Task already started.");
+      }
+      this.isStarted = true;
+    }
+    
+    public boolean isStarted() {
+      return this.isStarted;
+    }
+    
+    public void _setFinished() {
+      if (this.isFinished) {
+        throw new Error("Task already started.");
+      }
+      this.isFinished = true;
+    }
+    
+    public boolean isFinished() {
+      return this.isFinished;
+    }
+  }
   
   public static void main() {
     
@@ -134,23 +136,24 @@ public class Queue<T, V> {
     return this.c.getConcurrency();
   }
   
-  public List<IAsyncCb> getOnDrainCbs(){
-    return this.drainCBs;
-  }
   
   public boolean isDrained() {
     return this.isDrained;
   }
   
-  public void setDrained(boolean drained) {
+  public synchronized List<IAsyncCb> getOnDrainCbs() {
+    return this.drainCBs;
+  }
+  
+  public synchronized void setDrained(boolean drained) {
     this.isDrained = drained;
   }
   
-  public List<IAsyncCb> getOnSaturatedCbs(){
+  public synchronized List<IAsyncCb> getOnSaturatedCbs() {
     return this.saturatedCBs;
   }
   
-  public List<IAsyncCb> getOnUnsaturatedCbs(){
+  public synchronized List<IAsyncCb> getOnUnsaturatedCbs() {
     return this.unsaturatedCBs;
   }
   
@@ -185,15 +188,15 @@ public class Queue<T, V> {
   }
   
   public void onDrain(IAsyncCb cb) {
-    this.drainCBs.add(cb);
+    this.getOnDrainCbs().add(cb);
   }
   
   public void onSaturated(IAsyncCb cb) {
-    this.saturatedCBs.add(cb);
+    this.getOnSaturatedCbs().add(cb);
   }
   
   public void onUnsaturated(IAsyncCb cb) {
-    this.unsaturatedCBs.add(cb);
+    this.getOnUnsaturatedCbs().add(cb);
   }
   
   
@@ -238,14 +241,17 @@ public class Queue<T, V> {
     }
     
     Task<T, V> t = this.tasks.remove(0);
+    
     t._setStarted();  // signify that the task has started so it can't be removed anymore by the user
     
     this.c.incrementStarted();
     
-    if(!this.c.isBelowCapacity() && !this.isSaturated){
+    if (!this.c.isBelowCapacity() && !this.isSaturated) {
       this.isSaturated = true;
-      for (IAsyncCb cb : this.getOnSaturatedCbs()) {
-        cb.run(this);
+      synchronized (this) {
+        for (IAsyncCb cb : this.getOnSaturatedCbs()) {
+          cb.run(this);
+        }
       }
     }
     
@@ -270,46 +276,50 @@ public class Queue<T, V> {
         
         if (t.isFinished()) {
           // callback was fired more than once
+          new Error("Callback was fired more than once.").printStackTrace();
           return;
         }
-  
+        
         t._setFinished();
         
         new Thread(() -> {
           
-          try{
+          try {
             Thread.sleep(25);
-          }
-          catch (Exception err){
+          } catch (Exception err) {
             System.out.println("Thread sleep exception");
           }
-  
+          
           q.c.incrementFinished();
           
           ListIterator<IAsyncErrFirstCb<V>> iter = t.getCallbacks().listIterator();
-  
+          
           while (iter.hasNext()) {
             IAsyncErrFirstCb<V> cb = iter.next();
             iter.remove();
             cb.done(e, v);
           }
-  
-  
-          if(q.tasks.size() < 1 && q.isSaturated){
+          
+          
+          if (q.tasks.size() < 1 && q.isSaturated) {
             q.isSaturated = false;
-            for (IAsyncCb cb : q.getOnUnsaturatedCbs()) {
-              cb.run(q);
+            synchronized (q) {
+              for (IAsyncCb cb : q.getOnUnsaturatedCbs()) {
+                cb.run(q);
+              }
             }
           }
           
-          if(!q.isDrained() && q.isIdle() && q.tasks.size() < 1){
+          if (!q.isDrained() && q.isIdle() && q.tasks.size() < 1) {
             q.setDrained(true);
-            for (IAsyncCb cb : q.getOnDrainCbs()) {
-              cb.run(q);
+            synchronized (q) {
+              for (IAsyncCb cb : q.getOnDrainCbs()) {
+                cb.run(q);
+              }
             }
           }
           
-          if(q.isPaused){
+          if (q.isPaused) {
             return;
           }
           

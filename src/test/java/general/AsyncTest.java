@@ -1,21 +1,20 @@
-package org.ores;
+package general;
 
-import org.ores.Asyncc;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.ext.unit.Async;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.ores.Asyncc;
+import org.ores.Inject;
+import org.ores.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.util.Arrays.asList;
-
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+
+import static java.util.Arrays.asList;
 
 class ZoomCounter {
   
@@ -159,6 +158,7 @@ public class AsyncTest {
     
     Asyncc.<Object, Object>Inject(
       Map.of(
+        
         "star", new Inject.Task<>(v -> {
           Object foo = v.get("foo");
           Object bar = v.get("bar");
@@ -168,6 +168,7 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
+        
         "foo", new Inject.Task<>("star", v -> {
           synchronized (System.out) {
             System.out.println("Here is star:");
@@ -175,6 +176,7 @@ public class AsyncTest {
           }
           v.done(null, 3);
         }),
+        
         "bar", new Inject.Task<>("foo", v -> {
           Object foo = v.get("foo");
           synchronized (System.out) {

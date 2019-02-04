@@ -2,4 +2,6 @@
 
 #mvn test -Dtest=AsyncTest#testSeries
 
-mvn clean test -Dtest=AsyncTest#testQueue
+#mvn clean test -Dtest=AsyncTest#testInjectSimple
+
+mvn clean test -Dtest=AsyncTest

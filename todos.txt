@@ -6,3 +6,25 @@ contact Suguru Montegi - Suguru Motegi
 https://github.com/suguru03/neo-async
 
 do filterAndMap
+
+
+q.onSaturated(1, queue -> {
+    System.out.println("saturated");
+});
+
+ should only fire the callback once.
+
+ using async.waterfall with a map
+
+
+async.waterfall([
+ v => {
+   v.set('foo', 'bar');
+   v.done();
+ },
+ v => {
+    var foo = v.get("bar");
+    v.done(null, "foo", "bar");
+ }
+
+]
