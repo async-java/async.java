@@ -14,7 +14,7 @@ public class Inject {
   public static class Task<T,E> {
     
     Set<String> s;
-    IInjectable i;
+    IInjectable<T,E> i;
     
     public Task(Set<String> s, IInjectable<T,E> i){
       this.s = s;
@@ -61,11 +61,11 @@ public class Inject {
       this.i = i;
     }
     
-    public Set<String> getSet(){
+    Set<String> getSet(){
       return this.s;
     }
     
-    public IInjectable getInjectable(){
+    IInjectable getInjectable(){
       return this.i;
     }
   }

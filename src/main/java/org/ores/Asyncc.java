@@ -1,9 +1,27 @@
 package org.ores;
 
+
 import java.util.*;
 import static java.util.Arrays.asList;
 
 public class Asyncc {
+	
+	public static interface IAcceptRunnable {
+		public void accept(Runnable r);
+	}
+	
+	
+	public static IAcceptRunnable nextTick = null;
+	  
+//	INextTick n;
+//
+//	public static interface INextTick {
+//	    public void run();
+//	}
+	
+	public static void setOnNext(IAcceptRunnable r){
+		Asyncc.nextTick = r;
+	}
 	
 	public static Class<Queue> Queue = Queue.class;
 //	public static Class<Inject> Inject = Inject.class;

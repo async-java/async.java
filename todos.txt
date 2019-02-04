@@ -14,8 +14,16 @@ q.onSaturated(1, queue -> {
 
  should only fire the callback once.
 
- using async.waterfall with a map
 
+q.onSaturated(1, (queue, v) -> {
+    System.out.println("saturated");
+    v.removeThisCallback();
+});
+
+ should only fire the callback once.
+
+
+ using async.waterfall with a map
 
 async.waterfall([
  v => {
@@ -26,5 +34,7 @@ async.waterfall([
     var foo = v.get("bar");
     v.done(null, "foo", "bar");
  }
-
 ]
+
+
+use a Threadpool of size 1 to process callbacks

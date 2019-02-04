@@ -1,8 +1,11 @@
 package general;
 
+import io.vertx.core.Context;
+import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ores.Asyncc;
@@ -33,10 +36,50 @@ class ZoomCounter {
   }
 }
 
+class AcceptRunnable implements Asyncc.IAcceptRunnable {
+  
+  Vertx vertx;
+  Context context;
+  
+  public AcceptRunnable(Vertx v, Context c){
+    this.vertx = v;
+    this.context =c;
+  }
+  
+  @Override
+  public void accept(Runnable r) {
+    context.runOnContext(v -> {
+       r.run();
+    });
+  }
+}
+
 @RunWith(VertxUnitRunner.class)
 public class AsyncTest {
   
   final static Logger log = LoggerFactory.getLogger(AsyncTest.class);
+  static Vertx vertx = Vertx.vertx();
+  static Context context = vertx.getOrCreateContext();
+  static AcceptRunnable ar;
+  
+  @Before
+  public void onBefore() {
+  
+    ar = new AcceptRunnable(vertx, context);
+    Asyncc.setOnNext(ar);
+    
+//    vertx.runOnContext(v -> {
+//      log.info("WUT THE FAK");
+//    });
+    
+    context.runOnContext(v1 -> {
+      System.out.println("One");
+      context.runOnContext(v2 -> {
+        System.out.println("Two");
+      });
+      System.out.println("Three");
+    });
+  }
   
   @Test
   public void testQueue(TestContext tc) {
@@ -130,7 +173,7 @@ public class AsyncTest {
           v.done(null, 7);
         }),
         
-        "foo", new Inject.Task<>("star",v -> {
+        "foo", new Inject.Task<>("star", v -> {
           v.done(null, 3);
         }),
         

@@ -4,10 +4,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 public class Queue<T, V> {
   
+  private static ExecutorService executor = Executors.newFixedThreadPool(1);//creating a pool of 5 threads
   private boolean isSaturated = false;
   private List<Task<T, V>> tasks = Collections.synchronizedList(new ArrayList<>());
   private ITaskHandler<T, V> h;
@@ -29,7 +32,6 @@ public class Queue<T, V> {
   
   public interface ICallbacks<T> {
     void resolve(T v);
-    
     void reject(Object e);
 //		 void run(E e, T... v);
   }
@@ -110,12 +112,11 @@ public class Queue<T, V> {
   
   public static void main() {
     
-    Queue q = new Queue<Integer, Integer>((task, v) -> {
+    var q = new Queue<Integer, Integer>((task, v) -> {
       v.done(null, null);
     });
     
     q.push(new Task<Integer, Integer>(3, (err, v) -> {
-    
     
     }));
     
@@ -226,6 +227,15 @@ public class Queue<T, V> {
     return this.c.isIdle();
   }
   
+  private static void executeRunnable(Runnable r){
+    if(Asyncc.nextTick != null){
+      Asyncc.nextTick.accept(r);
+    }
+    else{
+      Queue.executor.execute(r);
+    }
+  }
+  
   private synchronized void processTasks() {
     
     if (this.isPaused) {
@@ -281,11 +291,13 @@ public class Queue<T, V> {
         }
         
         t._setFinished();
-        
-        new Thread(() -> {
+  
+        executeRunnable(() -> {
+        // Queue.executor.execute(() -> {
+          // formerly new Thread(() -> {}).start()
           
           try {
-            Thread.sleep(25);
+            Thread.sleep(1);
           } catch (Exception err) {
             System.out.println("Thread sleep exception");
           }
@@ -325,8 +337,7 @@ public class Queue<T, V> {
           
           q.processTasks();
           
-          
-        }).start();
+        });
         
       }
       
