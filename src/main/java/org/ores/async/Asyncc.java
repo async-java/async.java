@@ -1,6 +1,4 @@
-package org.ores;
-
-import static java.util.HashSet.*;
+package org.ores.async;
 
 import java.util.*;
 

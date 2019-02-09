@@ -8,9 +8,9 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.ores.Asyncc;
-import org.ores.Inject;
-import org.ores.Queue;
+import org.ores.async.Asyncc;
+import org.ores.async.Inject;
+import org.ores.async.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,6 +117,10 @@ public class AsyncTest {
     }
   }
   
+  static <T,E> Mip<T,E> makeMip(Asyncc.IAsyncCallback<T, E> r){
+    return new Mip<T,E>(r);
+  }
+  
   static class Mip<T, E> implements Asyncc.IAsyncCallback<T, E> {
 
 //    public abstract void ran();
@@ -140,6 +144,8 @@ public class AsyncTest {
     
     Async v = tc.async();
     
+//    v.fail();
+    
     Asyncc.Series(asList(
       zoom(),
       zoom()),
@@ -160,7 +166,11 @@ public class AsyncTest {
     Asyncc.Series(
       zoom(),
       zoom(),
-      new Mip<>((e, results) -> {
+      zoom(),
+      zoom(),
+      zoom(),
+      zoom(),
+      makeMip((e, results) -> {
       
       
       }));
@@ -477,10 +487,13 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
-        "foo", new Inject.Task<>(Set.of("star"), v -> {
-          v.done(null, 3);
-          
-        }),
+        "foo", new Inject.Task<>(
+          Set.of("star"),
+          v -> {
+            v.done(null, 3);
+            
+          }
+        ),
         "bar", new Inject.Task<>(Set.of(), v -> {
           Object foo = v.get("foo");
           System.out.println("foo:");
@@ -559,7 +572,7 @@ public class AsyncTest {
     Asyncc.Waterfall(
       
       v -> {
-        v.set("stank","kovich");
+        v.set("stank", "kovich");
         v.map.put("foo", "bar");
         v.done(null);
       },

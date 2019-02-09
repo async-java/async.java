@@ -1,8 +1,7 @@
-package org.ores;
+package org.ores.async;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class NeoConcat {
   

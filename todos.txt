@@ -46,5 +46,6 @@ https://stackoverflow.com/questions/337903/how-can-you-ensure-in-java-that-a-blo
 https://docs.oracle.com/javase/tutorial/essential/concurrency/interrupt.html
 
 
+https://issues.sonatype.org/login.jsp?os_destination=%2Fsecure%2Fdefault.jsp
 
 async.series is just async.parallelLimit(1)

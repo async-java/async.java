@@ -1,4 +1,4 @@
-package org.ores;
+package org.ores.async;
 
 import java.util.Collections;
 import java.util.Iterator;

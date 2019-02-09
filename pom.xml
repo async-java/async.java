@@ -2,12 +2,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.ores</groupId>
-    <artifactId>async.1.1</artifactId>
+    <groupId>com.oresoftware</groupId>
+    <artifactId>async.0.1</artifactId>
     <packaging>jar</packaging>
-    <version>1.2-SNAPSHOT</version>
-    <name>org.ores.Asyncc</name>
-    <url>http://maven.apache.org</url>
+    <version>0.1.101</version>
+    <name>org.ores.async.Asyncc</name>
+    <url>https://github.com/ORESoftware/async.java</url>
 
     <properties>
         <vertx.version>3.6.0</vertx.version>
@@ -26,6 +26,44 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>http://www.opensource.org/licenses/mit-license.php</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Alexander Mills</name>
+            <email>alex@oresoftware.com</email>
+            <organization>ORESoftware</organization>
+            <organizationUrl>https://www.oresoftware.com</organizationUrl>
+        </developer>
+    </developers>
+
+    <description>
+        A Java port of the async library for Node.js. This lib is designed to be used with Vert.x and Akka.
+    </description>
+
+
+    <scm>
+        <connection>scm:git:https://github.com/ORESoftware/async.java.git</connection>
+        <developerConnection>scm:git:ssh://github.com:ORESoftware/async.java.git</developerConnection>
+        <url>https://github.com/ORESoftware/async.java/tree/master</url>
+    </scm>
 
     <dependencies>
         <dependency>
@@ -71,6 +109,61 @@
     <build>
         <finalName>async</finalName>
         <plugins>
+
+
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.8</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.0.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.0.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
             <!-- download source code in Eclipse, best practice -->
             <plugin>

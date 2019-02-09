@@ -1,4 +1,4 @@
-package org.ores;
+package org.ores.async;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
