@@ -14,8 +14,10 @@ import org.ores.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static java.util.Arrays.asList;
 
@@ -81,10 +83,131 @@ public class AsyncTest {
 //    });
   }
   
-  public static <T,E> Asyncc.AsyncTask<T,E> zoom() {
+  public static Asyncc.AsyncTask<Object, Object> zoom1() {
     return v -> {
       v.done(null, null);
     };
+  }
+  
+  public static <T, E> Asyncc.AsyncTask<T, E> zoom() {
+    return v -> {
+      v.done(null, null);
+    };
+  }
+  
+  static interface Rinnable {
+    void rin();
+  }
+  
+  static class Mop<T, E> implements Asyncc.IAsyncCallback<T, E> {
+
+//    public abstract void ran();
+    
+    Rinnable r;
+    
+    public Mop(Rinnable r) {
+      this.r = r;
+    }
+    
+    @Override
+    public void done(E e, T v) {
+      CompletableFuture.runAsync(() -> {
+        this.r.rin();
+      });
+    }
+  }
+  
+  static class Mip<T, E> implements Asyncc.IAsyncCallback<T, E> {
+
+//    public abstract void ran();
+    
+    Asyncc.IAsyncCallback<T, E> r;
+    
+    public Mip(Asyncc.IAsyncCallback<T, E> r) {
+      this.r = r;
+    }
+    
+    @Override
+    public void done(E e, T v) {
+      CompletableFuture.runAsync(() -> {
+        this.r.done(e, v);
+      });
+    }
+  }
+  
+  @Test
+  public void runComposed00(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    Asyncc.Series(asList(
+      zoom(),
+      zoom()),
+      new Asyncc.IAsyncCallback<>() {
+        @Override
+        public void done(Object o, List<Object> v) {
+        
+        }
+      });
+    
+    Asyncc.Series(
+      zoom(),
+      zoom(),
+      new Mop<>(() -> {
+      
+      }));
+    
+    Asyncc.Series(
+      zoom(),
+      zoom(),
+      new Mip<>((e, results) -> {
+      
+      
+      }));
+    
+    Asyncc.Series(
+      zoom(),
+      zoom()
+      ,
+      (e, results) -> {
+        v.complete();
+      });
+    
+  }
+  
+  @Test
+  public void runComposed0(TestContext tc) {
+    
+    Async v = tc.async();
+
+//    var m =  new Asyncc.IAsyncCallback<List<Object>, Object>() {
+//      @Override
+//      public void done(Object e, List<Object> v) {
+//
+//      }
+//    };
+    
+    Asyncc.Series(asList(
+      zoom(),
+      Asyncc.Parallel(asList(
+        z -> {
+          z.done(null, null);
+        },
+        zoom()
+        )
+      )),
+//      new Asyncc.IAsyncCallback<List<T>, E>() {
+//        @Override
+//        public void done(E e, List<T> v) {
+//
+//        }
+//      }
+//    );
+      (e, results) -> {
+        
+        v.complete();
+      });
+    
   }
   
   @Test
@@ -101,6 +224,14 @@ public class AsyncTest {
         zoom()
         )
       )),
+//      new Asyncc.IAsyncCallback<>() {
+//        @Override
+//        public void done(Object e, List<Object> v) {
+//
+//        }
+//      }
+//
+//    );
       (e, results) -> {
         v.complete();
       });
@@ -112,7 +243,7 @@ public class AsyncTest {
     
     Async z = tc.async();
     
-    Asyncc.Parallel(
+    Asyncc.Parallel(asList(
       
       Asyncc.Parallel(
         zoom()
@@ -127,7 +258,15 @@ public class AsyncTest {
         v.done(null, null);
       },
       
-      zoom(),
+      zoom()
+      ),
+
+//      new Asyncc.IAsyncCallback<Object, Object>() {
+//        @Override
+//        public void done(Object e, Object v) {
+//
+//        }
+//      });
       
       (e, results) -> {
         z.complete();
@@ -168,66 +307,66 @@ public class AsyncTest {
 //            v.run(null,5);
 //      }
 //    });
-    
+
 //    context.runOnContext(v1 -> {
+    
+    var c = new ZoomCounter();
+    
+    synchronized (Asyncc.sync) {
       
-      var c = new ZoomCounter();
+      var q = new Queue<Integer, Integer>(1, (task, v) -> {
+        v.done(null, task.getValue() * 2 + 2);
+      });
       
-      synchronized (Asyncc.sync) {
-  
-        var q = new Queue<Integer, Integer>(1, (task, v) -> {
-          v.done(null, task.getValue() * 2 + 2);
-        });
-  
-        System.out.println("The concurrency is: " + q.getConcurrency());
-  
-        q.onSaturated(queue -> {
-          System.out.println("saturated");
-        });
-  
-        q.onUnsaturated(queue -> {
-          System.out.println("unsaturated");
-        });
-  
-        q.onDrain(queue -> {
-          System.out.println("Calling zz complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
+      System.out.println("The concurrency is: " + q.getConcurrency());
+      
+      q.onSaturated(queue -> {
+        System.out.println("saturated");
+      });
+      
+      q.onUnsaturated(queue -> {
+        System.out.println("unsaturated");
+      });
+      
+      q.onDrain(queue -> {
+        System.out.println("Calling zz complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
 //      z.complete();
-        });
-  
+      });
+      
+      q.push(new Queue.Task<>(3, (err, v) -> {
+        log.debug((String) err, v);
+      }));
+      
+      q.push(new Queue.Task<>(5, (err, v) -> {
+        log.debug((String) err, v);
+      }));
+      
+      q.push(new Queue.Task<>(5, (err, v) -> {
+        log.debug((String) err, v);
+      }));
+      
+      new Thread(() -> {
+        
+        try {
+          Thread.sleep(100);
+        } catch (Exception err) {
+          log.debug(err.toString());
+        }
+        
         q.push(new Queue.Task<>(3, (err, v) -> {
           log.debug((String) err, v);
         }));
-  
-        q.push(new Queue.Task<>(5, (err, v) -> {
-          log.debug((String) err, v);
-        }));
-  
-        q.push(new Queue.Task<>(5, (err, v) -> {
-          log.debug((String) err, v);
-        }));
-  
-        new Thread(() -> {
-    
-          try {
-            Thread.sleep(100);
-          } catch (Exception err) {
-            log.debug(err.toString());
-          }
-    
-          q.push(new Queue.Task<>(3, (err, v) -> {
-            log.debug((String) err, v);
-          }));
-    
-          q.onDrain(queue -> {
-            System.out.println("Calling zz 2 complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
-            z.complete();
-          });
-    
-    
-        }).start();
-  
-      }
+        
+        q.onDrain(queue -> {
+          System.out.println("Calling zz 2 complete" + "/" + c.increment() + "/" + queue.getOnDrainCbs().size());
+          z.complete();
+        });
+        
+        
+      }).start();
       
+    }
+
 //    });
   }
   
@@ -238,7 +377,7 @@ public class AsyncTest {
     
     Asyncc.Inject(
       Map.of(
-  
+        
         "star", new Inject.Task<>(v -> {
           Object foo = v.get("foo");
           Object bar = v.get("bar");
@@ -248,20 +387,20 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
-  
+        
         "foo", new Inject.Task<>("star", v -> {
           v.done(null, 3);
         }),
-  
+        
         "bar", new Inject.Task<>(Set.of("foo"), v -> {
           Object foo = v.get("foo");
           System.out.println("foo:");
           System.out.println(foo);
           v.done(null, 5);
         })
-
+      
       ),
-  
+
 //      new Asyncc.IAsyncCallback<Map<String, Object>, Object>() {
 //        @Override
 //        public void done(Object o, Map<String, Object> v) {
@@ -420,34 +559,38 @@ public class AsyncTest {
     Asyncc.Waterfall(
       
       v -> {
-        v.map.put("foo","bar");
+        v.set("stank","kovich");
+        v.map.put("foo", "bar");
+        v.done(null);
+      },
+      
+      v -> {
+        var x = v.get("foo");
+        tc.assertEquals(v.map.get("foo"), "bar");
         v.done(null, null);
       },
       
       v -> {
-        tc.assertEquals(v.map.get("foo"),"bar");
-        v.done(null, null);
+        tc.assertEquals(v.get("stank"), "kovich");
+        v.done(null, "z", "zz");
       },
-  
+      
       v -> {
-        v.done(null, "z","zz");
-      },
-  
-      v -> {
-        tc.assertEquals(v.map.get("foo"),"bar");
-        tc.assertEquals(v.map.get("z"),"zz");
+        tc.assertEquals(v.map.get("foo"), "bar");
+        tc.assertEquals(v.map.get("z"), "zz");
         v.done(null, null);
       },
       
       (e, results) -> {
-      
-      if (e != null) {
-        z.complete();
-      } else {
-        z.complete();
-      }
-      
-    });
+        
+        
+        if (e != null) {
+          z.complete();
+        } else {
+          z.complete();
+        }
+        
+      });
   }
   
   @Test

@@ -127,21 +127,20 @@ public class Asyncc {
   public static <T, E> void Series(
     List<AsyncTask<T, E>> tasks,
     IAsyncCallback<List<T>, E> cb) {
-    NeoSeries.Series(tasks, cb);
+    NeoSeries.<T,E>Series(tasks, cb);
   }
   
   public static <T, E> void Series(
     AsyncTask<T, E> a,
     IAsyncCallback<List<T>, E> cb) {
-    NeoSeries.Series(List.of(a), cb);
+    NeoSeries.<T,E>Series(List.of(a), cb);
   }
   
   public static <T, E> void Series(
     AsyncTask<T, E> a,
     AsyncTask<T, E> b,
     IAsyncCallback<List<T>, E> cb) {
-    
-    NeoSeries.Series(List.of(a, b), cb);
+    NeoSeries.<T,E>Series(List.of(a, b), cb);
   }
   
   public static <T, E> void Series(
@@ -149,7 +148,6 @@ public class Asyncc {
     AsyncTask<T, E> b,
     AsyncTask<T, E> c,
     IAsyncCallback<List<T>, E> cb) {
-    
     NeoSeries.Series(List.of(a, b, c), cb);
   }
   
@@ -159,7 +157,6 @@ public class Asyncc {
     AsyncTask<T, E> c,
     AsyncTask<T, E> d,
     IAsyncCallback<List<T>, E> cb) {
-    
     NeoSeries.Series(List.of(a, b, c, d), cb);
   }
   
@@ -272,7 +269,7 @@ public class Asyncc {
     AsyncTask<T, E> c,
     AsyncTask<T, E> d,
     IAsyncCallback<List<T>, E> cb) {
-    NeoParallel.Parallel(List.of(a, b, c, d), cb);
+    NeoParallel.<T,E>Parallel(List.of(a, b, c, d), cb);
   }
   
   public static <T, E> void Parallel(
@@ -387,9 +384,8 @@ public class Asyncc {
   
   public static <T, E> void ParallelLimit(
     int limit,
-    List<AsyncTask> tasks,
+    List<AsyncTask<T,E>> tasks,
     IAsyncCallback<List<T>, E> cb) {
-    
     NeoParallel.ParallelLimit(limit, tasks, cb);
   }
   
