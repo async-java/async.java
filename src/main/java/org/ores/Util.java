@@ -12,9 +12,8 @@ class Util {
     Iterator<Map.Entry<String, Asyncc.AsyncTask<T, E>>> entries,
     Map<String, Asyncc.AsyncTask<T, E>> m,
     Map<String, T> results,
-    Counter c,
+    CounterLimit c,
     ShortCircuit s,
-    Limit lim,
     Asyncc.IAsyncCallback<Map<String, T>, E> f) {
     
     if (c.getStartedCount() >= m.size()) {
@@ -28,7 +27,6 @@ class Util {
     Map.Entry<String, Asyncc.AsyncTask<T, E>> entry = entries.next();
     String key = entry.getKey();
     Asyncc.AsyncTask<T, E> t = entry.getValue();
-    lim.increment();
     c.incrementStarted();
     
     t.run(new Asyncc.AsyncCallback<T, E>(s) {
@@ -57,7 +55,6 @@ class Util {
         }
         
         results.put(key, v);
-        lim.decrement();
         c.incrementFinished();
         
         if (c.getFinishedCount() == m.size()) {
@@ -65,8 +62,8 @@ class Util {
           return;
         }
         
-        if (lim.isBelowCapacity()) {
-          Util.RunMapLimit(entries, m, results, c, s, lim, f);
+        if (c.isBelowCapacity()) {
+          Util.RunMapLimit(entries, m, results, c, s, f);
         }
       }
       
@@ -77,19 +74,18 @@ class Util {
       return;
     }
     
-    if (lim.isBelowCapacity()) {
-      Util.RunMapLimit(entries, m, results, c, s, lim, f);
+    if (c.isBelowCapacity()) {
+      Util.RunMapLimit(entries, m, results, c, s, f);
     }
     
   }
   
   @SuppressWarnings("Duplicates")
   static <T, E> void RunTasksLimit(
-    List<Asyncc.AsyncTask> tasks,
+    List<Asyncc.AsyncTask<T,E>> tasks,
     List<T> results,
-    Counter c,
+    CounterLimit c,
     ShortCircuit s,
-    Limit lim,
     Asyncc.IAsyncCallback<List<T>, E> f) {
     
     if (c.getStartedCount() >= tasks.size()) {
@@ -99,7 +95,6 @@ class Util {
     
     final int val = c.getStartedCount();
     Asyncc.AsyncTask<T, E> t = tasks.get(val);
-    lim.increment();
     c.incrementStarted();
     
     t.run(new Asyncc.AsyncCallback<T, E>(s) {
@@ -128,7 +123,6 @@ class Util {
         }
         
         results.set(val, v);
-        lim.decrement();
         c.incrementFinished();
         
         if (c.getFinishedCount() == tasks.size()) {
@@ -136,8 +130,8 @@ class Util {
           return;
         }
         
-        if (lim.isBelowCapacity()) {
-          Util.RunTasksLimit(tasks, results, c, s, lim, f);
+        if (c.isBelowCapacity()) {
+          Util.RunTasksLimit(tasks, results, c, s, f);
         }
         
       }
@@ -149,8 +143,8 @@ class Util {
       return;
     }
     
-    if (lim.isBelowCapacity()) {
-      Util.RunTasksLimit(tasks, results, c, s, lim, f);
+    if (c.isBelowCapacity()) {
+      Util.RunTasksLimit(tasks, results, c, s, f);
     }
     
   }
@@ -160,7 +154,7 @@ class Util {
     List<Asyncc.AsyncTask<T, E>> tasks,
     List<T> results,
     ShortCircuit s,
-    Counter c,
+    CounterLimit c,
     Asyncc.IAsyncCallback<List<T>, E> f) {
     
     final int startedCount = c.getStartedCount();

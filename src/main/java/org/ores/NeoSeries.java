@@ -10,12 +10,11 @@ class NeoSeries {
     
     Map<String, T> results = new HashMap<>();
     ShortCircuit s = new ShortCircuit();
-    Counter c = new Counter();
+    CounterLimit c = new CounterLimit(1);
     
     Iterator<Map.Entry<String, Asyncc.AsyncTask<T, E>>> entries = tasks.entrySet().iterator();
-    Limit lim = new Limit(1);
     
-    Util.<T, E>RunMapLimit(entries, tasks, results, c, s, lim, f);
+    Util.<T, E>RunMapLimit(entries, tasks, results, c, s, f);
     
   }
   
@@ -24,7 +23,7 @@ class NeoSeries {
     Asyncc.IAsyncCallback<List<T>, E> f) {
     
     List<T> results = new ArrayList<T>(Collections.nCopies(tasks.size(), null));
-    Counter c = new Counter();
+    CounterLimit c = new CounterLimit(1);
     ShortCircuit s = new ShortCircuit();
     
     if (tasks.size() < 1) {

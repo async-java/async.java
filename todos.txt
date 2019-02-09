@@ -38,3 +38,13 @@ async.waterfall([
 
 
 use a Threadpool of size 1 to process callbacks
+
+https://github.com/vert-x3/vertx-guide-for-java-devs
+
+https://stackoverflow.com/questions/337903/how-can-you-ensure-in-java-that-a-block-of-code-can-not-be-interrupted-by-any-ot
+
+https://docs.oracle.com/javase/tutorial/essential/concurrency/interrupt.html
+
+
+
+async.series is just async.parallelLimit(1)

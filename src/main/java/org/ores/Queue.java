@@ -1,11 +1,16 @@
 package org.ores;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 
 public class Queue<T, V> {
@@ -21,6 +26,8 @@ public class Queue<T, V> {
   private List<IAsyncCb> unsaturatedCBs = Collections.synchronizedList(new ArrayList<>());
   private boolean isDrained = false;
   
+  final static Logger log = LoggerFactory.getLogger(Queue.class);
+  
   
   public interface IAsyncErrFirstCb<T> {
     void done(Object e, T v);
@@ -32,6 +39,7 @@ public class Queue<T, V> {
   
   public interface ICallbacks<T> {
     void resolve(T v);
+    
     void reject(Object e);
 //		 void run(E e, T... v);
   }
@@ -75,11 +83,11 @@ public class Queue<T, V> {
       this.cbs.add(cb);
     }
     
-    public ArrayList<IAsyncErrFirstCb<V>> getCallbacks() {
+    ArrayList<IAsyncErrFirstCb<V>> getCallbacks() {
       return this.cbs;
     }
     
-    public void addCallback(IAsyncErrFirstCb<V> cb) {
+    void addCallback(IAsyncErrFirstCb<V> cb) {
       this.cbs.add(cb);
     }
     
@@ -87,7 +95,7 @@ public class Queue<T, V> {
       return this.value;
     }
     
-    public void _setStarted() {
+    void setStarted() {
       if (this.isStarted) {
         throw new Error("Task already started.");
       }
@@ -98,14 +106,14 @@ public class Queue<T, V> {
       return this.isStarted;
     }
     
-    public void _setFinished() {
+    void setFinished() {
       if (this.isFinished) {
         throw new Error("Task already started.");
       }
       this.isFinished = true;
     }
     
-    public boolean isFinished() {
+    boolean isFinished() {
       return this.isFinished;
     }
   }
@@ -227,12 +235,14 @@ public class Queue<T, V> {
     return this.c.isIdle();
   }
   
-  private static void executeRunnable(Runnable r){
-    if(Asyncc.nextTick != null){
+  private static void executeRunnable(Runnable r) {
+    if (false && Asyncc.nextTick != null) {
       Asyncc.nextTick.accept(r);
-    }
-    else{
+    } else if (false) {
       Queue.executor.execute(r);
+    } else {
+      System.out.println("Using run async.");
+      CompletableFuture.runAsync(r, executor);
     }
   }
   
@@ -252,7 +262,7 @@ public class Queue<T, V> {
     
     Task<T, V> t = this.tasks.remove(0);
     
-    t._setStarted();  // signify that the task has started so it can't be removed anymore by the user
+    t.setStarted();  // signify that the task has started so it can't be removed anymore by the user
     
     this.c.incrementStarted();
     
@@ -290,54 +300,58 @@ public class Queue<T, V> {
           return;
         }
         
-        t._setFinished();
-  
-        executeRunnable(() -> {
-        // Queue.executor.execute(() -> {
-          // formerly new Thread(() -> {}).start()
+        t.setFinished();
+        
+//        executeRunnable(() -> {
           
-          try {
-            Thread.sleep(1);
-          } catch (Exception err) {
-            System.out.println("Thread sleep exception");
-          }
+          // Queue.executor.execute(() -> {
           
-          q.c.incrementFinished();
-          
-          ListIterator<IAsyncErrFirstCb<V>> iter = t.getCallbacks().listIterator();
-          
-          while (iter.hasNext()) {
-            IAsyncErrFirstCb<V> cb = iter.next();
-            iter.remove();
-            cb.done(e, v);
-          }
-          
-          
-          if (q.tasks.size() < 1 && q.isSaturated) {
-            q.isSaturated = false;
-            synchronized (q) {
-              for (IAsyncCb cb : q.getOnUnsaturatedCbs()) {
-                cb.run(q);
+          CompletableFuture.delayedExecutor(1, TimeUnit.MILLISECONDS, executor).execute(() -> {
+            // Your code here executes after 5 seconds!
+            
+            synchronized (Asyncc.sync) {
+              
+              q.c.incrementFinished();
+              
+              ListIterator<IAsyncErrFirstCb<V>> iter = t.getCallbacks().listIterator();
+              
+              while (iter.hasNext()) {
+                IAsyncErrFirstCb<V> cb = iter.next();
+                iter.remove();
+                cb.done(e, v);
               }
-            }
-          }
-          
-          if (!q.isDrained() && q.isIdle() && q.tasks.size() < 1) {
-            q.setDrained(true);
-            synchronized (q) {
-              for (IAsyncCb cb : q.getOnDrainCbs()) {
-                cb.run(q);
+              
+              
+              if (q.tasks.size() < 1 && q.isSaturated) {
+                q.isSaturated = false;
+                synchronized (q) {
+                  for (IAsyncCb cb : q.getOnUnsaturatedCbs()) {
+                    cb.run(q);
+                  }
+                }
               }
+              
+              if (!q.isDrained() && q.isIdle() && q.tasks.size() < 1) {
+                q.setDrained(true);
+                synchronized (q) {
+                  for (IAsyncCb cb : q.getOnDrainCbs()) {
+                    cb.run(q);
+                  }
+                }
+              }
+              
+              if (q.isPaused) {
+                return;
+              }
+              
+              q.processTasks();
+              
             }
-          }
+            
+          });
           
-          if (q.isPaused) {
-            return;
-          }
           
-          q.processTasks();
-          
-        });
+//        });
         
       }
       

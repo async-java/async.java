@@ -7,7 +7,7 @@ import java.util.List;
 class NeoMap {
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> void Map(List<?> items, Asyncc.Mapper<V, T, E> m, Asyncc.IAsyncCallback<List<T>, E> f) {
+  static <V, T, E> void Map(List<?> items, Asyncc.Mapper<V, T, E> m, Asyncc.IAsyncCallback<List<T>, E> f) {
     
     List<T> results = new ArrayList<T>(Collections.<T>nCopies(items.size(), null));
     Counter c = new Counter();
