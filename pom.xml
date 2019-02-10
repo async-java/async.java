@@ -5,7 +5,7 @@
     <groupId>com.oresoftware</groupId>
     <artifactId>async.0.1</artifactId>
     <packaging>jar</packaging>
-    <version>0.1.101</version>
+    <version>0.1.1012</version>
     <name>org.ores.async.Asyncc</name>
     <url>https://github.com/ORESoftware/async.java</url>
 
@@ -50,7 +50,7 @@
             <name>Alexander Mills</name>
             <email>alex@oresoftware.com</email>
             <organization>ORESoftware</organization>
-            <organizationUrl>https://www.oresoftware.com</organizationUrl>
+            <organizationUrl>https://github.com/oresoftware</organizationUrl>
         </developer>
     </developers>
 
@@ -119,7 +119,7 @@
                 <configuration>
                     <serverId>ossrh</serverId>
                     <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
                 </configuration>
             </plugin>
 

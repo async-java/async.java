@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 
-public class Queue<T, V> {
+public class NeoQueue<T, V> {
   
   private static ExecutorService executor = Executors.newFixedThreadPool(1);//creating a pool of 5 threads
   private boolean isSaturated = false;
@@ -26,7 +26,7 @@ public class Queue<T, V> {
   private List<IAsyncCb> unsaturatedCBs = Collections.synchronizedList(new ArrayList<>());
   private boolean isDrained = false;
   
-  final static Logger log = LoggerFactory.getLogger(Queue.class);
+  final static Logger log = LoggerFactory.getLogger(NeoQueue.class);
   
   
   public interface IAsyncErrFirstCb<T> {
@@ -45,20 +45,16 @@ public class Queue<T, V> {
   }
   
   public interface IAsyncCb {
-    void run(Queue q);
+    void run(NeoQueue q);
   }
   
   
   public abstract static class AsyncCallback<T> implements IAsyncErrFirstCb<T>, ICallbacks<T> {
     
     private ShortCircuit s;
-
-//  public AsyncCallback(ShortCircuit s){
-//    this.s = s;
-//  }
     
-    public AsyncCallback() {
-    
+    AsyncCallback(ShortCircuit s) {
+      this.s = s;
     }
     
     public boolean isShortCircuited() {
@@ -120,7 +116,7 @@ public class Queue<T, V> {
   
   public static void main() {
     
-    var q = new Queue<Integer, Integer>((task, v) -> {
+    var q = new NeoQueue<Integer, Integer>((task, v) -> {
       v.done(null, null);
     });
     
@@ -131,12 +127,12 @@ public class Queue<T, V> {
   }
   
   
-  public Queue(Integer concurrency, ITaskHandler<T, V> h) {
+  public NeoQueue(Integer concurrency, ITaskHandler<T, V> h) {
     this.h = h;
     this.c = new CounterLimit(concurrency);
   }
   
-  public Queue(ITaskHandler<T, V> h) {
+  public NeoQueue(ITaskHandler<T, V> h) {
     this.c = new CounterLimit(1);
     this.h = h;
   }
@@ -231,7 +227,7 @@ public class Queue<T, V> {
     this.processTasks();
   }
   
-  public boolean isIdle() {
+  boolean isIdle() {
     return this.c.isIdle();
   }
   
@@ -239,7 +235,7 @@ public class Queue<T, V> {
     if (false && Asyncc.nextTick != null) {
       Asyncc.nextTick.accept(r);
     } else if (false) {
-      Queue.executor.execute(r);
+      NeoQueue.executor.execute(r);
     } else {
       System.out.println("Using run async.");
       CompletableFuture.runAsync(r, executor);
@@ -276,10 +272,10 @@ public class Queue<T, V> {
     }
     
     final var q = this;
-    
+    ShortCircuit s = new ShortCircuit();
     this.setDrained(false);
     
-    this.h.run(t, new AsyncCallback<V>() {
+    this.h.run(t, new AsyncCallback<V>(s) {
       
       @Override
       public void resolve(V v) {
@@ -301,56 +297,56 @@ public class Queue<T, V> {
         }
         
         t.setFinished();
-        
+
 //        executeRunnable(() -> {
+        
+        // Queue.executor.execute(() -> {
+        
+        CompletableFuture.delayedExecutor(1, TimeUnit.MILLISECONDS, executor).execute(() -> {
+          // Your code here executes after 5 seconds!
           
-          // Queue.executor.execute(() -> {
-          
-          CompletableFuture.delayedExecutor(1, TimeUnit.MILLISECONDS, executor).execute(() -> {
-            // Your code here executes after 5 seconds!
+          synchronized (Asyncc.sync) {
             
-            synchronized (Asyncc.sync) {
-              
-              q.c.incrementFinished();
-              
-              ListIterator<IAsyncErrFirstCb<V>> iter = t.getCallbacks().listIterator();
-              
-              while (iter.hasNext()) {
-                IAsyncErrFirstCb<V> cb = iter.next();
-                iter.remove();
-                cb.done(e, v);
-              }
-              
-              
-              if (q.tasks.size() < 1 && q.isSaturated) {
-                q.isSaturated = false;
-                synchronized (q) {
-                  for (IAsyncCb cb : q.getOnUnsaturatedCbs()) {
-                    cb.run(q);
-                  }
-                }
-              }
-              
-              if (!q.isDrained() && q.isIdle() && q.tasks.size() < 1) {
-                q.setDrained(true);
-                synchronized (q) {
-                  for (IAsyncCb cb : q.getOnDrainCbs()) {
-                    cb.run(q);
-                  }
-                }
-              }
-              
-              if (q.isPaused) {
-                return;
-              }
-              
-              q.processTasks();
-              
+            q.c.incrementFinished();
+            
+            ListIterator<IAsyncErrFirstCb<V>> iter = t.getCallbacks().listIterator();
+            
+            while (iter.hasNext()) {
+              IAsyncErrFirstCb<V> cb = iter.next();
+              iter.remove();
+              cb.done(e, v);
             }
             
-          });
+            
+            if (q.tasks.size() < 1 && q.isSaturated) {
+              q.isSaturated = false;
+              synchronized (q) {
+                for (IAsyncCb cb : q.getOnUnsaturatedCbs()) {
+                  cb.run(q);
+                }
+              }
+            }
+            
+            if (!q.isDrained() && q.isIdle() && q.tasks.size() < 1) {
+              q.setDrained(true);
+              synchronized (q) {
+                for (IAsyncCb cb : q.getOnDrainCbs()) {
+                  cb.run(q);
+                }
+              }
+            }
+            
+            if (q.isPaused) {
+              return;
+            }
+            
+            q.processTasks();
+            
+          }
           
-          
+        });
+
+
 //        });
         
       }

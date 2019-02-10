@@ -49,3 +49,6 @@ https://docs.oracle.com/javase/tutorial/essential/concurrency/interrupt.html
 https://issues.sonatype.org/login.jsp?os_destination=%2Fsecure%2Fdefault.jsp
 
 async.series is just async.parallelLimit(1)
+
+
+http://maven.apache.org/maven-release/maven-release-plugin/

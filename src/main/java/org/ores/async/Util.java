@@ -43,6 +43,13 @@ class Util {
       
       @Override
       public void done(E e, T v) {
+  
+        if(this.isFinished()){
+          new Error("Callback fired more than once.").printStackTrace();
+          return;
+        }
+  
+        this.setFinished(true);
         
         if (s.isShortCircuited()) {
           return;
@@ -111,6 +118,13 @@ class Util {
       
       @Override
       public void done(E e, T v) {
+  
+        if(this.isFinished()){
+          new Error("Callback fired more than once.").printStackTrace();
+          return;
+        }
+  
+        this.setFinished(true);
         
         if (s.isShortCircuited()) {
           return;

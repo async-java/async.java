@@ -22,16 +22,16 @@ public class Asyncc {
   }
   
   public static <T, E> void Inject(
-    Map.Entry<String, Inject.Task<T, E>> a,
+    Map.Entry<String, NeoInject.Task<T, E>> a,
     Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
     // one arg
-    Inject.Inject(Map.ofEntries(a), f);
+    NeoInject.Inject(Map.ofEntries(a), f);
   }
   
   public static <T, E> void Inject(
-    Map<String, Inject.Task<T, E>> tasks,
+    Map<String, NeoInject.Task<T, E>> tasks,
     Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
-    Inject.Inject(tasks, f);
+    NeoInject.Inject(tasks, f);
   }
   
   public static class KeyValue<V> {
@@ -60,6 +60,7 @@ public class Asyncc {
   
   public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T, E> {
     private ShortCircuit s;
+    private boolean isFinished = false;
     
     public AsyncCallback(ShortCircuit s) {
       this.s = s;
@@ -69,6 +70,13 @@ public class Asyncc {
       return this.s.isShortCircuited();
     }
     
+    boolean isFinished(){
+      return this.isFinished;
+    }
+    
+    boolean setFinished(boolean b){
+      return this.isFinished = b;
+    }
   }
   
   public static interface AsyncTask<T, E> {

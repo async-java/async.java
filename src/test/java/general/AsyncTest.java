@@ -9,8 +9,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ores.async.Asyncc;
-import org.ores.async.Inject;
-import org.ores.async.Queue;
+import org.ores.async.NeoInject;
+import org.ores.async.NeoQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -324,7 +324,7 @@ public class AsyncTest {
     
     synchronized (Asyncc.sync) {
       
-      var q = new Queue<Integer, Integer>(1, (task, v) -> {
+      var q = new NeoQueue<Integer, Integer>(1, (task, v) -> {
         v.done(null, task.getValue() * 2 + 2);
       });
       
@@ -343,15 +343,15 @@ public class AsyncTest {
 //      z.complete();
       });
       
-      q.push(new Queue.Task<>(3, (err, v) -> {
+      q.push(new NeoQueue.Task<>(3, (err, v) -> {
         log.debug((String) err, v);
       }));
       
-      q.push(new Queue.Task<>(5, (err, v) -> {
+      q.push(new NeoQueue.Task<>(5, (err, v) -> {
         log.debug((String) err, v);
       }));
       
-      q.push(new Queue.Task<>(5, (err, v) -> {
+      q.push(new NeoQueue.Task<>(5, (err, v) -> {
         log.debug((String) err, v);
       }));
       
@@ -363,7 +363,7 @@ public class AsyncTest {
           log.debug(err.toString());
         }
         
-        q.push(new Queue.Task<>(3, (err, v) -> {
+        q.push(new NeoQueue.Task<>(3, (err, v) -> {
           log.debug((String) err, v);
         }));
         
@@ -388,7 +388,7 @@ public class AsyncTest {
     Asyncc.Inject(
       Map.of(
         
-        "star", new Inject.Task<>(v -> {
+        "star", new NeoInject.Task<>(v -> {
           Object foo = v.get("foo");
           Object bar = v.get("bar");
           System.out.println("foo:");
@@ -398,11 +398,11 @@ public class AsyncTest {
           v.done(null, 7);
         }),
         
-        "foo", new Inject.Task<>("star", v -> {
+        "foo", new NeoInject.Task<>("star", v -> {
           v.done(null, 3);
         }),
         
-        "bar", new Inject.Task<>(Set.of("foo"), v -> {
+        "bar", new NeoInject.Task<>(Set.of("foo"), v -> {
           Object foo = v.get("foo");
           System.out.println("foo:");
           System.out.println(foo);
@@ -434,7 +434,7 @@ public class AsyncTest {
     Asyncc.<Object, Object>Inject(
       Map.of(
         
-        "star", new Inject.Task<>(v -> {
+        "star", new NeoInject.Task<>(v -> {
           Object foo = v.get("foo");
           Object bar = v.get("bar");
           System.out.println("foo:");
@@ -444,7 +444,7 @@ public class AsyncTest {
           v.done(null, 7);
         }),
         
-        "foo", new Inject.Task<>("star", v -> {
+        "foo", new NeoInject.Task<>("star", v -> {
           synchronized (System.out) {
             System.out.println("Here is star:");
             System.out.println(v.get("star"));
@@ -452,7 +452,7 @@ public class AsyncTest {
           v.done(null, 3);
         }),
         
-        "bar", new Inject.Task<>("foo", v -> {
+        "bar", new NeoInject.Task<>("foo", v -> {
           Object foo = v.get("foo");
           synchronized (System.out) {
             System.out.println("foo:");
@@ -478,7 +478,7 @@ public class AsyncTest {
     Asyncc.<Integer, Object>Inject(
       
       Map.of(
-        "star", new Inject.Task<>(Set.of("bar"), v -> {
+        "star", new NeoInject.Task<>(Set.of("bar"), v -> {
           Object foo = v.get("foo");
           Object bar = v.get("bar");
           System.out.println("foo:");
@@ -487,14 +487,14 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
-        "foo", new Inject.Task<>(
+        "foo", new NeoInject.Task<>(
           Set.of("star"),
           v -> {
             v.done(null, 3);
             
           }
         ),
-        "bar", new Inject.Task<>(Set.of(), v -> {
+        "bar", new NeoInject.Task<>(Set.of(), v -> {
           Object foo = v.get("foo");
           System.out.println("foo:");
           System.out.println(foo);

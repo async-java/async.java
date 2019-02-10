@@ -21,8 +21,9 @@ public class NeoWaterfall {
   }
   
   public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T, E> {
-    private ShortCircuit s;
-    public HashMap<String, Object> map;
+    private final ShortCircuit s;
+    public final HashMap<String, Object> map;
+    private boolean isFinished = false;
     
     public AsyncCallback(ShortCircuit s, HashMap<String, Object> m) {
       this.s = s;
@@ -33,12 +34,24 @@ public class NeoWaterfall {
       return this.s.isShortCircuited();
     }
     
-    public Object get(String s) {
-      return this.map.get(s);
+    public <V> V get(String s) {
+      return (V)this.map.get(s);
     }
+  
+    boolean isFinished(){
+      return this.isFinished;
+    }
+  
+    boolean setFinished(boolean b){
+      return this.isFinished = b;
+    }
+  
+//    public Object get(String s) {
+//      return this.map.get(s);
+//    }
     
-    public <T> Object set(String s, T v) {
-      return this.map.put(s, v);
+    public <V> void set(String s, V v) {
+       this.map.put(s, v);
     }
     
   }
@@ -87,6 +100,13 @@ public class NeoWaterfall {
     t.run(new AsyncCallback<T, E>(s, results) {
       
       private void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m) {
+  
+        if(this.isFinished()){
+          new Error("Callback fired more than once.").printStackTrace();
+          return;
+        }
+  
+        this.setFinished(true);
         
         if (s.isShortCircuited()) {
           return;

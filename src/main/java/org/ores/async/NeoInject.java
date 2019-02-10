@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class Inject {
+public class NeoInject {
   
   public static interface IInjectable<T, E> {
     public void run(AsyncCallbackSet<T, E> cb);
@@ -89,8 +89,6 @@ public class Inject {
   static <T, E> void Inject(
     Map<String, Task<T, E>> tasks,
     Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
-    
-    Counter c = new Counter();
     ShortCircuit s = new ShortCircuit();
     Map<String, Object> results = new HashMap<>();
     
@@ -110,12 +108,13 @@ public class Inject {
     HashSet<String> started = new HashSet<>();
     HashSet<String> completed = new HashSet<>();
     
-    RunInject(started, completed, tasks, results, c, s, f);
+    RunInject(started, completed, tasks, results, s, f);
   }
   
   public static abstract class AsyncCallbackSet<T, E> implements Asyncc.IAsyncCallback<T, E>, Asyncc.ICallbacks<T, E> {
     private ShortCircuit s;
     private Map<String, Object> values;
+    private boolean isFinished = false;
     
     public AsyncCallbackSet(ShortCircuit s, Map<String, Object> vals) {
       this.s = s;
@@ -126,8 +125,16 @@ public class Inject {
       return this.s.isShortCircuited();
     }
     
-    public Object get(String s) {
-      return this.values.get(s);
+    public <V> V get(String s) {
+      return (V)this.values.get(s);
+    }
+  
+    boolean isFinished(){
+      return this.isFinished;
+    }
+  
+    boolean setFinished(boolean b){
+      return this.isFinished = b;
     }
     
   }
@@ -137,7 +144,6 @@ public class Inject {
     HashSet<String> completed,
     Map<String, Task<T, E>> m,
     Map<String, Object> results,
-    Counter c,
     ShortCircuit s,
     Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
     
@@ -172,6 +178,13 @@ public class Inject {
         
         @Override
         public void done(E err, T v) {
+  
+          if(this.isFinished()){
+            new Error("Callback fired more than once.").printStackTrace();
+            return;
+          }
+  
+          this.setFinished(true);
           
           if (s.isShortCircuited()) {
             return;
@@ -190,7 +203,7 @@ public class Inject {
             return;
           }
           
-          RunInject(started, completed, m, results, c, s, f);
+          RunInject(started, completed, m, results, s, f);
         }
       });
       
