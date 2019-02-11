@@ -108,7 +108,6 @@ class NeoMap {
     
     CounterLimit c = new CounterLimit(limit);
     ShortCircuit s = new ShortCircuit();
-    
     Iterator<T> iterator = items.iterator();
     
     RunMap(iterator, m, results, c, s, f);

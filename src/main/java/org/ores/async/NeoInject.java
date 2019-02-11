@@ -127,19 +127,20 @@ public class NeoInject {
     }
     
     public <V> V get(String s) {
-      return (V)this.values.get(s);
+      return (V) this.values.get(s);
     }
-  
-    boolean isFinished(){
+    
+    boolean isFinished() {
       return this.isFinished;
     }
-  
-    boolean setFinished(boolean b){
+    
+    boolean setFinished(boolean b) {
       return this.isFinished = b;
     }
     
   }
   
+  @SuppressWarnings("Duplicates")
   private static <T, E> void RunInject(
     HashSet<String> started,
     HashSet<String> completed,
@@ -159,6 +160,7 @@ public class NeoInject {
       }
       
       if (!completed.containsAll(set)) {
+        // if not all dependencies are already completed, we can't execute this task yet
         continue;
       }
       
@@ -179,36 +181,35 @@ public class NeoInject {
         
         @Override
         public void done(E err, T v) {
-  
+          
           synchronized (this.cbLock) {
             
             if (this.isFinished()) {
               new Error("Callback fired more than once.").printStackTrace();
               return;
             }
-  
+            
             this.setFinished(true);
-  
+            
             if (s.isShortCircuited()) {
               return;
             }
-  
-            if (err != null) {
-              s.setShortCircuited(true);
-              return;
-            }
-  
+            
             completed.add(key);
             results.put(key, v);
-  
-            if (completed.size() == m.size()) {
-              f.done(null, results);
-              return;
-            }
-  
-            RunInject(started, completed, m, results, s, f);
-  
           }
+          
+          if (err != null) {
+            s.setShortCircuited(true);
+            return;
+          }
+          
+          if (completed.size() == m.size()) {
+            f.done(null, results);
+            return;
+          }
+          
+          RunInject(started, completed, m, results, s, f);
           
         }
       });

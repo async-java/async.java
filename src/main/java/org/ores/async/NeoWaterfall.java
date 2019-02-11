@@ -28,6 +28,7 @@ public class NeoWaterfall {
     private final ShortCircuit s;
     public final HashMap<String, Object> map;
     private boolean isFinished = false;
+    final Object cbLock = new Object();
     
     public AsyncCallback(ShortCircuit s, HashMap<String, Object> m) {
       this.s = s;
@@ -105,7 +106,7 @@ public class NeoWaterfall {
       
       private void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m) {
         
-        synchronized (this) {
+        synchronized (this.cbLock) {
           
           if (this.isFinished()) {
             new Error("Callback fired more than once.").printStackTrace();
@@ -113,33 +114,30 @@ public class NeoWaterfall {
           }
           
           this.setFinished(true);
+          c.incrementFinished();
           
           if (s.isShortCircuited()) {
             return;
           }
           
-          if (e != null) {
-            s.setShortCircuited(true);
-          }
-          
-          c.incrementFinished();
-          
           if (m != null) {
             results.put(m.getKey(), m.getValue());
           }
+          
+          if (e != null) {
+            s.setShortCircuited(true);
+            f.done(e, results);
+            return;
+          }
+          
+          if (c.getFinishedCount() == tasks.size()) {
+            f.done(null, results);
+            return;
+          }
+          
+          WaterfallInternal(tasks, results, s, c, f);
+          
         }
-  
-        if (e != null) {
-          f.done(e, results);
-          return;
-        }
-        
-        if (c.getFinishedCount() == tasks.size()) {
-          f.done(null, results);
-          return;
-        }
-        
-        WaterfallInternal(tasks, results, s, c, f);
         
       }
       

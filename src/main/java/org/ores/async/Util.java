@@ -57,25 +57,28 @@ class Util {
             return;
           }
           
+          results.put(key, v);
+          c.incrementFinished();
+          
+          if (e != null) {
+            s.setShortCircuited(true);
+            f.done(e, Map.of());
+            return;
+          }
+          
+          
+          if (c.getFinishedCount() == m.size()) {
+            f.done(null, results);
+            return;
+          }
+          
+          if (c.isBelowCapacity()) {
+            Util.RunMapLimit(entries, m, results, c, s, f);
+          }
+          
         }
         
-        if (e != null) {
-          s.setShortCircuited(true);
-          f.done(e, Map.of());
-          return;
-        }
         
-        results.put(key, v);
-        c.incrementFinished();
-        
-        if (c.getFinishedCount() == m.size()) {
-          f.done(null, results);
-          return;
-        }
-        
-        if (c.isBelowCapacity()) {
-          Util.RunMapLimit(entries, m, results, c, s, f);
-        }
       }
       
     });
@@ -123,33 +126,37 @@ class Util {
       @Override
       public void done(E e, T v) {
         
-        if (this.isFinished()) {
-          new Error("Callback fired more than once.").printStackTrace();
-          return;
-        }
-        
-        this.setFinished(true);
-        
-        if (s.isShortCircuited()) {
-          return;
-        }
-        
-        if (e != null) {
-          s.setShortCircuited(true);
-          f.done(e, Collections.emptyList());
-          return;
-        }
-        
-        results.set(val, v);
-        c.incrementFinished();
-        
-        if (c.getFinishedCount() == tasks.size()) {
-          f.done(null, results);
-          return;
-        }
-        
-        if (c.isBelowCapacity()) {
-          Util.RunTasksLimit(tasks, results, c, s, f);
+        synchronized (this.cbLock) {
+          
+          if (this.isFinished()) {
+            new Error("Callback fired more than once.").printStackTrace();
+            return;
+          }
+          
+          this.setFinished(true);
+          
+          if (s.isShortCircuited()) {
+            return;
+          }
+          
+          if (e != null) {
+            s.setShortCircuited(true);
+            f.done(e, Collections.emptyList());
+            return;
+          }
+          
+          results.set(val, v);
+          c.incrementFinished();
+          
+          if (c.getFinishedCount() == tasks.size()) {
+            f.done(null, results);
+            return;
+          }
+          
+          if (c.isBelowCapacity()) {
+            Util.RunTasksLimit(tasks, results, c, s, f);
+          }
+          
         }
         
       }
@@ -200,25 +207,36 @@ class Util {
       @Override
       public void done(E e, T v) {
         
-        if (s.isShortCircuited()) {
-          return;
+        synchronized (this.cbLock) {
+          
+          if (this.isFinished()) {
+            new Error("Callback fired more than once.").printStackTrace();
+            return;
+          }
+          
+          this.setFinished(true);
+          
+          if (s.isShortCircuited()) {
+            return;
+          }
+          
+          if (e != null) {
+            s.setShortCircuited(true);
+            f.done(e, Collections.emptyList());
+            return;
+          }
+          
+          c.incrementFinished();
+          results.set(startedCount, v);
+          
+          if (c.getFinishedCount() == tasks.size()) {
+            f.done(null, results);
+            return;
+          }
+          
+          Util.RunTasksSerially(tasks, results, s, c, f);
+          
         }
-        
-        if (e != null) {
-          s.setShortCircuited(true);
-          f.done(e, Collections.emptyList());
-          return;
-        }
-        
-        c.incrementFinished();
-        results.set(startedCount, v);
-        
-        if (c.getFinishedCount() == tasks.size()) {
-          f.done(null, results);
-          return;
-        }
-        
-        Util.RunTasksSerially(tasks, results, s, c, f);
       }
       
     });
