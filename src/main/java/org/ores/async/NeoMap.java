@@ -33,30 +33,35 @@ class NeoMap {
         
         @Override
         public void done(E e, T v) {
-  
-          if(this.isFinished()){
-            new Error("Callback fired more than once.").printStackTrace();
-            return;
+          
+          synchronized (this.cbLock) {
+            
+            if (this.isFinished()) {
+              new Error("Callback fired more than once.").printStackTrace();
+              return;
+            }
+            
+            this.setFinished(true);
+            
+            if (s.isShortCircuited()) {
+              return;
+            }
+            
+            c.incrementFinished();
+            results.set(val, v);
+            
           }
   
-          this.setFinished(true);
-          
-          if (s.isShortCircuited()) {
-            return;
-          }
-          
           if (e != null) {
             s.setShortCircuited(true);
             f.done(e, Collections.emptyList());  // List.of()?
             return;
           }
-          
-          c.incrementFinished();
-          results.set(val, v);
-          
+  
           if (c.getFinishedCount() == items.size()) {
             f.done(null, results);
           }
+          
         }
         
       });

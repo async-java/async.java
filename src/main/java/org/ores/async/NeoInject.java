@@ -115,6 +115,7 @@ public class NeoInject {
     private ShortCircuit s;
     private Map<String, Object> values;
     private boolean isFinished = false;
+    final Object cbLock = new Object();
     
     public AsyncCallbackSet(ShortCircuit s, Map<String, Object> vals) {
       this.s = s;
@@ -179,31 +180,36 @@ public class NeoInject {
         @Override
         public void done(E err, T v) {
   
-          if(this.isFinished()){
-            new Error("Callback fired more than once.").printStackTrace();
-            return;
-          }
+          synchronized (this.cbLock) {
+            
+            if (this.isFinished()) {
+              new Error("Callback fired more than once.").printStackTrace();
+              return;
+            }
   
-          this.setFinished(true);
-          
-          if (s.isShortCircuited()) {
-            return;
+            this.setFinished(true);
+  
+            if (s.isShortCircuited()) {
+              return;
+            }
+  
+            if (err != null) {
+              s.setShortCircuited(true);
+              return;
+            }
+  
+            completed.add(key);
+            results.put(key, v);
+  
+            if (completed.size() == m.size()) {
+              f.done(null, results);
+              return;
+            }
+  
+            RunInject(started, completed, m, results, s, f);
+  
           }
           
-          if (err != null) {
-            s.setShortCircuited(true);
-            return;
-          }
-          
-          completed.add(key);
-          results.put(key, v);
-          
-          if (completed.size() == m.size()) {
-            f.done(null, results);
-            return;
-          }
-          
-          RunInject(started, completed, m, results, s, f);
         }
       });
       

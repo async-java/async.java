@@ -447,7 +447,7 @@ public class AsyncTest {
         "foo", new NeoInject.Task<>("star", v -> {
           synchronized (System.out) {
             System.out.println("Here is star:");
-            System.out.println(v.get("star"));
+            System.out.println((Integer) v.get("star"));
           }
           v.done(null, 3);
         }),

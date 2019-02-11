@@ -61,6 +61,7 @@ public class Asyncc {
   public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T, E> {
     private ShortCircuit s;
     private boolean isFinished = false;
+    final Object cbLock = new Object();
     
     public AsyncCallback(ShortCircuit s) {
       this.s = s;

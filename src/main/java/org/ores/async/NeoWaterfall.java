@@ -10,13 +10,17 @@ public class NeoWaterfall {
   
   public interface IAsyncCallback<T, E> {
     void done(E e);
+    
     void done(E e, UserMap.Entry<String, T> m);
+    
     void done(E e, String k, T v);
   }
   
   public static interface ICallbacks<T, E> {
     void resolve(UserMap.Entry<String, T> m);
+    
     void resolve(String k, T v);
+    
     void reject(E e);
   }
   
@@ -35,23 +39,23 @@ public class NeoWaterfall {
     }
     
     public <V> V get(String s) {
-      return (V)this.map.get(s);
+      return (V) this.map.get(s);
     }
-  
-    boolean isFinished(){
+    
+    boolean isFinished() {
       return this.isFinished;
     }
-  
-    boolean setFinished(boolean b){
+    
+    boolean setFinished(boolean b) {
       return this.isFinished = b;
     }
-  
+
 //    public Object get(String s) {
 //      return this.map.get(s);
 //    }
     
     public <V> void set(String s, V v) {
-       this.map.put(s, v);
+      this.map.put(s, v);
     }
     
   }
@@ -100,30 +104,35 @@ public class NeoWaterfall {
     t.run(new AsyncCallback<T, E>(s, results) {
       
       private void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m) {
-  
-        if(this.isFinished()){
-          new Error("Callback fired more than once.").printStackTrace();
-          return;
+        
+        synchronized (this) {
+          
+          if (this.isFinished()) {
+            new Error("Callback fired more than once.").printStackTrace();
+            return;
+          }
+          
+          this.setFinished(true);
+          
+          if (s.isShortCircuited()) {
+            return;
+          }
+          
+          if (e != null) {
+            s.setShortCircuited(true);
+          }
+          
+          c.incrementFinished();
+          
+          if (m != null) {
+            results.put(m.getKey(), m.getValue());
+          }
         }
   
-        this.setFinished(true);
-        
-        if (s.isShortCircuited()) {
-          return;
-        }
-        
         if (e != null) {
-          s.setShortCircuited(true);
           f.done(e, results);
           return;
         }
-        
-        c.incrementFinished();
-        
-        if (m != null) {
-          results.put(m.getKey(), m.getValue());
-        }
-        
         
         if (c.getFinishedCount() == tasks.size()) {
           f.done(null, results);
@@ -131,6 +140,7 @@ public class NeoWaterfall {
         }
         
         WaterfallInternal(tasks, results, s, c, f);
+        
       }
       
       

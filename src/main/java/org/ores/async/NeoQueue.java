@@ -52,6 +52,7 @@ public class NeoQueue<T, V> {
   public abstract static class AsyncCallback<T> implements IAsyncErrFirstCb<T>, ICallbacks<T> {
     
     private ShortCircuit s;
+    final Object cbLock = new Object();
     
     AsyncCallback(ShortCircuit s) {
       this.s = s;
@@ -290,13 +291,17 @@ public class NeoQueue<T, V> {
       @Override
       public void done(Object e, V v) {
         
-        if (t.isFinished()) {
-          // callback was fired more than once
-          new Error("Callback was fired more than once.").printStackTrace();
-          return;
+        synchronized (this.cbLock) {
+          
+          if (t.isFinished()) {
+            // callback was fired more than once
+            new Error("Callback was fired more than once.").printStackTrace();
+            return;
+          }
+          
+          t.setFinished();
+          
         }
-        
-        t.setFinished();
 
 //        executeRunnable(() -> {
         

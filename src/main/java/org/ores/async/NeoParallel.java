@@ -24,14 +24,14 @@ class NeoParallel {
   @SuppressWarnings("Duplicates")
   static <T, E> void ParallelLimit(
     int limit,
-    List<Asyncc.AsyncTask<T,E>> tasks,
+    List<Asyncc.AsyncTask<T, E>> tasks,
     Asyncc.IAsyncCallback<List<T>, E> f) {
     
     ShortCircuit s = new ShortCircuit();
     List<T> results = new ArrayList<T>(Collections.<T>nCopies(tasks.size(), null));
     CounterLimit c = new CounterLimit(limit);
     
-    Util.<T,E>RunTasksLimit(tasks, results, c, s, f);
+    Util.<T, E>RunTasksLimit(tasks, results, c, s, f);
     
   }
   
@@ -61,30 +61,33 @@ class NeoParallel {
         @Override
         public void done(E e, T v) {
           
-          if(this.isFinished()){
-            new Error("Callback fired more than once.").printStackTrace();
-            return;
+          synchronized (this.cbLock) {
+            
+            if (this.isFinished()) {
+              new Error("Callback fired more than once.").printStackTrace();
+              return;
+            }
+            
+            this.setFinished(true);
+            
+            if (s.isShortCircuited()) {
+              return;
+            }
+            
+            if (e != null) {
+              s.setShortCircuited(true);
+              f.done(e, Map.of());
+              return;
+            }
+            
+            c.incrementFinished();
+            results.put(key, v);
+            
+            if (c.getFinishedCount() == tasks.size()) {
+              f.done(null, results);
+            }
+            
           }
-          
-          this.setFinished(true);
-          
-          if (s.isShortCircuited()) {
-            return;
-          }
-          
-          if (e != null) {
-            s.setShortCircuited(true);
-            f.done(e, Map.of());
-            return;
-          }
-          
-          c.incrementFinished();
-          results.put(key, v);
-          
-          if (c.getFinishedCount() == tasks.size()) {
-            f.done(null, results);
-          }
-          
         }
       });
       
@@ -118,19 +121,29 @@ class NeoParallel {
         @Override
         public void done(E e, T v) {
           
-          if (s.isShortCircuited()) {
-            return;
+          synchronized (this.cbLock) {
+            
+            if (this.isFinished()) {
+              new Error("Callback fired more than once.").printStackTrace();
+              return;
+            }
+            
+            this.setFinished(true);
+            
+            if (s.isShortCircuited()) {
+              return;
+            }
+            
+            c.incrementFinished();
+            results.set(index, v);
           }
-          
+  
           if (e != null) {
             s.setShortCircuited(true);
             f.done(e, Collections.emptyList());
             return;
           }
-          
-          c.incrementFinished();
-          results.set(index, v);
-          
+  
           if (c.getFinishedCount() == tasks.size()) {
             f.done(null, results);
           }
