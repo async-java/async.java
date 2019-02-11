@@ -14,9 +14,7 @@ import org.ores.async.NeoQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Arrays.asList;
@@ -381,6 +379,58 @@ public class AsyncTest {
   }
   
   @Test
+  public void testConcat(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.Concat(List.of(
+      
+      v -> {
+        v.done(null, List.of(1,2,3));
+      },
+      
+      v -> {
+        v.done(null, List.of(4,5,6));
+      }
+      
+    ), (err,results) -> {
+      System.out.println(results);
+      z.complete();
+    });
+    
+  }
+  
+  @Test
+  public void testConcatDeep(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.ConcatDeep(List.of(
+      
+      v -> {
+        v.done(null, List.of(1,2,3));
+      },
+      
+      v -> {
+        v.done(null, List.of(4,5,6));
+      },
+  
+      v -> {
+        v.done(null, List.of(List.of(7,8),List.of(List.of(9))));
+      },
+  
+      v -> {
+        v.done(null, List.of(List.of(10,11), Arrays.asList(12,13,14,Arrays.asList(15,16))));
+      }
+    
+    ), (err,results) -> {
+      System.out.println(results);
+      z.complete();
+    });
+    
+  }
+  
+  @Test
   public void testInjectCircular(TestContext tc) {
     
     Async z = tc.async();
@@ -513,7 +563,7 @@ public class AsyncTest {
   
   
   @Test
-  public void testMap(TestContext tc) {
+  public void testMap1(TestContext tc) {
     
     Async z = tc.async();
     
@@ -533,6 +583,55 @@ public class AsyncTest {
         
         if (e != null) {
           throw new Error(e.toString());
+        } else {
+          z.complete();
+        }
+        
+      });
+  }
+  
+  @Test
+  public void testMapSeries1(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.<Integer, Integer, Object>MapSeries(List.of(3,4,5),
+      
+      (k,v) -> {
+        v.done(null, 2 + k.value);
+      },
+      
+      
+      (e, results) -> {
+      
+      System.out.println(results.toString());
+      
+      if (e != null) {
+        z.complete();
+      } else {
+        z.complete();
+      }
+      
+    });
+  }
+  
+  @Test
+  public void testMapLimit1(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.<Integer, Integer, Object>MapLimit(3, List.of(3,4,5),
+      
+      (k,v) -> {
+        v.done(null, 2 + k.value);
+      },
+      
+      (e, results) -> {
+        
+        System.out.println(results.toString());
+        
+        if (e != null) {
+          z.complete();
         } else {
           z.complete();
         }
@@ -605,6 +704,8 @@ public class AsyncTest {
         
       });
   }
+  
+ 
   
   @Test
   public void testParallelLimitMap(TestContext tc) {

@@ -99,6 +99,12 @@ class NeoParallel {
   static <T, E> void Parallel(List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     
     List<T> results = new ArrayList<T>(Collections.<T>nCopies(tasks.size(), null));
+    
+    if (tasks.size() < 1) {
+      f.done(null, results);
+      return;
+    }
+    
     CounterLimit c = new CounterLimit(Integer.MAX_VALUE);
     ShortCircuit s = new ShortCircuit();
     
@@ -137,13 +143,13 @@ class NeoParallel {
             c.incrementFinished();
             results.set(index, v);
           }
-  
+          
           if (e != null) {
             s.setShortCircuited(true);
             f.done(e, Collections.emptyList());
             return;
           }
-  
+          
           if (c.getFinishedCount() == tasks.size()) {
             f.done(null, results);
           }

@@ -43,16 +43,20 @@ class Util {
       
       @Override
       public void done(E e, T v) {
-  
-        if(this.isFinished()){
-          new Error("Callback fired more than once.").printStackTrace();
-          return;
-        }
-  
-        this.setFinished(true);
         
-        if (s.isShortCircuited()) {
-          return;
+        synchronized (this.cbLock) {
+          
+          if (this.isFinished()) {
+            new Error("Callback fired more than once.").printStackTrace();
+            return;
+          }
+          
+          this.setFinished(true);
+          
+          if (s.isShortCircuited()) {
+            return;
+          }
+          
         }
         
         if (e != null) {
@@ -89,7 +93,7 @@ class Util {
   
   @SuppressWarnings("Duplicates")
   static <T, E> void RunTasksLimit(
-    List<Asyncc.AsyncTask<T,E>> tasks,
+    List<Asyncc.AsyncTask<T, E>> tasks,
     List<T> results,
     CounterLimit c,
     ShortCircuit s,
@@ -118,12 +122,12 @@ class Util {
       
       @Override
       public void done(E e, T v) {
-  
-        if(this.isFinished()){
+        
+        if (this.isFinished()) {
           new Error("Callback fired more than once.").printStackTrace();
           return;
         }
-  
+        
         this.setFinished(true);
         
         if (s.isShortCircuited()) {

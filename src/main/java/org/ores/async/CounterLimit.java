@@ -7,15 +7,15 @@ class CounterLimit {
   private Integer started = 0;
   private Integer finished = 0;
   
-  public CounterLimit(Integer limit){
+  public CounterLimit(Integer limit) {
     this.limit = limit;
   }
   
-  Integer getConcurrency(){
+  Integer getConcurrency() {
     return this.limit;
   }
   
-  Integer setConcurrency(Integer val){
+  Integer setConcurrency(Integer val) {
     return this.limit = val;
   }
   
@@ -39,7 +39,7 @@ class CounterLimit {
     return this.limit > (this.started - this.finished);
   }
   
-  boolean isIdle(){
+  boolean isIdle() {
     return this.finished >= this.started;
   }
 }
