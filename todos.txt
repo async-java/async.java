@@ -52,3 +52,10 @@ async.series is just async.parallelLimit(1)
 
 
 http://maven.apache.org/maven-release/maven-release-plugin/
+
+
+dynamic class re-loading
+https://www.toptal.com/java/java-wizardry-101-a-guide-to-java-class-reloading
+
+
+https://www.graalvm.org/docs/why-graal/#for-java-programs
