@@ -16,7 +16,7 @@ public class NeoLock {
     boolean isImmediate = false;
     boolean callable = true;
     
-    public abstract void unlock();
+    public abstract void releaseLock();
     
     public Unlock(boolean isImmediate) {
       this.isImmediate = isImmediate;
@@ -25,11 +25,11 @@ public class NeoLock {
   
   public static void test(){
     
-    var sync = new NeoLock("foo");
-    sync.lock((err,v) -> {
+    var lck = new NeoLock("foo");
+    lck.acquire((err, v) -> {
       
       
-      v.unlock();
+      v.releaseLock();
       
     });
   }
@@ -38,7 +38,7 @@ public class NeoLock {
     var lck = this;
     return new Unlock(isImmediate) {
       @Override
-      public void unlock() {
+      public void releaseLock() {
         
         synchronized (this){
           if(!this.callable){
@@ -56,7 +56,7 @@ public class NeoLock {
     };
   }
   
-  public void lock(Asyncc.IAsyncCallback<Unlock, Object> cb) {
+  public void acquire(Asyncc.IAsyncCallback<Unlock, Object> cb) {
     
     boolean add = false;
     synchronized (this) {
