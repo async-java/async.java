@@ -36,10 +36,42 @@ class ZoomCounter {
   }
 }
 
+interface UsesRunnable {
+  Integer uses(Integer y);
+}
+
+interface Foo {
+  abstract UsesRunnable prepareFunnable(Integer x);
+}
+
+interface Funnable {
+  Integer ffun(Integer x, Integer y);
+}
+
+class HandleRunnable {
+
+//  public UsesRunnable accept(Runnable r) {
+//
+//    return new UsesRunnable() {
+//      @Override
+//      public void uses() {
+//        r.run();
+//      }
+//    };
+//
+//  }
+  
+  public Foo accept(Funnable r) {
+    return x -> y -> r.ffun(x,y);
+  }
+  
+}
+
 class AcceptRunnable implements Asyncc.IAcceptRunnable {
   
   Vertx vertx;
   Context context;
+  
   
   public AcceptRunnable(Vertx v, Context c) {
     this.vertx = v;
@@ -48,10 +80,13 @@ class AcceptRunnable implements Asyncc.IAcceptRunnable {
   
   @Override
   public void accept(Runnable r) {
+    
     context.runOnContext(v -> {
       r.run();
     });
   }
+  
+  
 }
 
 @RunWith(VertxUnitRunner.class)
@@ -67,6 +102,18 @@ public class AsyncTest {
 
 //    ar = new AcceptRunnable(vertx, context);
     Asyncc.setOnNext(ar);
+    
+    var h = new HandleRunnable().accept((x,y) -> {
+      System.out.println("Here is our int: " + x);
+      return x*y;
+    });
+    
+    assert h.prepareFunnable(5).uses(8) == 40: "Should be 40";
+    
+    assert h.prepareFunnable(6).uses(7) == 42: "Should be 42";
+    
+    assert h.prepareFunnable(7).uses(8) == 56: "Should be 56";
+
 
 //    vertx.runOnContext(v -> {
 //      log.info("WUT THE FAK");
@@ -115,8 +162,8 @@ public class AsyncTest {
     }
   }
   
-  static <T,E> Mip<T,E> makeMip(Asyncc.IAsyncCallback<T, E> r){
-    return new Mip<T,E>(r);
+  static <T, E> Mip<T, E> makeMip(Asyncc.IAsyncCallback<T, E> r) {
+    return new Mip<T, E>(r);
   }
   
   static class Mip<T, E> implements Asyncc.IAsyncCallback<T, E> {
@@ -141,7 +188,7 @@ public class AsyncTest {
   public void runComposed00(TestContext tc) {
     
     Async v = tc.async();
-    
+
 //    v.fail();
     
     Asyncc.Series(asList(
@@ -386,14 +433,14 @@ public class AsyncTest {
     Asyncc.Concat(List.of(
       
       v -> {
-        v.done(null, List.of(1,2,3));
+        v.done(null, List.of(1, 2, 3));
       },
       
       v -> {
-        v.done(null, List.of(4,5,6));
+        v.done(null, List.of(4, 5, 6));
       }
-      
-    ), (err,results) -> {
+    
+    ), (err, results) -> {
       System.out.println(results);
       z.complete();
     });
@@ -408,22 +455,22 @@ public class AsyncTest {
     Asyncc.ConcatDeep(List.of(
       
       v -> {
-        v.done(null, List.of(1,2,3));
+        v.done(null, List.of(1, 2, 3));
       },
       
       v -> {
-        v.done(null, List.of(4,5,6));
+        v.done(null, List.of(4, 5, 6));
       },
-  
+      
       v -> {
-        v.done(null, List.of(List.of(7,8),List.of(List.of(9))));
+        v.done(null, List.of(List.of(7, 8), List.of(List.of(9))));
       },
-  
+      
       v -> {
-        v.done(null, List.of(List.of(10,11), Arrays.asList(12,13,14,Arrays.asList(15,16))));
+        v.done(null, List.of(List.of(10, 11), Arrays.asList(12, 13, 14, Arrays.asList(15, 16))));
       }
     
-    ), (err,results) -> {
+    ), (err, results) -> {
       System.out.println(results);
       z.complete();
     });
@@ -595,24 +642,24 @@ public class AsyncTest {
     
     Async z = tc.async();
     
-    Asyncc.<Integer, Integer, Object>MapSeries(List.of(3,4,5),
+    Asyncc.<Integer, Integer, Object>MapSeries(List.of(3, 4, 5),
       
-      (k,v) -> {
+      (k, v) -> {
         v.done(null, 2 + k.value);
       },
       
       
       (e, results) -> {
-      
-      System.out.println(results.toString());
-      
-      if (e != null) {
-        z.complete();
-      } else {
-        z.complete();
-      }
-      
-    });
+        
+        System.out.println(results.toString());
+        
+        if (e != null) {
+          z.complete();
+        } else {
+          z.complete();
+        }
+        
+      });
   }
   
   @Test
@@ -620,9 +667,9 @@ public class AsyncTest {
     
     Async z = tc.async();
     
-    Asyncc.<Integer, Integer, Object>MapLimit(3, List.of(3,4,5),
+    Asyncc.<Integer, Integer, Object>MapLimit(3, List.of(3, 4, 5),
       
-      (k,v) -> {
+      (k, v) -> {
         v.done(null, 2 + k.value);
       },
       
@@ -705,7 +752,6 @@ public class AsyncTest {
       });
   }
   
- 
   
   @Test
   public void testParallelLimitMap(TestContext tc) {

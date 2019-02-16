@@ -2,6 +2,17 @@ package org.ores.async;
 
 import java.util.ArrayList;
 
+abstract class Unlock {
+  boolean isImmediate = false;
+  boolean callable = true;
+  
+  public abstract void releaseLock();
+  
+  public Unlock(boolean isImmediate) {
+    this.isImmediate = isImmediate;
+  }
+}
+
 public class NeoLock {
   
   private boolean locked = false;
@@ -12,16 +23,6 @@ public class NeoLock {
     this.namespace = name;
   }
   
-  public abstract class Unlock {
-    boolean isImmediate = false;
-    boolean callable = true;
-    
-    public abstract void releaseLock();
-    
-    public Unlock(boolean isImmediate) {
-      this.isImmediate = isImmediate;
-    }
-  }
   
   public static void test(){
     
