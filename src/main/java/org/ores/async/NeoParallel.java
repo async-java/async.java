@@ -39,7 +39,7 @@ class NeoParallel {
   static <T, E> void Parallel(Map<String, Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<Map<String, T>, E> f) {
     
     Map<String, T> results = new HashMap<>();
-    Counter c = new Counter();
+    CounterLimit c = new CounterLimit(Integer.MAX_VALUE);
     ShortCircuit s = new ShortCircuit();
     
     for (Map.Entry<String, Asyncc.AsyncTask<T, E>> entry : tasks.entrySet()) {
