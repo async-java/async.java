@@ -23,18 +23,6 @@ public class NeoLock {
     this.namespace = name;
   }
   
-  
-  public static void test(){
-    
-    var lck = new NeoLock("foo");
-    lck.acquire((err, v) -> {
-      
-      
-      v.releaseLock();
-      
-    });
-  }
-  
   public Unlock makeUnlock(boolean isImmediate) {
     var lck = this;
     return new Unlock(isImmediate) {
@@ -47,9 +35,9 @@ public class NeoLock {
           }
   
           callable = false;
+          lck.locked = false;
         }
         
-        lck.locked = false;
         if (queue.size() > 0) {
           queue.remove(0).done(null, lck.makeUnlock(false));
         }
@@ -59,17 +47,18 @@ public class NeoLock {
   
   public void acquire(Asyncc.IAsyncCallback<Unlock, Object> cb) {
     
-    boolean add = false;
+    boolean addToQueue = false;
+    
     synchronized (this) {
       if (this.locked) {
-        add = true;
+        addToQueue = true;
       }
       else{
         this.locked = true;
       }
     }
     
-    if(add){
+    if(addToQueue){
       this.queue.add(cb);
       return;
     }
