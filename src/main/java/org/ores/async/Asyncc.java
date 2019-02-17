@@ -485,7 +485,15 @@ public class Asyncc {
     NeoParallel.ParallelLimit(limit, tasks, cb);
   }
   
-
+  @SuppressWarnings("Duplicates")
+  public static <I, T, V, E> void ReduceRight(I initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoReduce.ReduceRight(initialVal, tasks, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoReduce.ReduceRight(tasks, m, f);
+  }
   
   @SuppressWarnings("Duplicates")
   public static <I, T, V, E> void Reduce(I initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {

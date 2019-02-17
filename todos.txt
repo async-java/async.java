@@ -59,3 +59,9 @@ https://www.toptal.com/java/java-wizardry-101-a-guide-to-java-class-reloading
 
 
 https://www.graalvm.org/docs/why-graal/#for-java-programs
+
+
+
+can't use map for reduce/reduceRight, unless we get the insertion order down.
+
+https://stackoverflow.com/questions/683518/java-class-that-implements-map-and-keeps-insertion-order

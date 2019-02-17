@@ -4,19 +4,58 @@ import java.util.*;
 
 public class NeoReduce {
   
+  static <T, V, E> void ReduceRight(Object initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    
+    if (tasks.size() < 1) {
+      f.done(null, (V) initialVal);
+      return;
+    }
+    
+    ArrayList<T> reversed = new ArrayList<>();
+    
+    for (int i = tasks.size() - 1; i <= 0; i--) {
+      reversed.add(tasks.get(i));
+    }
+    
+    if (reversed.size() == 1) {
+      f.done(null, (V) reversed.get(0));
+      return;
+    }
+    
+    ShortCircuit s = new ShortCircuit();
+    Iterator<T> iterator = reversed.iterator();
+    
+    RunReduce((V) initialVal, s, iterator, m, f);
+  }
+  
+  static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    
+    if (tasks.size() < 1) {
+      f.done(null, null);
+      return;
+    }
+    
+    ArrayList<T> reversed = new ArrayList<>();
+    
+    for (int i = tasks.size() - 1; i <= 0; i--) {
+      reversed.add(tasks.get(i));
+    }
+    
+    ShortCircuit s = new ShortCircuit();
+    Iterator<T> iterator = reversed.iterator();
+    V first = (V) reversed.remove(0);
+    
+    RunReduce(first, s, iterator, m, f);
+  }
+  
   static <T, V, E> void Reduce(Object initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, (V) initialVal);
       return;
     }
-  
-    boolean isList = tasks.getClass().isAssignableFrom(LinkedList.class);
-  
-    if (!isList) {
-      tasks = new ArrayList<>(tasks);
-    }
     
+    tasks = new ArrayList<>(tasks);
     ShortCircuit s = new ShortCircuit();
     Iterator<T> iterator = tasks.iterator();
     
@@ -29,21 +68,18 @@ public class NeoReduce {
       f.done(null, null);
       return;
     }
-  
-    boolean isList = tasks.getClass().isAssignableFrom(ArrayList.class);
-  
-    if (!isList) {
-      tasks = new ArrayList<>(tasks);
-    }
+
+//    boolean isList = tasks.getClass().isAssignableFrom(ArrayList.class);
+    
+    tasks = new ArrayList<>(tasks);
     
     if (tasks.size() == 1) {
       f.done(null, (V) tasks.get(0));
       return;
     }
     
-    
     ShortCircuit s = new ShortCircuit();
-    V first =  (V) tasks.remove(0);
+    V first = (V) tasks.remove(0);
     Iterator<T> iterator = tasks.iterator();
     
     RunReduce(first, s, iterator, m, f);
