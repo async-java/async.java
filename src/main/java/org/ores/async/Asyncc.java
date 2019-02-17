@@ -48,6 +48,21 @@ public class Asyncc {
     public void map(KeyValue<V> v, AsyncCallback<V, E> cb);
   }
   
+  public  static class ReduceArg<T,V> {
+    
+    final public T prev;
+    final public V curr;
+    
+    public ReduceArg(T prev, V curr) {
+      this.prev = prev;
+      this.curr = curr;
+    }
+  }
+  
+  public interface Reducer<V, E> {
+    void reduce(ReduceArg v, AsyncCallback<V, E> cb);
+  }
+  
   public interface IAsyncCallback<T, E> {
     void done(E e, T v);
   }
@@ -59,6 +74,7 @@ public class Asyncc {
   }
   
   public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T, E> {
+    
     private ShortCircuit s;
     private boolean isFinished = false;
     final Object cbLock = new Object();
@@ -78,6 +94,7 @@ public class Asyncc {
     boolean setFinished(boolean b) {
       return this.isFinished = b;
     }
+    
   }
   
   public static interface AsyncTask<T, E> {
@@ -407,6 +424,17 @@ public class Asyncc {
     List<AsyncTask<T, E>> tasks,
     IAsyncCallback<List<T>, E> cb) {
     NeoParallel.ParallelLimit(limit, tasks, cb);
+  }
+  
+  
+  @SuppressWarnings("Duplicates")
+  public static <I, T, V, E> void Reduce(I initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoReduce.Reduce(initialVal,tasks, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <T, V, E> void Reduce(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoReduce.Reduce(tasks, m, f);
   }
   
   @SuppressWarnings("Duplicates")

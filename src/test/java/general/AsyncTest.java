@@ -888,6 +888,27 @@ public class AsyncTest {
   }
   
   @Test
+  public void testReduce(TestContext tc) {
+    
+    Async z = tc.async();
+    
+   Asyncc.<Integer,Integer,Integer,Object>Reduce(1, List.of(1,2,3), (r, v) -> {
+   
+      v.done(null, (Integer)r.prev + (Integer)r.curr);
+   
+   }, (err, result) -> {
+     
+     System.out.println("The result:");
+     System.out.println(result);
+     tc.assertEquals(result,7);
+     z.complete();
+     
+   });
+   
+   
+  }
+  
+  @Test
   public void testSeries(TestContext tc) {
     
     Async z = tc.async();
