@@ -8,9 +8,27 @@ import java.util.List;
 class NeoMap {
   
   @SuppressWarnings("Duplicates")
+  static <V, T, E> void Map(int limit, List<T> items, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+    
+    List<V> results = new ArrayList<V>(Collections.<V>nCopies(items.size(), null));
+    
+    if (items.size() < 1) {
+      f.done(null, results);
+      return;
+    }
+    
+    CounterLimit c = new CounterLimit(limit);
+    ShortCircuit s = new ShortCircuit();
+    Iterator<T> iterator = items.iterator();
+    
+    RunMap(iterator, m, results, c, s, f);
+    
+  }
+  
+  @SuppressWarnings("Duplicates")
   private static <T, V, E> void RunMap(
     Iterator<T> items,
-    Asyncc.Mapper<V, E> m,
+    Asyncc.Mapper<T, V, E> m,
     List<V> results,
     CounterLimit c,
     ShortCircuit s,
@@ -20,12 +38,12 @@ class NeoMap {
       return;
     }
     
-    V entry = (V) items.next();
+    T item = (T) items.next();
     final int val = c.getStartedCount();
     c.incrementStarted();
-    Asyncc.KeyValue<V> kv = new Asyncc.KeyValue<V>(null, entry);
+  
     
-    m.map(kv, new Asyncc.AsyncCallback<V, E>(s) {
+    m.map(item, new Asyncc.AsyncCallback<V, E>(s) {
       
       @Override
       public void resolve(V v) {
@@ -96,21 +114,5 @@ class NeoMap {
     
   }
   
-  @SuppressWarnings("Duplicates")
-  static <V, T, E> void Map(int limit, List<T> items, Asyncc.Mapper<V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
-    
-    List<V> results = new ArrayList<V>(Collections.<V>nCopies(items.size(), null));
-    
-    if (items.size() < 1) {
-      f.done(null, results);
-      return;
-    }
-    
-    CounterLimit c = new CounterLimit(limit);
-    ShortCircuit s = new ShortCircuit();
-    Iterator<T> iterator = items.iterator();
-    
-    RunMap(iterator, m, results, c, s, f);
-    
-  }
+
 }

@@ -618,9 +618,9 @@ public class AsyncTest {
       
       asList(1, 2, 3),
       
-      (kv, cb) -> {
+      (v, cb) -> {
         
-        cb.done(null, kv.value + 2);
+        cb.done(null, v + 2);
 //        cb.run("foo", kv.value + 2);
       },
       
@@ -644,8 +644,8 @@ public class AsyncTest {
     
     Asyncc.<Integer, Integer, Object>MapSeries(List.of(3, 4, 5),
       
-      (k, v) -> {
-        v.done(null, 2 + k.value);
+      (item, v) -> {
+        v.done(null, 2 + item);
       },
       
       
@@ -670,7 +670,7 @@ public class AsyncTest {
     Asyncc.<Integer, Integer, Object>MapLimit(3, List.of(3, 4, 5),
       
       (k, v) -> {
-        v.done(null, 2 + k.value);
+        v.done(null, 2 + k);
       },
       
       (e, results) -> {
