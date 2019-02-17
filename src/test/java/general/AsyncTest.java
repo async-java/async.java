@@ -892,7 +892,7 @@ public class AsyncTest {
     
     Async z = tc.async();
     
-   Asyncc.<Integer,Integer,Integer,Object>Reduce(1, List.of(1,2,3), (r, v) -> {
+   Asyncc.Reduce(1, List.of(1,2,3), (r, v) -> {
    
       v.done(null, (Integer)r.prev + (Integer)r.curr);
    
