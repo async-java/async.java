@@ -186,17 +186,17 @@ public class Asyncc {
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> void Map(List<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+  public static <V, T, E> void Map(Iterable<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(Integer.MAX_VALUE, items, m, f);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> void MapSeries(List<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+  public static <V, T, E> void MapSeries(Iterable<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(1, items, m, f);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> void MapLimit(Integer limit, List<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+  public static <V, T, E> void MapLimit(Integer limit, Iterable<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(limit, items, m, f);
   }
   
@@ -204,15 +204,15 @@ public class Asyncc {
   
   // start each
   
-  static <T, V, E> void Each(Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, V, E> void Each(Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(Integer.MAX_VALUE, i, m, f);
   }
   
-  static <T, V, E> void EachLimit(int limit, Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback< E> f) {
+  public static <T, V, E> void EachLimit(int limit, Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback< E> f) {
     NeoEach.Each(limit, i, m, f);
   }
   
-  static <T, V, E> void EachSeries(Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, V, E> void EachSeries(Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(1, i, m, f);
   }
   
@@ -484,6 +484,8 @@ public class Asyncc {
     IAsyncCallback<List<T>, E> cb) {
     NeoParallel.ParallelLimit(limit, tasks, cb);
   }
+  
+
   
   @SuppressWarnings("Duplicates")
   public static <I, T, V, E> void Reduce(I initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {

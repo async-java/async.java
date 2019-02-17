@@ -50,7 +50,7 @@ public class NeoReduce {
     
   }
   
-  static <V, T, E> void RunReduce(V prev, ShortCircuit s, Iterator<T> iterator, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  private static <V, T, E> void RunReduce(V prev, ShortCircuit s, Iterator<T> iterator, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (!iterator.hasNext()) {
       return;

@@ -8,18 +8,18 @@ import java.util.List;
 class NeoMap {
   
   @SuppressWarnings("Duplicates")
-  static <V, T, E> void Map(int limit, List<T> items, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  static <V, T, E> void Map(int limit, Iterable<T> items, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     
-    List<V> results = new ArrayList<V>(Collections.<V>nCopies(items.size(), null));
+    List<V> results = new ArrayList<V>();
+    Iterator<T> iterator = items.iterator();
     
-    if (items.size() < 1) {
+    if (!iterator.hasNext()) {
       f.done(null, results);
       return;
     }
     
     CounterLimit c = new CounterLimit(limit);
     ShortCircuit s = new ShortCircuit();
-    Iterator<T> iterator = items.iterator();
     
     RunMap(iterator, m, results, c, s, f);
     
@@ -38,6 +38,7 @@ class NeoMap {
       return;
     }
     
+    results.add(null);
     T item = (T) items.next();
     final int val = c.getStartedCount();
     c.incrementStarted();

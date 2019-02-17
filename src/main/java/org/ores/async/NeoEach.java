@@ -3,7 +3,7 @@ package org.ores.async;
 import java.util.Collections;
 import java.util.Iterator;
 
-public class NeoEach {
+ class NeoEach {
   
   static <T, V, E> void Each(int limit, Iterable<T> i, Asyncc.Eacher<T, E> m, Asyncc.IEachCallback<E> f) {
     
@@ -16,7 +16,7 @@ public class NeoEach {
     
   }
   
-  static <T, V, E> void RunEach(
+  private static <T, V, E> void RunEach(
     Iterator<T> iterator,
     CounterLimit c,
     ShortCircuit s,
