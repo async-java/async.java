@@ -40,10 +40,10 @@ public void retrieveValue(){
 
 ### Control Flow
 
-* <a href="@={baseURL}#Concat(int,java.util.List,org.ores.async.Asyncc.Mapper,org.ores.async.Asyncc.IAsyncCallback)" target="_blank">Series</a>
+* [Series](@={baseURL}#Concat(int,java.util.List,org.ores.async.Asyncc.Mapper,org.ores.async.Asyncc.IAsyncCallback) "(target|_blank)")
 * [Parallel](https://www.google.com)/[ParallelLimit](https://www.google.com) 
-* <a href="@={baseURL}#Waterfall(java.util.List,org.ores.async.Asyncc.IAsyncCallback)" target="_blank">Waterfall</a
-* [Inject](https://www.google.com) - (most recommended)
+* <a href="@={baseURL}#Waterfall(java.util.List,org.ores.async.Asyncc.IAsyncCallback)" target="_blank">Waterfall</a>
+* [Inject](@={baseURL}#Concat(int,java.util.List,org.ores.async.Asyncc.Mapper,org.ores.async.Asyncc.IAsyncCallback) "(target|_blank)") - (most recommended)
 
 ### Map/Filter/Reduce/Each
 
