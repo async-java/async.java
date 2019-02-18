@@ -496,6 +496,8 @@ public class Asyncc {
   
   /**
    * @exclude
+   * @Version 1.2.3
+   * @Since 1.2.0
    */
   public static <T, E> void Waterfall(
     NeoWaterfall.AsyncTask<T, E> a,
@@ -573,8 +575,10 @@ public class Asyncc {
   
   
   /**
-   * <a name="ReduceRight">
+   * @Version 1.2.3
+   * @Since 1.2.0
    * Returns an Image object that can then be painted on the screen.
+   *
    */
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
@@ -582,6 +586,8 @@ public class Asyncc {
   }
   
   /**
+   * @Version 1.2.3
+   * @Since 1.2.0
    * <pre class="prettyprint">
    * new BeanTranslator.Builder()
    *   .translate(
