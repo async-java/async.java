@@ -7,7 +7,6 @@ import java.util.Iterator;
  * @see <a href="http://google.com">http://google.com</a>
  * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
  *
- *
  * <pre class="prettyprint">
  * new BeanTranslator.Builder()
  *   .translate(
