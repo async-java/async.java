@@ -584,8 +584,7 @@ public class AsyncTest {
           System.out.println(bar);
           v.done(null, 7);
         }),
-        "foo", new NeoInject.Task<>(
-          Set.of("star"),
+        "foo", new NeoInject.Task<>(Set.of("star"),
           v -> {
             v.done(null, 3);
             

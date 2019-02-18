@@ -78,3 +78,6 @@ join string
 https://www.mscharhag.com/java/java-8-string-join
 
 https://stackoverflow.com/questions/1082050/linking-to-an-external-url-in-javadoc
+
+
+https://dzone.com/articles/a-guide-to-formatting-code-snippets-in-javadoc

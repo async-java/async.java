@@ -2,7 +2,10 @@ package org.ores.async;
 
 import java.util.*;
 
-public class NeoWaterfall {
+/**
+ * See <a href="http://google.com">http://google.com</a>
+ */
+class NeoWaterfall {
   
   static class UserMap extends HashMap<String, Object> {
   
