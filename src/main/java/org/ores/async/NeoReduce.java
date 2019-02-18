@@ -2,6 +2,10 @@ package org.ores.async;
 
 import java.util.*;
 
+interface IGroupBy {
+  String getGroupById();
+}
+
 public class NeoReduce {
   
   static <T, V, E> void ReduceRight(Object initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {

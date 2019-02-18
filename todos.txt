@@ -62,6 +62,17 @@ https://www.graalvm.org/docs/why-graal/#for-java-programs
 
 
 
-can't use map for reduce/reduceRight, unless we get the insertion order down.
+can't use maps for reduce/reduceRight, unless we get the insertion order down.
 
 https://stackoverflow.com/questions/683518/java-class-that-implements-map-and-keeps-insertion-order
+
+implement groupBy functionality
+
+https://caolan.github.io/async/docs.html#transform
+
+
+a functional interface can have default methods:
+https://stackoverflow.com/questions/30165060/can-functionalinterfaces-have-default-methods/30165132#30165132
+
+join string
+https://www.mscharhag.com/java/java-8-string-join

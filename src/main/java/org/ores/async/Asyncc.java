@@ -328,6 +328,9 @@ public class Asyncc {
     NeoParallel.Parallel(Map.ofEntries(a, b, c), f);
   }
   
+  /**
+   * @exclude
+   */
   public static <T, E> void Parallel(
     Map.Entry<String, AsyncTask<T, E>> a,
     Map.Entry<String, AsyncTask<T, E>> b,
@@ -335,6 +338,46 @@ public class Asyncc {
     Map.Entry<String, AsyncTask<T, E>> d,
     IAsyncCallback<Map<String, T>, E> f) {
     NeoParallel.Parallel(Map.ofEntries(a, b, c, d), f);
+  }
+  
+  /**
+   * @exclude
+   */
+  public static <T, E> void Parallel(
+    Map.Entry<String, AsyncTask<T, E>> a,
+    Map.Entry<String, AsyncTask<T, E>> b,
+    Map.Entry<String, AsyncTask<T, E>> c,
+    Map.Entry<String, AsyncTask<T, E>> d,
+    Map.Entry<String, AsyncTask<T, E>> e,
+    IAsyncCallback<Map<String, T>, E> f) {
+    NeoParallel.Parallel(Map.ofEntries(a, b, c, d,e), f);
+  }
+  
+  /**
+   * @exclude
+   */
+  public static <T, E> void Parallel(
+    Map.Entry<String, AsyncTask<T, E>> a,
+    Map.Entry<String, AsyncTask<T, E>> b,
+    Map.Entry<String, AsyncTask<T, E>> c,
+    Map.Entry<String, AsyncTask<T, E>> d,
+    Map.Entry<String, AsyncTask<T, E>> e,
+    Map.Entry<String, AsyncTask<T, E>> f,
+    IAsyncCallback<Map<String, T>, E> cb) {
+    NeoParallel.Parallel(Map.ofEntries(a, b, c, d,e,f), cb);
+  }
+  
+  
+  public static <T, E> void Parallel(
+    Map.Entry<String, AsyncTask<T, E>> a,
+    Map.Entry<String, AsyncTask<T, E>> b,
+    Map.Entry<String, AsyncTask<T, E>> c,
+    Map.Entry<String, AsyncTask<T, E>> d,
+    Map.Entry<String, AsyncTask<T, E>> e,
+    Map.Entry<String, AsyncTask<T, E>> f,
+    Map.Entry<String, AsyncTask<T, E>> g,
+    IAsyncCallback<Map<String, T>, E> cb) {
+    NeoParallel.Parallel(Map.ofEntries(a, b, c, d,e,f,g), cb);
   }
   
   public static <T, E> void Parallel(Map<String, AsyncTask<T, E>> tasks, IAsyncCallback<Map<String, T>, E> f) {
@@ -362,6 +405,9 @@ public class Asyncc {
     NeoParallel.Parallel(List.of(a, b, c), cb);
   }
   
+  /**
+   * @exclude
+   */
   public static <T, E> void Parallel(
     AsyncTask<T, E> a,
     AsyncTask<T, E> b,
@@ -371,6 +417,9 @@ public class Asyncc {
     NeoParallel.<T, E>Parallel(List.of(a, b, c, d), cb);
   }
   
+  /**
+   * @exclude
+   */
   public static <T, E> void Parallel(
     AsyncTask<T, E> a,
     AsyncTask<T, E> b,
@@ -381,6 +430,9 @@ public class Asyncc {
     NeoParallel.Parallel(List.of(a, b, c, d, e), cb);
   }
   
+  /**
+   * @exclude
+   */
   public static <T, E> void Parallel(
     AsyncTask<T, E> a,
     AsyncTask<T, E> b,
@@ -392,6 +444,9 @@ public class Asyncc {
     NeoParallel.Parallel(List.of(a, b, c, d, e, f), cb);
   }
   
+  /**
+   * @exclude
+   */
   public static <T, E> void Parallel(
     AsyncTask<T, E> a,
     AsyncTask<T, E> b,
@@ -436,6 +491,9 @@ public class Asyncc {
     NeoWaterfall.Waterfall(List.of(a, b), cb);
   }
   
+  /**
+   * @exclude
+   */
   public static <T, E> void Waterfall(
     NeoWaterfall.AsyncTask<T, E> a,
     NeoWaterfall.AsyncTask<T, E> b,
@@ -444,6 +502,9 @@ public class Asyncc {
     NeoWaterfall.Waterfall(List.of(a, b, c), cb);
   }
   
+  /**
+   * @exclude
+   */
   public static <T, E> void Waterfall(
     NeoWaterfall.AsyncTask<T, E> a,
     NeoWaterfall.AsyncTask<T, E> b,
@@ -453,6 +514,9 @@ public class Asyncc {
     NeoWaterfall.Waterfall(List.of(a, b, c, d), cb);
   }
   
+  /**
+  * @exclude
+  */
   public static <T, E> void Waterfall(
     NeoWaterfall.AsyncTask<T, E> a,
     NeoWaterfall.AsyncTask<T, E> b,
@@ -478,6 +542,20 @@ public class Asyncc {
     NeoParallel.Parallel(tasks, cb);
   }
   
+  
+  /**
+   * <pre class="prettyprint">
+   * public class JavadocTest {
+   *   // indentation and line breaks are kept
+   *
+   *   @SuppressWarnings
+   *   public List<String> generics(){
+   *     // '@', '<' and '>'  have to be escaped with HTML codes
+   *     // when used in annotations or generics
+   *   }
+   * }
+   * </pre>
+   */
   public static <T, E> void ParallelLimit(
     int limit,
     List<AsyncTask<T, E>> tasks,
@@ -490,11 +568,36 @@ public class Asyncc {
     NeoReduce.ReduceRight(initialVal, tasks, m, f);
   }
   
+  
+  /**
+   * Returns an Image object that can then be painted on the screen.
+   * The url argument must specify an absolute. The name
+   * argument is a specifier that is relative to the url argument.
+   * <p>
+   * This method always returns immediately, whether or not the
+   * image exists. When this applet attempts to draw the image on
+   * the screen, the data will be loaded. The graphics primitives
+   * that draw the image will incrementally paint on the screen.
+   *
+   * @return      the image at the specified URL
+   */
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     NeoReduce.ReduceRight(tasks, m, f);
   }
   
+  /**
+   * <pre class="prettyprint">
+   * new BeanTranslator.Builder()
+   *   .translate(
+   *     new{@code Translator<String, Integer>}(String.class, Integer.class){
+   *      {@literal @}Override
+   *       public Integer translate(String instance) {
+   *         return Integer.valueOf(instance);
+   *       }})
+   *   .build();
+   * </pre>
+   */
   @SuppressWarnings("Duplicates")
   public static <I, T, V, E> void Reduce(I initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     NeoReduce.Reduce(initialVal, tasks, m, f);
