@@ -42,7 +42,7 @@ public void retrieveValue(){
 
 * <a href="https://async-java.github.io/org/ores/async/Asyncc.html#Concat(int,java.util.List,org.ores.async.Asyncc.Mapper,org.ores.async.Asyncc.IAsyncCallback)" target="_blank">Series</a>
 * [Parallel](https://www.google.com)/[ParallelLimit](https://www.google.com) 
-* <a href="https://async-java.github.io/org/ores/async/Asyncc.html#Waterfall(java.util.List,org.ores.async.Asyncc.IAsyncCallback)" target="_blank">Waterfall</a
+* <a href="https://async-java.github.io/org/ores/async/Asyncc.html#Waterfall(java.util.List,org.ores.async.Asyncc.IAsyncCallback)" target="_blank">Waterfall</a>
 * [Inject](https://www.google.com) - (most recommended)
 
 ### Map/Filter/Reduce/Each
