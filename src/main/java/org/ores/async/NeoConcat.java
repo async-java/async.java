@@ -5,6 +5,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+/*
+ * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+ **/
 class NeoConcat {
   
   static <T> List<T> flatten(int desiredDepth, int currentDepth, Collection<T> results) {

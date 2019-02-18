@@ -2,6 +2,9 @@ package org.ores.async;
 
 import java.util.*;
 
+/**
+* <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+*/
 public class Asyncc {
   
   public final static Object sync = new Object();
@@ -570,16 +573,8 @@ public class Asyncc {
   
   
   /**
+   * <a name="ReduceRight">
    * Returns an Image object that can then be painted on the screen.
-   * The url argument must specify an absolute. The name
-   * argument is a specifier that is relative to the url argument.
-   * <p>
-   * This method always returns immediately, whether or not the
-   * image exists. When this applet attempts to draw the image on
-   * the screen, the data will be loaded. The graphics primitives
-   * that draw the image will incrementally paint on the screen.
-   *
-   * @return      the image at the specified URL
    */
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {

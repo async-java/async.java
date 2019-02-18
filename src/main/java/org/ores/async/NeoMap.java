@@ -5,6 +5,10 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+
+/*
+ * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+ **/
 class NeoMap {
   
   @SuppressWarnings("Duplicates")

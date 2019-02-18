@@ -5,8 +5,27 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * @see <a href="http://google.com">http://google.com</a>
+ * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+ **/
 public class NeoInject {
   
+  /**
+   * <pre class="prettyprint">
+   * new BeanTranslator.Builder()
+   *   .translate(
+   *     new{@code Translator<String, Integer>}(String.class, Integer.class){
+   *      {@literal @}Override
+   *       public Integer translate(String instance) {
+   *         return Integer.valueOf(instance);
+   *       }})
+   *   .build();
+   * </pre>
+   */
+  public void whatever() {
+  
+  }
   public static interface IInjectable<T, E> {
     public void run(AsyncCallbackSet<T, E> cb);
   }

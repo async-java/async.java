@@ -3,7 +3,23 @@ package org.ores.async;
 import java.util.Collections;
 import java.util.Iterator;
 
- class NeoEach {
+/**
+ * @see <a href="http://google.com">http://google.com</a>
+ * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+ *
+ *
+ * <pre class="prettyprint">
+ * new BeanTranslator.Builder()
+ *   .translate(
+ *     new{@code Translator<String, Integer>}(String.class, Integer.class){
+ *      {@literal @}Override
+ *       public Integer translate(String instance) {
+ *         return Integer.valueOf(instance);
+ *       }})
+ *   .build();
+ * </pre>
+ */
+class NeoEach {
   
   static <T, V, E> void Each(int limit, Iterable<T> i, Asyncc.Eacher<T, E> m, Asyncc.IEachCallback<E> f) {
     
