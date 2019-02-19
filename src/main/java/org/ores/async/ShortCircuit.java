@@ -4,6 +4,7 @@ class ShortCircuit {
   
   private boolean isShortCircuited = false;
   private boolean isFinalCallbackFired = false;
+  private boolean sameTick = true;
   
   public synchronized boolean  isFinalCallbackFired() {
     return this.isFinalCallbackFired;
@@ -21,4 +22,11 @@ class ShortCircuit {
     return this.isShortCircuited = v;
   }
   
+  public boolean isSameTick() {
+    return this.sameTick;
+  }
+  
+  public void setSameTick(boolean sameTick) {
+    this.sameTick = sameTick;
+  }
 }

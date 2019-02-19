@@ -26,6 +26,9 @@ class NeoMap {
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
     RunMap(iterator, m, results, c, s, f);
+    if(s.isFinalCallbackFired()){
+      s.setSameTick(false);
+    }
     
   }
   

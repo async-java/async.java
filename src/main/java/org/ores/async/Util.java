@@ -4,40 +4,60 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 class Util {
   
-  static <E> void fireFinalCallback(ShortCircuit s, Object e, Asyncc.IEachCallback<E> f){
+  static <E> void fireFinalCallback(ShortCircuit s, Object e, Asyncc.IEachCallback<E> f) {
     
     var ok = false;
     
-    synchronized (s){
+    synchronized (s) {
       if (!s.isFinalCallbackFired()) {
         ok = true;
         s.setFinalCallbackFired(true);
       }
     }
     
-    if(ok){
-      f.done((E)e);
+    if (!ok) {
+      return;
     }
+    
+    if (!s.isSameTick()) {
+      f.done((E) e);
+      return;
+    }
+    
+    CompletableFuture
+      .delayedExecutor(1, TimeUnit.MILLISECONDS)
+      .execute(() -> f.done((E) e));
     
   }
   
-  static <V,E> void fireFinalCallback(ShortCircuit s, Object e, Object results, Asyncc.IAsyncCallback<V,E> f){
+  static <V, E> void fireFinalCallback(ShortCircuit s, Object e, Object results, Asyncc.IAsyncCallback<V, E> f) {
     
     var ok = false;
     
-    synchronized (s){
+    synchronized (s) {
       if (!s.isFinalCallbackFired()) {
         ok = true;
         s.setFinalCallbackFired(true);
       }
     }
     
-    if(ok){
-      f.done((E)e, (V)results);
+    if (!ok) {
+      return;
     }
+    
+    if (!s.isSameTick()) {
+      f.done((E) e, (V) results);
+      return;
+    }
+    
+    CompletableFuture
+      .delayedExecutor(1, TimeUnit.MILLISECONDS)
+      .execute(() -> f.done((E) e, (V) results));
     
   }
   
@@ -100,7 +120,6 @@ class Util {
             return;
           }
           
-          
           if (c.getFinishedCount() == m.size()) {
             f.done(null, results);
             return;
@@ -112,11 +131,9 @@ class Util {
           
         }
         
-        
       }
       
     });
-    
     
     if (c.getStartedCount() >= m.size()) {
       return;
@@ -196,7 +213,6 @@ class Util {
       }
       
     });
-    
     
     if (c.getStartedCount() >= tasks.size()) {
       return;

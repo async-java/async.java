@@ -107,7 +107,7 @@ class NeoParallel {
   @SuppressWarnings("Duplicates")
   static <T, E> void Parallel(List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     
-    List<T> results = new ArrayList<T>(Collections.<T>nCopies(tasks.size(), null));
+    List<T> results = new ArrayList<T>();
     
     if (tasks.size() < 1) {
       f.done(null, results);
@@ -119,6 +119,7 @@ class NeoParallel {
     
     for (int i = 0; i < tasks.size(); i++) {
       
+      results.add(null);
       final int index = i;
       
       tasks.get(i).run(new Asyncc.AsyncCallback<T, E>(s) {
@@ -165,6 +166,11 @@ class NeoParallel {
         }
       });
       
+    }
+  
+  
+    if(s.isFinalCallbackFired()){
+      s.setSameTick(false);
     }
     
   }
