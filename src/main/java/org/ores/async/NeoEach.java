@@ -1,7 +1,8 @@
 package org.ores.async;
 
-import java.util.Collections;
 import java.util.Iterator;
+
+import static org.ores.async.Util.fireFinalCallback;
 
 /**
  * @see <a href="http://google.com">http://google.com</a>
@@ -20,31 +21,30 @@ import java.util.Iterator;
  */
 class NeoEach {
   
-  static <T, V, E> void Each(int limit, Iterable<T> i, Asyncc.Eacher<T, E> m, Asyncc.IEachCallback<E> f) {
+  static <T, V, E> void Each(int limit, Iterable<T> i, Asyncc.IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     
-    CounterLimit c = new CounterLimit(limit);
-    ShortCircuit s = new ShortCircuit();
-    
-    var iterator = i.iterator();
-    
+    final CounterLimit c = new CounterLimit(limit);
+    final ShortCircuit s = new ShortCircuit();
+    final var iterator = i.iterator();
     RunEach(iterator, c, s, m, f);
     
   }
   
+
+  
   private static <T, V, E> void RunEach(
-    Iterator<T> iterator,
-    CounterLimit c,
-    ShortCircuit s,
-    Asyncc.Eacher<T, E> m,
-    Asyncc.IEachCallback<E> f) {
+    final Iterator<T> iterator,
+    final CounterLimit c,
+    final ShortCircuit s,
+    final Asyncc.IEacher<T, E> m,
+    final Asyncc.IEachCallback<E> f) {
     
     if (!iterator.hasNext()) {
       return;
     }
     
-    var v = iterator.next();
-    
-    m.each(v, new Asyncc.EachCallback<E>(s) {
+    final var v = iterator.next();
+    final var taskRunner = new Asyncc.EachCallback<E>(s) {
       
       @Override
       public void resolve() {
@@ -62,7 +62,7 @@ class NeoEach {
         synchronized (this.cbLock) {
           
           if (this.isFinished()) {
-            new Error("Callback fired more than once.").printStackTrace();
+            new Error("Warning: Callback fired more than once.").printStackTrace();
             return;
           }
           
@@ -78,7 +78,7 @@ class NeoEach {
         
         if (e != null) {
           s.setShortCircuited(true);
-          f.done(e);  // List.of()?
+          fireFinalCallback(s, e, f);
           return;
         }
         
@@ -90,7 +90,7 @@ class NeoEach {
         }
         
         if (isDone) {
-          f.done(null);
+          fireFinalCallback(s, null, f);
           return;
         }
         
@@ -100,7 +100,17 @@ class NeoEach {
         
       }
       
-    });
+    };
+  
+    c.incrementStarted();
+    
+    try {
+      m.each(v, taskRunner);
+    } catch (Exception err) {
+      s.setShortCircuited(true);
+      fireFinalCallback(s, err, f);
+      return;
+    }
     
     final boolean isBelowCapacity;
     

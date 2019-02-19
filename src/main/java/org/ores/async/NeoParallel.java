@@ -45,51 +45,60 @@ class NeoParallel {
     for (Map.Entry<String, Asyncc.AsyncTask<T, E>> entry : tasks.entrySet()) {
       
       final String key = entry.getKey();
-      
-      entry.getValue().run(new Asyncc.AsyncCallback<T, E>(s) {
-        
+      final var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
+  
         @Override
         public void resolve(T v) {
           this.done(null, v);
         }
-        
+  
         @Override
         public void reject(E e) {
           this.done(e, null);
         }
-        
+  
         @Override
         public void done(E e, T v) {
-          
+    
           synchronized (this.cbLock) {
-            
+      
             if (this.isFinished()) {
-              new Error("Callback fired more than once.").printStackTrace();
+              new Error("Warning: Callback fired more than once.").printStackTrace();
               return;
             }
-            
+      
             this.setFinished(true);
-            
+      
             if (s.isShortCircuited()) {
               return;
             }
-            
+      
             if (e != null) {
               s.setShortCircuited(true);
               f.done(e, Map.of());
               return;
             }
-            
+      
             c.incrementFinished();
             results.put(key, v);
-            
+      
             if (c.getFinishedCount() == tasks.size()) {
               f.done(null, results);
             }
-            
+      
           }
         }
-      });
+      };
+      
+      try{
+        entry.getValue().run(taskRunner);
+      }
+      catch(Exception e){
+        s.setShortCircuited(true);
+        f.done((E)e, results);
+        return;
+      }
+      
       
     }
     
@@ -130,7 +139,7 @@ class NeoParallel {
           synchronized (this.cbLock) {
             
             if (this.isFinished()) {
-              new Error("Callback fired more than once.").printStackTrace();
+              new Error("Warning: Callback fired more than once.").printStackTrace();
               return;
             }
             

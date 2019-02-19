@@ -28,7 +28,7 @@ public class EachTest {
   
   @Before
   public void onBefore() {
-  
+   System.out.println("Running before hook in each-test.");
   }
   
   
@@ -39,6 +39,7 @@ public class EachTest {
 
     Asyncc.Each(List.of(1,2,3), (x,cb) -> {
       
+      System.out.println("We in the runeach 1");
       cb.done(null);
     
     }, err -> {
@@ -56,7 +57,8 @@ public class EachTest {
     Async v = tc.async();
   
     Asyncc.Each(Map.of("foo","bar").entrySet(), (x,cb) -> {
-    
+  
+      System.out.println("We in the runeach 2");
       cb.done(null);
     
     }, err -> {
@@ -70,8 +72,12 @@ public class EachTest {
   
   @Test
   public void runComposed1(TestContext tc) {
-    
-
+  
+    Async v = tc.async();
+  
+    System.out.println("We in the 3");
+  
+    v.complete();
     
   }
   

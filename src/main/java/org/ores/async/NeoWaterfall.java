@@ -2,10 +2,12 @@ package org.ores.async;
 
 import java.util.*;
 
+import static org.ores.async.Util.fireFinalCallback;
+
 /**
  * See <a href="http://google.com">http://google.com</a>
  */
-class NeoWaterfall {
+public class NeoWaterfall {
   
   static class UserMap extends HashMap<String, Object> {
   
@@ -70,12 +72,12 @@ class NeoWaterfall {
   
   @SuppressWarnings("Duplicates")
   static <T, E> void Waterfall(
-    List<AsyncTask<T, E>> tasks,
-    Asyncc.IAsyncCallback<HashMap<String, Object>, E> f) {
+    final List<AsyncTask<T, E>> tasks,
+    final Asyncc.IAsyncCallback<HashMap<String, Object>, E> f) {
     
-    HashMap<String, Object> results = new HashMap<>();
-    CounterLimit c = new CounterLimit(1);
-    ShortCircuit s = new ShortCircuit();
+    final HashMap<String, Object> results = new HashMap<>();
+    final CounterLimit c = new CounterLimit(1);
+    final ShortCircuit s = new ShortCircuit();
     
     if (tasks.size() < 1) {
       f.done(null, results);
@@ -86,14 +88,13 @@ class NeoWaterfall {
     
   }
   
-  
   @SuppressWarnings("Duplicates")
   private static <T, E> void WaterfallInternal(
-    List<AsyncTask<T, E>> tasks,
-    HashMap<String, Object> results,
-    ShortCircuit s,
-    CounterLimit c,
-    Asyncc.IAsyncCallback<HashMap<String, Object>, E> f) {
+    final List<AsyncTask<T, E>> tasks,
+    final HashMap<String, Object> results,
+    final ShortCircuit s,
+    final CounterLimit c,
+    final Asyncc.IAsyncCallback<HashMap<String, Object>, E> f) {
     
     final int startedCount = c.getStartedCount();
     
@@ -102,17 +103,15 @@ class NeoWaterfall {
       return;
     }
     
-    AsyncTask<T, E> t = tasks.get(startedCount);
-    c.incrementStarted();
-    
-    t.run(new AsyncCallback<T, E>(s, results) {
+    final AsyncTask<T, E> t = tasks.get(startedCount);
+    final var taskRunner = new AsyncCallback<T, E>(s, results) {
       
       private void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m) {
         
         synchronized (this.cbLock) {
           
           if (this.isFinished()) {
-            new Error("Callback fired more than once.").printStackTrace();
+            new Error("Warning: Callback fired more than once.").printStackTrace();
             return;
           }
           
@@ -123,27 +122,26 @@ class NeoWaterfall {
             return;
           }
           
-          if (m != null) {
-            results.put(m.getKey(), m.getValue());
-          }
-          
-          if (e != null) {
-            s.setShortCircuited(true);
-            f.done(e, results);
-            return;
-          }
-          
-          if (c.getFinishedCount() == tasks.size()) {
-            f.done(null, results);
-            return;
-          }
-          
-          WaterfallInternal(tasks, results, s, c, f);
-          
         }
         
+        if (m != null) {
+          results.put(m.getKey(), m.getValue());
+        }
+        
+        if (e != null) {
+          s.setShortCircuited(true);
+          fireFinalCallback(s, e, results, f);
+          return;
+        }
+        
+        if (c.getFinishedCount() == tasks.size()) {
+          fireFinalCallback(s, null, results, f);
+          return;
+        }
+        
+        WaterfallInternal(tasks, results, s, c, f);
+        
       }
-      
       
       @Override
       public void done(E e, Map.Entry<String, T> m) {
@@ -175,7 +173,17 @@ class NeoWaterfall {
         this.doneInternal(Asyncc.Marker.DONE, e, null);
       }
       
-    });
+    };
+    
+    c.incrementStarted();
+    
+    try {
+      t.run(taskRunner);
+    } catch (Exception e) {
+      s.setShortCircuited(true);
+      fireFinalCallback(s, e, results, f);
+      return;
+    }
     
   }
 }

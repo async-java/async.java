@@ -67,16 +67,29 @@ public class Asyncc {
     }
   }
   
-  public interface Reducer<V, E> {
+  public interface IReducer<V, E> {
     void reduce(ReduceArg v, AsyncCallback<V, E> cb);
   }
   
-  public interface Eacher<T,E> {
+  public interface IEacher<T,E> {
     void each(T v, IEachCallback<E> cb);
   }
   
-  public interface IAsyncCallback<T, E> {
+  
+  interface IErrorOnlyDoneable<T,E> {
     void done(E e, T v);
+  }
+  
+  interface IErrorValueDoneable<T,E> {
+    void done(E e, T v);
+  }
+  
+  public interface IAsyncCallback<T, E> {
+    boolean isDone = false;
+    void done(E e, T v);
+    default void setDone(){
+    
+    }
   }
   
   public interface IEachCallback<E> {
@@ -207,15 +220,15 @@ public class Asyncc {
   
   // start each
   
-  public static <T, V, E> void Each(Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, V, E> void Each(Iterable<T> i, IEacher<T,E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(Integer.MAX_VALUE, i, m, f);
   }
   
-  public static <T, V, E> void EachLimit(int limit, Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback< E> f) {
+  public static <T, V, E> void EachLimit(int limit, Iterable<T> i, IEacher<T,E> m, Asyncc.IEachCallback< E> f) {
     NeoEach.Each(limit, i, m, f);
   }
   
-  public static <T, V, E> void EachSeries(Iterable<T> i, Asyncc.Eacher<T,E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, V, E> void EachSeries(Iterable<T> i, IEacher<T,E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(1, i, m, f);
   }
   
@@ -569,7 +582,7 @@ public class Asyncc {
   }
   
   @SuppressWarnings("Duplicates")
-  public static <I, T, V, E> void ReduceRight(I initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <I, T, V, E> void ReduceRight(I initialVal, List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     NeoReduce.ReduceRight(initialVal, tasks, m, f);
   }
   
@@ -581,7 +594,7 @@ public class Asyncc {
    *
    */
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <T, V, E> void ReduceRight(List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     NeoReduce.ReduceRight(tasks, m, f);
   }
   
@@ -600,12 +613,12 @@ public class Asyncc {
    * </pre>
    */
   @SuppressWarnings("Duplicates")
-  public static <I, T, V, E> void Reduce(I initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <I, T, V, E> void Reduce(I initialVal, List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     NeoReduce.Reduce(initialVal, tasks, m, f);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void Reduce(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <T, V, E> void Reduce(List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     NeoReduce.Reduce(tasks, m, f);
   }
   

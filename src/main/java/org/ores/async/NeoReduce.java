@@ -8,7 +8,7 @@ interface IGroupBy {
 
 public class NeoReduce {
   
-  static <T, V, E> void ReduceRight(Object initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void ReduceRight(Object initialVal, List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, (V) initialVal);
@@ -32,7 +32,7 @@ public class NeoReduce {
     RunReduce((V) initialVal, s, iterator, m, f);
   }
   
-  static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, null);
@@ -52,7 +52,7 @@ public class NeoReduce {
     RunReduce(first, s, iterator, m, f);
   }
   
-  static <T, V, E> void Reduce(Object initialVal, List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void Reduce(Object initialVal, List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, (V) initialVal);
@@ -66,7 +66,7 @@ public class NeoReduce {
     RunReduce((V) initialVal, s, iterator, m, f);
   }
   
-  static <T, V, E> void Reduce(List<T> tasks, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void Reduce(List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, null);
@@ -90,7 +90,7 @@ public class NeoReduce {
     
   }
   
-  private static <V, T, E> void RunReduce(V prev, ShortCircuit s, Iterator<T> iterator, Asyncc.Reducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  private static <V, T, E> void RunReduce(V prev, ShortCircuit s, Iterator<T> iterator, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (!iterator.hasNext()) {
       return;
@@ -116,7 +116,7 @@ public class NeoReduce {
         synchronized (this.cbLock) {
           
           if (this.isFinished()) {
-            new Error("Callback fired more than once.").printStackTrace();
+            new Error("Warning: Callback fired more than once.").printStackTrace();
             return;
           }
           

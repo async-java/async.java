@@ -106,10 +106,11 @@ public class NeoInject {
   
   
   static <T, E> void Inject(
-    Map<String, Task<T, E>> tasks,
-    Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
-    ShortCircuit s = new ShortCircuit();
-    Map<String, Object> results = new HashMap<>();
+    final Map<String, Task<T, E>> tasks,
+    final Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
+    
+    final ShortCircuit s = new ShortCircuit();
+    final Map<String, Object> results = new HashMap<>();
     
     if (tasks.size() < 1) {
       f.done(null, Map.of());
@@ -124,8 +125,8 @@ public class NeoInject {
       checkForCircularDep(key, set, tasks);
     }
     
-    HashSet<String> started = new HashSet<>();
-    HashSet<String> completed = new HashSet<>();
+    final HashSet<String> started = new HashSet<>();
+    final HashSet<String> completed = new HashSet<>();
     
     RunInject(started, completed, tasks, results, s, f);
   }
@@ -157,16 +158,23 @@ public class NeoInject {
       return this.isFinished = b;
     }
     
+    public void resolve(T v) {
+      this.done(null, v);
+    }
+    
+    public void reject(E e) {
+      this.done(e, null);
+    }
   }
   
   @SuppressWarnings("Duplicates")
   private static <T, E> void RunInject(
-    HashSet<String> started,
-    HashSet<String> completed,
-    Map<String, Task<T, E>> m,
-    Map<String, Object> results,
-    ShortCircuit s,
-    Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
+    final HashSet<String> started,
+    final HashSet<String> completed,
+    final Map<String, Task<T, E>> m,
+    final Map<String, Object> results,
+    final ShortCircuit s,
+    final Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
     
     
     for (Map.Entry<String, Task<T, E>> entry : m.entrySet()) {
@@ -184,54 +192,54 @@ public class NeoInject {
       }
       
       final IInjectable<T, E> v = entry.getValue().getInjectable();
-      started.add(key);
-      
-      v.run(new AsyncCallbackSet<T, E>(s, results) {
-        
-        @Override
-        public void resolve(T v) {
-          this.done(null, v);
-        }
-        
-        @Override
-        public void reject(E e) {
-          this.done(e, null);
-        }
+      final var taskRunner = new AsyncCallbackSet<T, E>(s, results) {
         
         @Override
         public void done(E err, T v) {
-          
+    
           synchronized (this.cbLock) {
-            
+      
             if (this.isFinished()) {
-              new Error("Callback fired more than once.").printStackTrace();
+              new Error("Warning: Callback fired more than once.").printStackTrace();
               return;
             }
-            
+      
             this.setFinished(true);
-            
+      
             if (s.isShortCircuited()) {
               return;
             }
-            
+      
             completed.add(key);
             results.put(key, v);
           }
-          
+    
           if (err != null) {
             s.setShortCircuited(true);
             return;
           }
-          
+    
           if (completed.size() == m.size()) {
             f.done(null, results);
             return;
           }
-          
+    
           RunInject(started, completed, m, results, s, f);
-          
+    
         }
-      });
+      };
+  
+      started.add(key);
+      
+      try{
+        v.run(taskRunner);
+      }
+      catch(Exception e){
+        s.setShortCircuited(true);
+        f.done((E)e, results);
+        return;
+      }
+      
       
     }
   }

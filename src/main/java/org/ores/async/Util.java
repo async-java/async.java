@@ -7,6 +7,40 @@ import java.util.Map;
 
 class Util {
   
+  static <E> void fireFinalCallback(ShortCircuit s, Object e, Asyncc.IEachCallback<E> f){
+    
+    var ok = false;
+    
+    synchronized (s){
+      if (!s.isFinalCallbackFired()) {
+        ok = true;
+        s.setFinalCallbackFired(true);
+      }
+    }
+    
+    if(ok){
+      f.done((E)e);
+    }
+    
+  }
+  
+  static <V,E> void fireFinalCallback(ShortCircuit s, Object e, Object results, Asyncc.IAsyncCallback<V,E> f){
+    
+    var ok = false;
+    
+    synchronized (s){
+      if (!s.isFinalCallbackFired()) {
+        ok = true;
+        s.setFinalCallbackFired(true);
+      }
+    }
+    
+    if(ok){
+      f.done((E)e, (V)results);
+    }
+    
+  }
+  
   @SuppressWarnings("Duplicates")
   static <T, E> void RunMapLimit(
     Iterator<Map.Entry<String, Asyncc.AsyncTask<T, E>>> entries,
@@ -47,7 +81,7 @@ class Util {
         synchronized (this.cbLock) {
           
           if (this.isFinished()) {
-            new Error("Callback fired more than once.").printStackTrace();
+            new Error("Warning: Callback fired more than once.").printStackTrace();
             return;
           }
           
@@ -129,7 +163,7 @@ class Util {
         synchronized (this.cbLock) {
           
           if (this.isFinished()) {
-            new Error("Callback fired more than once.").printStackTrace();
+            new Error("Warning: Callback fired more than once.").printStackTrace();
             return;
           }
           
@@ -210,7 +244,7 @@ class Util {
         synchronized (this.cbLock) {
           
           if (this.isFinished()) {
-            new Error("Callback fired more than once.").printStackTrace();
+            new Error("Warning: Callback fired more than once.").printStackTrace();
             return;
           }
           
