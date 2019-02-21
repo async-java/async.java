@@ -134,12 +134,23 @@ public class Asyncc {
   
   public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T, E> {
     
-    private ShortCircuit s;
-    private boolean isFinished = false;
-    final Object cbLock = new Object();
+    protected ShortCircuit s;
+    protected boolean isFinished = false;
+    protected final Object cbLock = new Object();
+    
     
     public AsyncCallback(ShortCircuit s) {
       this.s = s;
+    }
+  
+    @Override
+    public void resolve(T v) {
+      this.done(null, v);
+    }
+  
+    @Override
+    public void reject(E e) {
+      this.done(e, null);
     }
     
     public boolean isShortCircuited() {
@@ -180,7 +191,7 @@ public class Asyncc {
     return cb -> NeoParallel.Parallel(tasks, cb);
   }
   
-  public static <T, E> AsyncTask<Map<String, T>, E> Series(Map<String, AsyncTask<T, E>> tasks) {
+  public static <T, E> AsyncTask<Map<Object, T>, E> Series(Map<Object, AsyncTask<T, E>> tasks) {
     return cb -> NeoSeries.Series(tasks, cb);
   }
   
@@ -237,8 +248,8 @@ public class Asyncc {
   // start series
   
   public static <T, E> void Series(
-    Map<String, AsyncTask<T, E>> tasks,
-    IAsyncCallback<Map<String, T>, E> f) {
+    Map<Object, AsyncTask<T, E>> tasks,
+    IAsyncCallback<Map<Object, T>, E> f) {
     NeoSeries.Series(tasks, f);
   }
   
@@ -318,8 +329,8 @@ public class Asyncc {
   
   public static <T, E> void ParallelLimit(
     int limit,
-    Map<String, AsyncTask<T, E>> tasks,
-    IAsyncCallback<Map<String, T>, E> f) {
+    Map<Object, AsyncTask<T, E>> tasks,
+    IAsyncCallback<Map<Object, T>, E> f) {
     NeoParallel.ParallelLimit(limit, tasks, f);
   }
   

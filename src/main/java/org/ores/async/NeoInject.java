@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+
 /**
  * @see <a href="http://google.com">http://google.com</a>
  * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
@@ -26,6 +27,7 @@ public class NeoInject {
   public void whatever() {
   
   }
+  
   public static interface IInjectable<T, E> {
     public void run(AsyncCallbackSet<T, E> cb);
   }
@@ -104,7 +106,6 @@ public class NeoInject {
     }
   }
   
-  
   static <T, E> void Inject(
     final Map<String, Task<T, E>> tasks,
     final Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
@@ -176,7 +177,6 @@ public class NeoInject {
     final ShortCircuit s,
     final Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
     
-    
     for (Map.Entry<String, Task<T, E>> entry : m.entrySet()) {
       
       final String key = entry.getKey();
@@ -196,50 +196,49 @@ public class NeoInject {
         
         @Override
         public void done(E err, T v) {
-    
+          
           synchronized (this.cbLock) {
-      
+            
             if (this.isFinished()) {
               new Error("Warning: Callback fired more than once.").printStackTrace();
               return;
             }
-      
+            
             this.setFinished(true);
-      
+            
             if (s.isShortCircuited()) {
               return;
             }
-      
+            
             completed.add(key);
             results.put(key, v);
           }
-    
+          
           if (err != null) {
             s.setShortCircuited(true);
+            NeoUtils.fireFinalCallback(s, err, results, f);
             return;
           }
-    
+          
           if (completed.size() == m.size()) {
-            f.done(null, results);
+            NeoUtils.fireFinalCallback(s, null, results, f);
             return;
           }
-    
+          
           RunInject(started, completed, m, results, s, f);
-    
+          
         }
       };
-  
+      
       started.add(key);
       
-      try{
+      try {
         v.run(taskRunner);
-      }
-      catch(Exception e){
+      } catch (Exception e) {
         s.setShortCircuited(true);
-        f.done((E)e, results);
+        NeoUtils.fireFinalCallback(s, e, results, f);
         return;
       }
-      
       
     }
   }

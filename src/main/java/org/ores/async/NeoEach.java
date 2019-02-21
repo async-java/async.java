@@ -2,8 +2,6 @@ package org.ores.async;
 
 import java.util.Iterator;
 
-import static org.ores.async.Util.fireFinalCallback;
-
 /**
  * @see <a href="http://google.com">http://google.com</a>
  * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
@@ -31,7 +29,7 @@ class NeoEach {
   }
   
 
-  
+  @SuppressWarnings("Duplicates")
   private static <T, V, E> void RunEach(
     final Iterator<T> iterator,
     final CounterLimit c,
@@ -39,11 +37,16 @@ class NeoEach {
     final Asyncc.IEacher<T, E> m,
     final Asyncc.IEachCallback<E> f) {
     
-    if (!iterator.hasNext()) {
-      return;
+    final T v;
+    
+    synchronized (iterator){
+      if (!iterator.hasNext()) {
+        return;
+      }
+  
+      v = iterator.next();
     }
     
-    final var v = iterator.next();
     final var taskRunner = new Asyncc.EachCallback<E>(s) {
       
       @Override
@@ -78,7 +81,7 @@ class NeoEach {
         
         if (e != null) {
           s.setShortCircuited(true);
-          fireFinalCallback(s, e, f);
+          NeoUtils.fireFinalCallback(s, e, f);
           return;
         }
         
@@ -90,7 +93,7 @@ class NeoEach {
         }
         
         if (isDone) {
-          fireFinalCallback(s, null, f);
+          NeoUtils.fireFinalCallback(s, null, f);
           return;
         }
         
@@ -108,7 +111,7 @@ class NeoEach {
       m.each(v, taskRunner);
     } catch (Exception err) {
       s.setShortCircuited(true);
-      fireFinalCallback(s, err, f);
+      NeoUtils.fireFinalCallback(s, err, f);
       return;
     }
     

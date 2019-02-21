@@ -8,6 +8,7 @@ interface IGroupBy {
 
 public class NeoReduce {
   
+  @SuppressWarnings("Duplicates")
   static <T, V, E> void ReduceRight(Object initialVal, List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
@@ -32,6 +33,7 @@ public class NeoReduce {
     RunReduce((V) initialVal, s, iterator, m, f);
   }
   
+  @SuppressWarnings("Duplicates")
   static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
@@ -52,6 +54,7 @@ public class NeoReduce {
     RunReduce(first, s, iterator, m, f);
   }
   
+  @SuppressWarnings("Duplicates")
   static <T, V, E> void Reduce(Object initialVal, List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
@@ -66,6 +69,7 @@ public class NeoReduce {
     RunReduce((V) initialVal, s, iterator, m, f);
   }
   
+  @SuppressWarnings("Duplicates")
   static <T, V, E> void Reduce(List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
@@ -90,6 +94,7 @@ public class NeoReduce {
     
   }
   
+  @SuppressWarnings("Duplicates")
   private static <V, T, E> void RunReduce(V prev, ShortCircuit s, Iterator<T> iterator, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (!iterator.hasNext()) {

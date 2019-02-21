@@ -81,3 +81,13 @@ https://stackoverflow.com/questions/1082050/linking-to-an-external-url-in-javado
 
 
 https://dzone.com/articles/a-guide-to-formatting-code-snippets-in-javadoc
+
+implement groupBy, groupBySeries, groupByLimit
+implement times, timesSeries, timesLimit
+
+
+use another env variable synchronization_off -
+if only 1 thread uses it, we can improve performance by avoiding using the synchronize keyword.
+
+    var env = System.getenv().get("asyncc_exclude_redundancy");
+    isNeverAsync = env != null && env.equals("yes");

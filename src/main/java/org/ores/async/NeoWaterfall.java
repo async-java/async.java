@@ -2,7 +2,6 @@ package org.ores.async;
 
 import java.util.*;
 
-import static org.ores.async.Util.fireFinalCallback;
 
 /**
  * See <a href="http://google.com">http://google.com</a>
@@ -85,6 +84,7 @@ public class NeoWaterfall {
     }
     
     WaterfallInternal(tasks, results, s, c, f);
+    NeoUtils.handleSameTickCall(s);
     
   }
   
@@ -130,12 +130,12 @@ public class NeoWaterfall {
         
         if (e != null) {
           s.setShortCircuited(true);
-          fireFinalCallback(s, e, results, f);
+          NeoUtils.fireFinalCallback(s, e, results, f);
           return;
         }
         
         if (c.getFinishedCount() == tasks.size()) {
-          fireFinalCallback(s, null, results, f);
+          NeoUtils.fireFinalCallback(s, null, results, f);
           return;
         }
         
@@ -181,7 +181,7 @@ public class NeoWaterfall {
       t.run(taskRunner);
     } catch (Exception e) {
       s.setShortCircuited(true);
-      fireFinalCallback(s, e, results, f);
+      NeoUtils.fireFinalCallback(s, e, results, f);
       return;
     }
     

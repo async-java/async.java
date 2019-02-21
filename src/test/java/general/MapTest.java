@@ -88,4 +88,82 @@ public class MapTest {
   
   
   
+  @Test
+  public void testMap1(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.<Integer, Integer, Object>Map(
+      
+      asList(1, 2, 3),
+      
+      (v, cb) -> {
+        
+        cb.done(null, v + 2);
+//        cb.run("foo", kv.value + 2);
+      },
+      
+      (e, results) -> {
+        
+        System.out.println(results.toString());
+        
+        if (e != null) {
+          throw new Error(e.toString());
+        } else {
+          z.complete();
+        }
+        
+      });
+  }
+  
+  @Test
+  public void testMapSeries1(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.<Integer, Integer, Object>MapSeries(List.of(3, 4, 5),
+      
+      (item, v) -> {
+        v.done(null, 2 + item);
+      },
+      
+      
+      (e, results) -> {
+        
+        System.out.println(results.toString());
+        
+        if (e != null) {
+          z.complete();
+        } else {
+          z.complete();
+        }
+        
+      });
+  }
+  
+  @Test
+  public void testMapLimit1(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.<Integer, Integer, Object>MapLimit(3, List.of(3, 4, 5),
+      
+      (k, v) -> {
+        v.done(null, 2 + k);
+      },
+      
+      (e, results) -> {
+        
+        System.out.println(results.toString());
+        
+        if (e != null) {
+          z.complete();
+        } else {
+          z.complete();
+        }
+        
+      });
+  }
+  
+  
 }
