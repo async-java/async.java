@@ -29,6 +29,14 @@ public class ReduceTest {
   
   }
   
+  public <T> void run(T x){
+    
+    if(x instanceof HashMap){
+      ((HashMap)x).put("foo","bar");
+    }
+   
+  }
+  
   
   
   @Test

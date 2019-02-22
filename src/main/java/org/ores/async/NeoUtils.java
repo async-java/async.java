@@ -31,6 +31,8 @@ class NeoUtils {
   static <E> void fireFinalCallback(ShortCircuit s, Object e, Asyncc.IEachCallback<E> f) {
     
     var ok = false;
+  
+    s.setShortCircuited(true);
     
     synchronized (s) {
       if (!s.isFinalCallbackFired()) {
@@ -68,6 +70,8 @@ class NeoUtils {
   static <V, E> void fireFinalCallback(ShortCircuit s, Object e, Object results, Asyncc.IAsyncCallback<V, E> f) {
     
     var ok = false;
+    
+    s.setShortCircuited(true);
     
     synchronized (s) {
       if (!s.isFinalCallbackFired()) {

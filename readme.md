@@ -82,3 +82,7 @@ With Java:
 
 
 2. `async.waterfall` is considered harmful. We use a ma
+
+
+
+3. We have a shortCircuited boolean available to check if we can end early.

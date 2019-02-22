@@ -21,8 +21,8 @@ class NeoSeries {
     final ShortCircuit s = new ShortCircuit();
     final CounterLimit c = new CounterLimit(1);
     final Iterator<Map.Entry<Object, Asyncc.AsyncTask<T, E>>> entries = tasks.entrySet().iterator();
-    
-    RunMapLimit(entries, size, results, c, s, f);
+  
+    RunTaskMapSerially(entries, size, results, c, s, f);
     
   }
   
@@ -30,15 +30,14 @@ class NeoSeries {
     final List<Asyncc.AsyncTask<T, E>> tasks,
     final Asyncc.IAsyncCallback<List<T>, E> f) {
     
-
     final int size = tasks.size();
+    final List<T> results = new ArrayList<T>();
     
     if (size < 1) {
-      f.done(null, Collections.emptyList());
+      f.done(null, results);
       return;
     }
-  
-    final List<T> results = new ArrayList<T>();
+    
     final CounterLimit c = new CounterLimit(1);
     final ShortCircuit s = new ShortCircuit();
     final Iterator<Asyncc.AsyncTask<T, E>> iterator = tasks.iterator();
@@ -50,7 +49,7 @@ class NeoSeries {
   
   
   @SuppressWarnings("Duplicates")
-  static <T, E> void RunMapLimit(
+  static <T, E> void RunTaskMapSerially(
     final Iterator<Map.Entry<Object, Asyncc.AsyncTask<T, E>>> entries,
     final int size,
     final Map<Object, T> results,
@@ -73,16 +72,6 @@ class NeoSeries {
     c.incrementStarted();
     
     var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
-      
-      @Override
-      public void resolve(T v) {
-        this.done(null, v);
-      }
-      
-      @Override
-      public void reject(E e) {
-        this.done(e, null);
-      }
       
       @Override
       public void done(E e, T v) {
@@ -121,7 +110,7 @@ class NeoSeries {
         }
         
         if (c.isBelowCapacity()) {
-          RunMapLimit(entries, size, results, c, s, f);
+          RunTaskMapSerially(entries, size, results, c, s, f);
         }
         
       }
@@ -140,7 +129,7 @@ class NeoSeries {
     }
     
     if (c.isBelowCapacity()) {
-      RunMapLimit(entries, size, results, c, s, f);
+      RunTaskMapSerially(entries, size, results, c, s, f);
     }
     
   }
@@ -172,16 +161,6 @@ class NeoSeries {
     results.add(null);
     
     var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
-      
-      @Override
-      public void resolve(T v) {
-        this.done(null, v);
-      }
-      
-      @Override
-      public void reject(E e) {
-        this.done(e, null);
-      }
       
       @Override
       public void done(E e, T v) {

@@ -62,6 +62,38 @@ public class NeoWaterfall {
     public <V> void set(String s, V v) {
       this.map.put(s, v);
     }
+  
+    protected abstract void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m);
+    
+    @Override
+    public void done(E e, Map.Entry<String, T> m) {
+      this.doneInternal(Asyncc.Marker.DONE, e, m);
+    }
+  
+    @Override
+    public void done(E e, String k, T v) {
+      this.doneInternal(Asyncc.Marker.DONE, e, new AbstractMap.SimpleEntry(k, v));
+    }
+  
+    @Override
+    public void resolve(Map.Entry<String, T> m) {
+      this.doneInternal(Asyncc.Marker.DONE, null, m);
+    }
+  
+    @Override
+    public void resolve(String k, T v) {
+      this.doneInternal(Asyncc.Marker.DONE, null, new AbstractMap.SimpleEntry(k, v));
+    }
+  
+    @Override
+    public void reject(E e) {
+      this.doneInternal(Asyncc.Marker.DONE, e, null);
+    }
+  
+    @Override
+    public void done(E e) {
+      this.doneInternal(Asyncc.Marker.DONE, e, null);
+    }
     
   }
   
@@ -75,13 +107,14 @@ public class NeoWaterfall {
     final Asyncc.IAsyncCallback<HashMap<String, Object>, E> f) {
     
     final HashMap<String, Object> results = new HashMap<>();
-    final CounterLimit c = new CounterLimit(1);
-    final ShortCircuit s = new ShortCircuit();
     
     if (tasks.size() < 1) {
       f.done(null, results);
       return;
     }
+  
+    final CounterLimit c = new CounterLimit(1);
+    final ShortCircuit s = new ShortCircuit();
     
     WaterfallInternal(tasks, results, s, c, f);
     NeoUtils.handleSameTickCall(s);
@@ -106,12 +139,12 @@ public class NeoWaterfall {
     final AsyncTask<T, E> t = tasks.get(startedCount);
     final var taskRunner = new AsyncCallback<T, E>(s, results) {
       
-      private void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m) {
+      protected void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m) {
         
         synchronized (this.cbLock) {
           
           if (this.isFinished()) {
-            new Error("Warning: Callback fired more than once.").printStackTrace();
+            new Error("Warning: Callback fired more than once.").printStackTrace(System.err);
             return;
           }
           
@@ -143,36 +176,6 @@ public class NeoWaterfall {
         
       }
       
-      @Override
-      public void done(E e, Map.Entry<String, T> m) {
-        this.doneInternal(Asyncc.Marker.DONE, e, m);
-      }
-      
-      @Override
-      public void done(E e, String k, T v) {
-        this.doneInternal(Asyncc.Marker.DONE, e, new AbstractMap.SimpleEntry(k, v));
-      }
-      
-      @Override
-      public void resolve(Map.Entry<String, T> m) {
-        this.doneInternal(Asyncc.Marker.DONE, null, m);
-      }
-      
-      @Override
-      public void resolve(String k, T v) {
-        this.doneInternal(Asyncc.Marker.DONE, null, new AbstractMap.SimpleEntry(k, v));
-      }
-      
-      @Override
-      public void reject(E e) {
-        this.doneInternal(Asyncc.Marker.DONE, e, null);
-      }
-      
-      @Override
-      public void done(E e) {
-        this.doneInternal(Asyncc.Marker.DONE, e, null);
-      }
-      
     };
     
     c.incrementStarted();
@@ -182,7 +185,6 @@ public class NeoWaterfall {
     } catch (Exception e) {
       s.setShortCircuited(true);
       NeoUtils.fireFinalCallback(s, e, results, f);
-      return;
     }
     
   }

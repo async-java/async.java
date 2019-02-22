@@ -8,7 +8,7 @@ import java.util.*;
 class NeoMap {
   
   @SuppressWarnings("Duplicates")
-  static <V, T, E> void Map(int limit, Iterable<T> items, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  static <V, T, E> void Map(int limit, Iterable<T> items, Asyncc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     
     final List<V> results = new ArrayList<V>();
     final Iterator<T> iterator = items.iterator();
@@ -29,7 +29,7 @@ class NeoMap {
   }
   
   @SuppressWarnings("Duplicates")
-  static <V, T, E> void Map(int limit, Map<Object, T> map, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<Map<Object, V>, E> f) {
+  static <V, T, E> void Map(int limit, Map<Object, T> map, Asyncc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<Map<Object, V>, E> f) {
     
     final HashMap<Object, V> results = new HashMap<>();
     final Iterator<Map.Entry<Object, T>> iterator = map.entrySet().iterator();
@@ -52,7 +52,7 @@ class NeoMap {
   @SuppressWarnings("Duplicates")
   private static <T, V, E> void RunMapWithMap(
     final Iterator<Map.Entry<Object, T>> entries,
-    final Asyncc.Mapper<T, V, E> m,
+    final Asyncc.IMapper<T, V, E> m,
     final Map<Object, V> results,
     final CounterLimit c,
     final ShortCircuit s,
@@ -141,18 +141,23 @@ class NeoMap {
   
   @SuppressWarnings("Duplicates")
   private static <T, V, E> void RunMap(
-    final Iterator<T> items,
-    final Asyncc.Mapper<T, V, E> m,
+    final Iterator<T> iterator,
+    final Asyncc.IMapper<T, V, E> m,
     final List<V> results,
     final CounterLimit c,
     final ShortCircuit s,
     final Asyncc.IAsyncCallback<List<V>, E> f) {
     
-    if (!items.hasNext()) {
-      return;
+    final T item;
+    
+    synchronized (iterator) {
+      if (!iterator.hasNext()) {
+        return;
+      }
+      
+      item = (T) iterator.next();
     }
     
-    final T item = (T) items.next();
     final int val = c.getStartedCount();
     final var taskRunner = new Asyncc.AsyncCallback<V, E>(s) {
       
@@ -185,7 +190,7 @@ class NeoMap {
         final boolean isDone, isBelowCapacity;
         
         synchronized (c) {
-          isDone = !items.hasNext() && (c.getFinishedCount() == c.getStartedCount());
+          isDone = !iterator.hasNext() && (c.getFinishedCount() == c.getStartedCount());
           isBelowCapacity = c.isBelowCapacity();
         }
         
@@ -195,7 +200,7 @@ class NeoMap {
         }
         
         if (isBelowCapacity) {
-          RunMap(items, m, results, c, s, f);
+          RunMap(iterator, m, results, c, s, f);
         }
       }
       
@@ -219,7 +224,7 @@ class NeoMap {
     }
     
     if (isBelowCapacity) {
-      RunMap(items, m, results, c, s, f);
+      RunMap(iterator, m, results, c, s, f);
     }
     
   }

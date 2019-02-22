@@ -3,8 +3,8 @@ package org.ores.async;
 import java.util.*;
 
 /**
-* <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
-*/
+ * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+ */
 public class Asyncc {
   
   public final static Object sync = new Object();
@@ -36,7 +36,7 @@ public class Asyncc {
     NeoInject.Inject(tasks, f);
   }
   
-  public static class KeyValue<K,V> {
+  public static class KeyValue<K, V> {
     
     public K key;
     public V value;
@@ -45,15 +45,15 @@ public class Asyncc {
       this.key = key;
       this.value = value;
     }
-  
-    public KeyValue(Map.Entry<K,V> m) {
+    
+    public KeyValue(Map.Entry<K, V> m) {
       this.key = m.getKey();
       this.value = m.getValue();
     }
   }
   
-  public interface Mapper<T, V, E> {
-     void map(T v, AsyncCallback<V, E> cb);
+  public interface IMapper<T, V, E> {
+    void map(T v, AsyncCallback<V, E> cb);
   }
   
   public static class ReduceArg<T, V> {
@@ -71,23 +71,24 @@ public class Asyncc {
     void reduce(ReduceArg v, AsyncCallback<V, E> cb);
   }
   
-  public interface IEacher<T,E> {
+  public interface IEacher<T, E> {
     void each(T v, IEachCallback<E> cb);
   }
   
-  
-  interface IErrorOnlyDoneable<T,E> {
+  interface IErrorOnlyDoneable<T, E> {
     void done(E e, T v);
   }
   
-  interface IErrorValueDoneable<T,E> {
+  interface IErrorValueDoneable<T, E> {
     void done(E e, T v);
   }
   
   public interface IAsyncCallback<T, E> {
     boolean isDone = false;
+    
     void done(E e, T v);
-    default void setDone(){
+    
+    default void setDone() {
     
     }
   }
@@ -98,6 +99,7 @@ public class Asyncc {
   
   public static interface IEachCallbacks<E> {
     void resolve();
+    
     void reject(E e);
   }
   
@@ -106,7 +108,6 @@ public class Asyncc {
     
     void reject(E e);
   }
-  
   
   public static abstract class EachCallback<E> implements IEachCallback<E>, IEachCallbacks<E> {
     
@@ -130,6 +131,16 @@ public class Asyncc {
       return this.isFinished = b;
     }
     
+    @Override
+    public void resolve() {
+      this.done(null);
+    }
+    
+    @Override
+    public void reject(E e) {
+      this.done(e);
+    }
+    
   }
   
   public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T, E> {
@@ -138,16 +149,15 @@ public class Asyncc {
     protected boolean isFinished = false;
     protected final Object cbLock = new Object();
     
-    
     public AsyncCallback(ShortCircuit s) {
       this.s = s;
     }
-  
+    
     @Override
     public void resolve(T v) {
       this.done(null, v);
     }
-  
+    
     @Override
     public void reject(E e) {
       this.done(e, null);
@@ -187,7 +197,7 @@ public class Asyncc {
     return cb -> NeoSeries.Series(tasks, cb);
   }
   
-  public static <T, E> AsyncTask<Map<String, T>, E> Parallel(Map<String, AsyncTask<T, E>> tasks) {
+  public static <T, E> AsyncTask<Map<Object, T>, E> Parallel(Map<Object, AsyncTask<T, E>> tasks) {
     return cb -> NeoParallel.Parallel(tasks, cb);
   }
   
@@ -195,35 +205,86 @@ public class Asyncc {
     return cb -> NeoSeries.Series(tasks, cb);
   }
   
+  // being race
+  
+  public static <T, V, E> void Race(Iterable<NeoRaceIfc.AsyncTask<T, E>> i, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(Integer.MAX_VALUE, i, f);
+  }
+  
+  public static <T, V, E> void Race(Iterable<T> i, NeoRaceIfc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(Integer.MAX_VALUE, i, m, f);
+  }
+  
+  public static <T, V, E> void Race(Map<Object, NeoRaceIfc.AsyncTask<T, E>> i, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(Integer.MAX_VALUE, i.values(), f);
+  }
+  
+  public static <T, V, E> void Race(Map<Object, T> i, NeoRaceIfc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(Integer.MAX_VALUE, i.values(), m, f);
+  }
+  
+  public static <T, V, E> void RaceLimit(Integer lim, Iterable<NeoRaceIfc.AsyncTask<T, E>> i, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(lim, i, f);
+  }
+  
+  public static <T, V, E> void RaceLimit(Integer lim, Iterable<T> i, NeoRaceIfc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(lim, i, m, f);
+  }
+  
+  public static <T, V, E> void RaceLimit(Integer lim, Map<Object, NeoRaceIfc.AsyncTask<T, E>> i, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(lim, i.values(), f);
+  }
+  
+  public static <T, V, E> void RaceLimit(Integer lim, Map<Object, T> i, NeoRaceIfc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+    NeoRace.Race(lim, i.values(), m, f);
+  }
+  
+  // end race
+  
   // begin map
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> AsyncTask<List<V>, E> Map(List<T> items, Mapper<T,V, E> m) {
+  public static <V, T, E> AsyncTask<List<V>, E> Map(List<T> items, IMapper<T, V, E> m) {
     return cb -> NeoMap.<V, T, E>Map(Integer.MAX_VALUE, items, m, (IAsyncCallback<List<V>, E>) cb);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> AsyncTask<List<V>, E> MapSeries(List<T> items, Mapper<T, V, E> m) {
+  public static <V, T, E> AsyncTask<List<V>, E> MapSeries(List<T> items, IMapper<T, V, E> m) {
     return cb -> NeoMap.<V, T, E>Map(1, items, m, (IAsyncCallback<List<V>, E>) cb);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> AsyncTask<List<V>, E> Map(Integer lim, List<T> items, Mapper<T, V, E> m) {
+  public static <V, T, E> AsyncTask<List<V>, E> Map(Integer lim, List<T> items, IMapper<T, V, E> m) {
     return cb -> NeoMap.<V, T, E>Map(lim, items, m, (IAsyncCallback<List<V>, E>) cb);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> void Map(Iterable<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+  public static <V, T, E> void Map(Iterable<T> items, IMapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(Integer.MAX_VALUE, items, m, f);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> void MapSeries(Iterable<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+  public static <V, T, E> void MapSeries(Iterable<T> items, IMapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(1, items, m, f);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <V, T, E> void MapLimit(Integer limit, Iterable<T> items, Mapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+  public static <V, T, E> void MapLimit(Integer limit, Iterable<T> items, IMapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+    NeoMap.Map(limit, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void Map(Map<Object, T> items, IMapper<T, V, E> m, IAsyncCallback<Map<Object, V>, E> f) {
+    NeoMap.Map(Integer.MAX_VALUE, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void MapSeries(Map<Object, T> items, IMapper<T, V, E> m, IAsyncCallback<Map<Object, V>, E> f) {
+    NeoMap.Map(1, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void MapLimit(Integer limit, Map<Object, T> items, IMapper<T, V, E> m, IAsyncCallback<Map<Object, V>, E> f) {
     NeoMap.Map(limit, items, m, f);
   }
   
@@ -231,15 +292,15 @@ public class Asyncc {
   
   // start each
   
-  public static <T, V, E> void Each(Iterable<T> i, IEacher<T,E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, V, E> void Each(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(Integer.MAX_VALUE, i, m, f);
   }
   
-  public static <T, V, E> void EachLimit(int limit, Iterable<T> i, IEacher<T,E> m, Asyncc.IEachCallback< E> f) {
+  public static <T, V, E> void EachLimit(int limit, Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(limit, i, m, f);
   }
   
-  public static <T, V, E> void EachSeries(Iterable<T> i, IEacher<T,E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, V, E> void EachSeries(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(1, i, m, f);
   }
   
@@ -335,23 +396,23 @@ public class Asyncc {
   }
   
   public static <T, E> void Parallel(
-    Map.Entry<String, AsyncTask<T, E>> a,
-    IAsyncCallback<Map<String, T>, E> f) {
+    Map.Entry<Object, AsyncTask<T, E>> a,
+    IAsyncCallback<Map<Object, T>, E> f) {
     NeoParallel.Parallel(Map.ofEntries(a), f);
   }
   
   public static <T, E> void Parallel(
-    Map.Entry<String, AsyncTask<T, E>> a,
-    Map.Entry<String, AsyncTask<T, E>> b,
-    IAsyncCallback<Map<String, T>, E> f) {
+    Map.Entry<Object, AsyncTask<T, E>> a,
+    Map.Entry<Object, AsyncTask<T, E>> b,
+    IAsyncCallback<Map<Object, T>, E> f) {
     NeoParallel.Parallel(Map.ofEntries(a, b), f);
   }
   
   public static <T, E> void Parallel(
-    Map.Entry<String, AsyncTask<T, E>> a,
-    Map.Entry<String, AsyncTask<T, E>> b,
-    Map.Entry<String, AsyncTask<T, E>> c,
-    IAsyncCallback<Map<String, T>, E> f) {
+    Map.Entry<Object, AsyncTask<T, E>> a,
+    Map.Entry<Object, AsyncTask<T, E>> b,
+    Map.Entry<Object, AsyncTask<T, E>> c,
+    IAsyncCallback<Map<Object, T>, E> f) {
     NeoParallel.Parallel(Map.ofEntries(a, b, c), f);
   }
   
@@ -359,11 +420,11 @@ public class Asyncc {
    * @exclude
    */
   public static <T, E> void Parallel(
-    Map.Entry<String, AsyncTask<T, E>> a,
-    Map.Entry<String, AsyncTask<T, E>> b,
-    Map.Entry<String, AsyncTask<T, E>> c,
-    Map.Entry<String, AsyncTask<T, E>> d,
-    IAsyncCallback<Map<String, T>, E> f) {
+    Map.Entry<Object, AsyncTask<T, E>> a,
+    Map.Entry<Object, AsyncTask<T, E>> b,
+    Map.Entry<Object, AsyncTask<T, E>> c,
+    Map.Entry<Object, AsyncTask<T, E>> d,
+    IAsyncCallback<Map<Object, T>, E> f) {
     NeoParallel.Parallel(Map.ofEntries(a, b, c, d), f);
   }
   
@@ -371,43 +432,42 @@ public class Asyncc {
    * @exclude
    */
   public static <T, E> void Parallel(
-    Map.Entry<String, AsyncTask<T, E>> a,
-    Map.Entry<String, AsyncTask<T, E>> b,
-    Map.Entry<String, AsyncTask<T, E>> c,
-    Map.Entry<String, AsyncTask<T, E>> d,
-    Map.Entry<String, AsyncTask<T, E>> e,
-    IAsyncCallback<Map<String, T>, E> f) {
-    NeoParallel.Parallel(Map.ofEntries(a, b, c, d,e), f);
+    Map.Entry<Object, AsyncTask<T, E>> a,
+    Map.Entry<Object, AsyncTask<T, E>> b,
+    Map.Entry<Object, AsyncTask<T, E>> c,
+    Map.Entry<Object, AsyncTask<T, E>> d,
+    Map.Entry<Object, AsyncTask<T, E>> e,
+    IAsyncCallback<Map<Object, T>, E> f) {
+    NeoParallel.Parallel(Map.ofEntries(a, b, c, d, e), f);
   }
   
   /**
    * @exclude
    */
   public static <T, E> void Parallel(
-    Map.Entry<String, AsyncTask<T, E>> a,
-    Map.Entry<String, AsyncTask<T, E>> b,
-    Map.Entry<String, AsyncTask<T, E>> c,
-    Map.Entry<String, AsyncTask<T, E>> d,
-    Map.Entry<String, AsyncTask<T, E>> e,
-    Map.Entry<String, AsyncTask<T, E>> f,
-    IAsyncCallback<Map<String, T>, E> cb) {
-    NeoParallel.Parallel(Map.ofEntries(a, b, c, d,e,f), cb);
+    Map.Entry<Object, AsyncTask<T, E>> a,
+    Map.Entry<Object, AsyncTask<T, E>> b,
+    Map.Entry<Object, AsyncTask<T, E>> c,
+    Map.Entry<Object, AsyncTask<T, E>> d,
+    Map.Entry<Object, AsyncTask<T, E>> e,
+    Map.Entry<Object, AsyncTask<T, E>> f,
+    IAsyncCallback<Map<Object, T>, E> cb) {
+    NeoParallel.Parallel(Map.ofEntries(a, b, c, d, e, f), cb);
   }
-  
   
   public static <T, E> void Parallel(
-    Map.Entry<String, AsyncTask<T, E>> a,
-    Map.Entry<String, AsyncTask<T, E>> b,
-    Map.Entry<String, AsyncTask<T, E>> c,
-    Map.Entry<String, AsyncTask<T, E>> d,
-    Map.Entry<String, AsyncTask<T, E>> e,
-    Map.Entry<String, AsyncTask<T, E>> f,
-    Map.Entry<String, AsyncTask<T, E>> g,
-    IAsyncCallback<Map<String, T>, E> cb) {
-    NeoParallel.Parallel(Map.ofEntries(a, b, c, d,e,f,g), cb);
+    Map.Entry<Object, AsyncTask<T, E>> a,
+    Map.Entry<Object, AsyncTask<T, E>> b,
+    Map.Entry<Object, AsyncTask<T, E>> c,
+    Map.Entry<Object, AsyncTask<T, E>> d,
+    Map.Entry<Object, AsyncTask<T, E>> e,
+    Map.Entry<Object, AsyncTask<T, E>> f,
+    Map.Entry<Object, AsyncTask<T, E>> g,
+    IAsyncCallback<Map<Object, T>, E> cb) {
+    NeoParallel.Parallel(Map.ofEntries(a, b, c, d, e, f, g), cb);
   }
   
-  public static <T, E> void Parallel(Map<String, AsyncTask<T, E>> tasks, IAsyncCallback<Map<String, T>, E> f) {
+  public static <T, E> void Parallel(Map<Object, AsyncTask<T, E>> tasks, IAsyncCallback<Map<Object, T>, E> f) {
     NeoParallel.Parallel(tasks, f);
   }
   
@@ -544,8 +604,8 @@ public class Asyncc {
   }
   
   /**
-  * @exclude
-  */
+   * @exclude
+   */
   public static <T, E> void Waterfall(
     NeoWaterfall.AsyncTask<T, E> a,
     NeoWaterfall.AsyncTask<T, E> b,
@@ -570,7 +630,6 @@ public class Asyncc {
   public static <T, E> void Parallel(List<AsyncTask<T, E>> tasks, IAsyncCallback<List<T>, E> cb) {
     NeoParallel.Parallel(tasks, cb);
   }
-  
   
   /**
    * <pre class="prettyprint">
@@ -597,12 +656,10 @@ public class Asyncc {
     NeoReduce.ReduceRight(initialVal, tasks, m, f);
   }
   
-  
   /**
    * @Version 1.2.3
    * @Since 1.2.0
    * Returns an Image object that can then be painted on the screen.
-   *
    */
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ReduceRight(List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
@@ -634,63 +691,63 @@ public class Asyncc {
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void Concat(List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void Concat(List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(Integer.MAX_VALUE, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ConcatSeries(List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void ConcatSeries(List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(1, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ConcatLimit(int lim, List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void ConcatLimit(int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void Concat(int depth, List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void Concat(int depth, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(Integer.MAX_VALUE, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ConcatSeries(int depth, List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void ConcatSeries(int depth, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(1, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ConcatLimit(int depth, int lim, List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void ConcatLimit(int depth, int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ConcatDeep(List<T> tasks, Asyncc.Mapper<T,V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void ConcatDeep(List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(Integer.MAX_VALUE, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(Integer.MAX_VALUE, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ConcatDeepSeries(List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void ConcatDeepSeries(List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(1, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(Integer.MAX_VALUE, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ConcatDeepLimit(int lim, List<T> tasks, Asyncc.Mapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  public static <T, V, E> void ConcatDeepLimit(int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(Integer.MAX_VALUE, 0, results));
     });
