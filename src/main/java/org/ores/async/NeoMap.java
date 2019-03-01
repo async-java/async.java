@@ -7,6 +7,14 @@ import java.util.*;
  **/
 class NeoMap {
   
+  public static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T, E> {
+    
+    public AsyncCallback(ShortCircuit s) {
+      super(s);
+    }
+    
+  }
+  
   @SuppressWarnings("Duplicates")
   static <V, T, E> void Map(int limit, Iterable<T> items, Asyncc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
     
@@ -72,7 +80,12 @@ class NeoMap {
     final Object key = entry.getKey();
     final T value = entry.getValue();
     
-    final var taskRunner = new Asyncc.AsyncCallback<V, E>(s) {
+    final var taskRunner = new AsyncCallback<V, E>(s) {
+      
+      @Override
+      public void done(E e) {
+        this.done(e, null);
+      }
       
       @Override
       public void done(E e, V v) {
@@ -162,7 +175,12 @@ class NeoMap {
     results.add(null);
     c.incrementStarted();
     
-    final var taskRunner = new Asyncc.AsyncCallback<V, E>(s) {
+    final var taskRunner = new AsyncCallback<V, E>(s) {
+      
+      @Override
+      public void done(E e) {
+        this.done(e, null);
+      }
       
       @Override
       public void done(E e, V v) {
@@ -208,8 +226,6 @@ class NeoMap {
       }
       
     };
-    
-  
     
     try {
       m.map(item, taskRunner);

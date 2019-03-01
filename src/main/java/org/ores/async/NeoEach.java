@@ -21,8 +21,45 @@ import static org.ores.async.NeoUtils.handleSameTickCall;
  */
 class NeoEach {
   
+  public static abstract class EachCallback<E> extends Asyncc.AsyncCallback<Object,E> implements Asyncc.IEachCallback<E>, Asyncc.IEachCallbacks<E> {
+    
+    private ShortCircuit s;
+    private boolean isFinished = false;
+    final Object cbLock = new Object();
+    
+    public EachCallback(ShortCircuit s) {
+      super(s);
+      this.s = s;
+    }
+    
+    public boolean isShortCircuited() {
+      return this.s.isShortCircuited();
+    }
+    
+    boolean isFinished() {
+      return this.isFinished;
+    }
+    
+    boolean setFinished(boolean b) {
+      return this.isFinished = b;
+    }
+    
+    @Override
+    public void resolve() {
+      this.done(null);
+    }
+    
   
-  static <T, V, E> void Each(int limit, Iterable<T> i, Asyncc.IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+    
+//    @Override
+//    public void reject(E e) {
+//      this.done(e);
+//    }
+    
+  }
+  
+  
+  static <T, E> void Each(int limit, Iterable<T> i, Asyncc.IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
@@ -33,7 +70,7 @@ class NeoEach {
   
 
   @SuppressWarnings("Duplicates")
-  private static <T, V, E> void RunEach(
+  private static <T, E> void RunEach(
     final Iterator<T> iterator,
     final CounterLimit c,
     final ShortCircuit s,
@@ -50,8 +87,14 @@ class NeoEach {
       v = iterator.next();
     }
     
-    final var taskRunner = new Asyncc.EachCallback<E>(s) {
-      
+    final var taskRunner = new EachCallback<E>(s) {
+  
+      @Override
+      public void done(E e, Object v) {
+        new RuntimeException("Warning: async.each does not accept an mapped argument.").printStackTrace(System.err);
+        this.done(e);
+      }
+  
       @Override
       public void done(E e) {
         

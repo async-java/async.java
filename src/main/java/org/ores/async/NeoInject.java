@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-
 /**
  * @see <a href="http://google.com">http://google.com</a>
  * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
@@ -132,40 +131,19 @@ public class NeoInject {
     RunInject(started, completed, tasks, results, s, f);
   }
   
-  public static abstract class AsyncCallbackSet<T, E> implements Asyncc.IAsyncCallback<T, E>, Asyncc.ICallbacks<T, E> {
-    private ShortCircuit s;
+  public static abstract class AsyncCallbackSet<T, E> extends Asyncc.AsyncCallback<T, E> {
+    
     private Map<String, Object> values;
-    private boolean isFinished = false;
-    final Object cbLock = new Object();
     
     public AsyncCallbackSet(ShortCircuit s, Map<String, Object> vals) {
-      this.s = s;
+      super(s);
       this.values = vals;
-    }
-    
-    public boolean isShortCircuited() {
-      return this.s.isShortCircuited();
     }
     
     public <V> V get(String s) {
       return (V) this.values.get(s);
     }
     
-    boolean isFinished() {
-      return this.isFinished;
-    }
-    
-    boolean setFinished(boolean b) {
-      return this.isFinished = b;
-    }
-    
-    public void resolve(T v) {
-      this.done(null, v);
-    }
-    
-    public void reject(E e) {
-      this.done(e, null);
-    }
   }
   
   @SuppressWarnings("Duplicates")
@@ -193,6 +171,11 @@ public class NeoInject {
       
       final IInjectable<T, E> v = entry.getValue().getInjectable();
       final var taskRunner = new AsyncCallbackSet<T, E>(s, results) {
+        
+        @Override
+        public void done(E e) {
+          this.done(e, null);
+        }
         
         @Override
         public void done(E err, T v) {

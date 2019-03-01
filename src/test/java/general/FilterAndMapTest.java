@@ -59,7 +59,7 @@ public class FilterAndMapTest {
           z -> {
             z.done(null, 5);
           },
-          (Asyncc.AsyncCallback) cb);
+          (Asyncc.IAsyncCallback) cb);
         
       }),
       

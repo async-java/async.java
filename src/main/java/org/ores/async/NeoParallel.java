@@ -7,7 +7,14 @@ import static org.ores.async.NeoUtils.fireFinalCallback;
 
 class NeoParallel {
   
-  private static class ParallelRunner<T, E> extends Asyncc.AsyncCallback<T, E> {
+  public static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T, E> {
+    public AsyncCallback(ShortCircuit s) {
+      super(s);
+    }
+  }
+  
+  
+  private static class ParallelRunner<T, E> extends AsyncCallback<T, E> {
     
     private final Iterator<Asyncc.AsyncTask<T, E>> iterator;
     private final CounterLimit c;
@@ -36,7 +43,12 @@ class NeoParallel {
       this.results = results;
       this.r = r;
     }
-    
+  
+    @Override
+    public void done(E e) {
+       this.done(e,null);
+    }
+  
     @Override
     public void done(E e, T v) {
       
@@ -112,6 +124,11 @@ class NeoParallel {
     c.incrementStarted();
     
     var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
+  
+      @Override
+      public void done(E e) {
+        this.done(e,null);
+      }
       
       @Override
       public void done(E e, T v) {
@@ -267,7 +284,12 @@ class NeoParallel {
     for (Map.Entry<Object, Asyncc.AsyncTask<T, E>> entry : entrySet) {
       
       final Object key = entry.getKey();
-      final var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
+      final var taskRunner = new AsyncCallback<T, E>(s) {
+  
+        @Override
+        public void done(E e) {
+          this.done(e,null);
+        }
         
         @Override
         public void done(E e, T v) {
@@ -339,7 +361,12 @@ class NeoParallel {
       c.incrementStarted();
       
       final int index = i;
-      final var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
+      final var taskRunner = new AsyncCallback<T, E>(s) {
+  
+        @Override
+        public void done(E e) {
+          this.done(e,null);
+        }
         
         @Override
         public void done(E e, T v) {

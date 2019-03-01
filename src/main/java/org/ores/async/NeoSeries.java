@@ -6,6 +6,14 @@ import static org.ores.async.NeoUtils.fireFinalCallback;
 
 class NeoSeries {
   
+  public static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T, E> {
+    
+    public AsyncCallback(ShortCircuit s) {
+      super(s);
+    }
+
+  }
+  
   static <T, E> void Series(
     final Map<Object, Asyncc.AsyncTask<T, E>> tasks,
     final Asyncc.IAsyncCallback<Map<Object, T>, E> f) {
@@ -71,8 +79,13 @@ class NeoSeries {
     
     c.incrementStarted();
     
-    var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
-      
+    var taskRunner = new AsyncCallback<T, E>(s) {
+  
+      @Override
+      public void done(E e) {
+         this.done(e,null);
+      }
+  
       @Override
       public void done(E e, T v) {
         
@@ -160,7 +173,12 @@ class NeoSeries {
     
     results.add(null);
     
-    var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
+    var taskRunner = new AsyncCallback<T, E>(s) {
+  
+      @Override
+      public void done(E e) {
+        this.done(e,null);
+      }
       
       @Override
       public void done(E e, T v) {

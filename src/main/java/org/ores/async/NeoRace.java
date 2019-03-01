@@ -25,9 +25,7 @@ import static org.ores.async.NeoRaceIfc.AsyncTask;
  */
 class NeoRace {
   
-
-  
-  static <T, V, E> void Race(int limit, Iterable<AsyncTask<T,E>> i, Asyncc.IAsyncCallback<V,E> f) {
+  static <T, V, E> void Race(int limit, Iterable<AsyncTask<T, E>> i, Asyncc.IAsyncCallback<V, E> f) {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
@@ -36,7 +34,7 @@ class NeoRace {
     handleSameTickCall(s);
   }
   
-  static <T, V, E> void Race(int limit, Iterable<T> i, IMapper<T,V, E> m, Asyncc.IAsyncCallback<V,E> f) {
+  static <T, V, E> void Race(int limit, Iterable<T> i, IMapper<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
@@ -45,23 +43,22 @@ class NeoRace {
     handleSameTickCall(s);
   }
   
-  
   @SuppressWarnings("Duplicates")
   static <T, V, E> void RunRace(
     final Iterator<T> iterator,
     final CounterLimit c,
     final ShortCircuit s,
     final IMapper<T, V, E> m,
-    final Asyncc.IAsyncCallback<V,E> f) {
+    final Asyncc.IAsyncCallback<V, E> f) {
     
     final T v;
     
-    synchronized (iterator){
+    synchronized (iterator) {
       if (!iterator.hasNext()) {
         return;
       }
       
-      if(s.isShortCircuited()){
+      if (s.isShortCircuited()) {
         // an error occurred or first one back (race) occurred
         return;
       }
@@ -69,7 +66,12 @@ class NeoRace {
       v = iterator.next();
     }
     
-    final var taskRunner = new RaceCallback<V,E>(s) {
+    final var taskRunner = new RaceCallback<V, E>(s) {
+      
+      @Override
+      public void done(final E e) {
+        this.done(e, null);
+      }
       
       @Override
       public void done(final E e, final V v) {
@@ -93,19 +95,19 @@ class NeoRace {
         
         if (e != null) {
           s.setShortCircuited(true);
-          NeoUtils.fireFinalCallback(s, e, null,f);
+          NeoUtils.fireFinalCallback(s, e, null, f);
           return;
         }
         
         boolean isHaveAWinner = true;
         V value = v;
         
-        if(v instanceof RaceParam){
+        if (v instanceof RaceParam) {
           isHaveAWinner = ((RaceParam) v).keep;
           value = ((RaceParam<V>) v).value;
         }
         
-        if(isHaveAWinner){
+        if (isHaveAWinner) {
           s.setShortCircuited(true);
           NeoUtils.fireFinalCallback(s, null, value, f);
           return;
@@ -133,17 +135,16 @@ class NeoRace {
     
     c.incrementStarted();
     
-    if(m == null){
+    if (m == null) {
       
       try {
-        ((AsyncTask<V,E>)v).run(taskRunner);
+        ((AsyncTask<V, E>) v).run(taskRunner);
       } catch (Exception err) {
         s.setShortCircuited(true);
         NeoUtils.fireFinalCallback(s, err, null, f);
         return;
       }
-    }
-    else{
+    } else {
       
       try {
         m.map(v, taskRunner);
@@ -154,7 +155,6 @@ class NeoRace {
       }
       
     }
-    
     
     final boolean isBelowCapacity;
     
