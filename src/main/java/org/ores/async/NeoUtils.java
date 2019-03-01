@@ -6,8 +6,6 @@ import java.util.concurrent.TimeUnit;
 
 class NeoUtils {
   
-
-  
   static void handleSameTickCall(ShortCircuit s) {
     synchronized (s) {
       if (!s.isFinalCallbackFired()) {
@@ -40,7 +38,7 @@ class NeoUtils {
     if (!ok) {
       if (e instanceof Exception) {
         ((Exception) e).printStackTrace(System.err);
-      } else if(e != null){
+      } else if (e != null) {
         System.err.println(e.toString());
       }
       return;
@@ -56,12 +54,45 @@ class NeoUtils {
       return;
     }
     
-    
-    f.done((E)e);
+    f.done((E) e);
 //    CompletableFuture
 //      .delayedExecutor(3, TimeUnit.MILLISECONDS)
 //      .execute(() -> f.done((E) e));
     
+  }
+
+//  static <E> boolean validateLimit(Integer limit, Asyncc.IEachCallback f){
+//    if (limit < 1) {
+//      if(f == null){
+//        throw new RuntimeException("No callback passed, limit argument needs to be a *positive* integer.");
+//      }
+//      f.done((E) new RuntimeException("Limit value must be a positive integer."));
+//      return true;
+//    }
+//    return false;
+//  }
+  
+  static <E> void validateLimit(Integer limit) {
+    if (limit < 1) {
+      throw new RuntimeException("No callback passed, limit argument must be a *positive* integer.");
+    }
+  }
+  
+  static <E> boolean validateLimit(Integer limit, Asyncc.IAsyncCallback f) {
+    if (limit < 1) {
+      if (f == null) {
+        throw new RuntimeException("No callback passed, limit argument needs to be a *positive* integer.");
+      }
+      
+      if (f instanceof Asyncc.IEachCallback) {
+        ((Asyncc.IEachCallback) f).done((E) new RuntimeException("Limit value must be a positive integer."));
+      } else {
+        f.done((E) new RuntimeException("Limit value must be a *positive* integer."), null);
+      }
+      
+      return true;
+    }
+    return false;
   }
   
   @SuppressWarnings("Duplicates")
@@ -81,7 +112,7 @@ class NeoUtils {
     if (!ok) {
       if (e instanceof Exception) {
         ((Exception) e).printStackTrace(System.err);
-      } else if(e != null){
+      } else if (e != null) {
         System.err.println(e.toString());
       }
       return;
@@ -107,7 +138,7 @@ class NeoUtils {
     Map<Object, V> ret = new HashMap<>();
     for (Map.Entry entry : m.entrySet()) {
       if (entry.getValue() != uniqueValue) {
-        ret.put(entry.getKey(), (V)entry.getValue());
+        ret.put(entry.getKey(), (V) entry.getValue());
       }
     }
     return ret;

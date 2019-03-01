@@ -30,6 +30,32 @@ public class WaterfallTest {
   }
   
   @Test
+  public void testWaterfallCompose(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var t =  (Asyncc.IMapper)Asyncc.Waterfall(
+      
+      (x, v) -> {
+        v.set("begin",x);
+        v.done(null);
+      },
+      
+      v -> {
+        v.set("stank", "kovich");
+        v.map.put("foo", "bar");
+        v.done(null);
+      });
+    
+    Asyncc.Map(List.of(1,2,3), t, (err, results) -> {
+      assert err == null : "Err should be null";
+      System.out.println("Results: " + results);
+      z.complete();
+    });
+    
+  }
+  
+  @Test
   public void testWaterfall(TestContext tc) {
     
     Async z = tc.async();

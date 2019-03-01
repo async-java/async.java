@@ -32,6 +32,59 @@ public class FilterAndMapTest {
   }
   
   @Test
+  public void runComposeWithMap(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    var x = Asyncc.Map(List.of(1, 2, 3), (val, cb) -> {
+      cb.done(null,val);
+    });
+    
+    Asyncc.Parallel(
+      z -> {
+        x.run(z::done);
+      },
+      z -> {
+        x.run(z::done);
+      },
+      (err, results) -> {
+        System.out.println(results.toString());
+        assert err == null : err.toString();
+        v.complete();
+      });
+    
+  }
+  
+  @Test
+  public void runComposeWithParallel(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    var x = Asyncc.Each(List.of(1, 2, 3), (val, cb) -> {
+      cb.done(null);
+    });
+    
+    Asyncc.Parallel(
+      z -> {
+//        x.run((Asyncc.IEachCallback)z);
+        x.run((err) -> {
+          z.done(err,3);
+        });
+      },
+      z -> {
+        x.run((err) -> {
+          z.done(err,4);
+        });
+      },
+      (err, results) -> {
+        System.out.println(results.toString());
+        assert err == null : err.toString();
+        v.complete();
+      });
+    
+  }
+  
+  @Test
   public void runCompose0(TestContext tc) {
     
     Async v = tc.async();
@@ -52,7 +105,7 @@ public class FilterAndMapTest {
     
     Async v = tc.async();
     
-    var eacher =  Asyncc.Each(GENERIC, List.of(3, 4, 5), (val, cb) -> {
+    var eacher = Asyncc.Each(GENERIC, List.of(3, 4, 5), (val, cb) -> {
       cb.done(null);
     });
     
@@ -87,16 +140,19 @@ public class FilterAndMapTest {
         
       }),
       
-      Asyncc.<Integer, Integer, Object>FilterMap(List.of(1, 2, 3), (x, cb) -> {
+      Asyncc.FilterMap(List.of(1, 2, 3), (x, cb) -> {
         
-        Asyncc.<Integer, Object>Parallel(
+        Asyncc.Parallel(
           z -> {
             z.done(null, 4);
           },
           z -> {
+            
             z.done(null, 5);
           },
-          (Asyncc.IAsyncCallback) cb);
+          
+          cb::done
+        );
         
       }),
       
