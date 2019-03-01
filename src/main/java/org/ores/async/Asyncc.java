@@ -290,6 +290,70 @@ public class Asyncc {
   
   // end map
   
+  //start filter + map
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> AsyncTask<List<V>, E>  FilterMap(Iterable<T> items, NeoFilterMap.IMapper<T, V, E> m) {
+    return cb -> NeoFilterMap.Map(Integer.MAX_VALUE, items, m, cb);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> AsyncTask<List<V>, E> FilterMapSeries(Iterable<T> items, NeoFilterMap.IMapper<T, V, E> m) {
+    return cb -> NeoFilterMap.Map(1, items, m, cb);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> AsyncTask<List<V>, E> FilterMapLimit(Integer limit, Iterable<T> items, NeoFilterMap.IMapper<T, V, E> m) {
+    return cb -> NeoFilterMap.Map(limit, items, m, cb);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> AsyncTask<Map<Object,V>, E>  FilterMap(Map<Object, T> items, NeoFilterMap.IMapper<T, V, E> m) {
+    return cb -> NeoFilterMap.Map(Integer.MAX_VALUE, items, m, cb);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> AsyncTask<Map<Object,V>, E> FilterMapSeries(Map<Object, T> items, NeoFilterMap.IMapper<T, V, E> m) {
+    return cb -> NeoFilterMap.Map(1, items, m, cb);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> AsyncTask<Map<Object,V>, E> FilterMapLimit(Integer limit, Map<Object, T> items, NeoFilterMap.IMapper<T, V, E> m) {
+    return cb -> NeoFilterMap.Map(limit, items, m, cb);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void FilterMap(Iterable<T> items, NeoFilterMap.IMapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+    NeoFilterMap.Map(Integer.MAX_VALUE, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void FilterMapSeries(Iterable<T> items, NeoFilterMap.IMapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+    NeoFilterMap.Map(1, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void FilterMapLimit(Integer limit, Iterable<T> items, NeoFilterMap.IMapper<T, V, E> m, IAsyncCallback<List<V>, E> f) {
+    NeoFilterMap.Map(limit, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void FilterMap(Map<Object, T> items, NeoFilterMap.IMapper<T, V, E> m, IAsyncCallback<Map<Object, V>, E> f) {
+    NeoFilterMap.Map(Integer.MAX_VALUE, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void FilterMapSeries(Map<Object, T> items, NeoFilterMap.IMapper<T, V, E> m, IAsyncCallback<Map<Object, V>, E> f) {
+    NeoFilterMap.Map(1, items, m, f);
+  }
+  
+  @SuppressWarnings("Duplicates")
+  public static <V, T, E> void FilterMapLimit(Integer limit, Map<Object, T> items, NeoFilterMap.IMapper<T, V, E> m, IAsyncCallback<Map<Object, V>, E> f) {
+    NeoFilterMap.Map(limit, items, m, f);
+  }
+  
+  // end filter + map
+  
   // start each
   
   public static <T, E> void Each(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {

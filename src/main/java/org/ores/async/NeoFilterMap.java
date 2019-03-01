@@ -2,9 +2,9 @@ package org.ores.async;
 
 import java.util.*;
 
-public class FilterAndMap {
+public class NeoFilterMap {
   
-  private final static Object UNIQUE_KEY = new Object();
+  private final static Object DISCARD_KEY = new Object();
   
   public static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T,E> {
     
@@ -52,14 +52,12 @@ public class FilterAndMap {
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
     RunMap(iterator, m, results, c, s, (err,values) -> {
-      f.done(err, NeoUtils.filterList(values, UNIQUE_KEY));
+      f.done(err, NeoUtils.filterList(values, DISCARD_KEY));
     });
   
     if (s.isFinalCallbackFired()) {
       s.setSameTick(false);
     }
-    
- 
     
   }
   
@@ -77,7 +75,7 @@ public class FilterAndMap {
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
     RunMapWithMap(iterator, m, results, c, s, (err, values) -> {
-      f.done(err, NeoUtils.filterMap(values, UNIQUE_KEY));
+      f.done(err, NeoUtils.filterMap(values, DISCARD_KEY));
     });
   
     if (s.isFinalCallbackFired()) {
@@ -131,6 +129,9 @@ public class FilterAndMap {
           
           if(this.isIncluded()){
             results.put(key, v);
+          }
+          else{
+            results.put(key, (V) DISCARD_KEY);
           }
          
         }
@@ -225,6 +226,9 @@ public class FilterAndMap {
           
           if(this.isIncluded()){
             results.set(val, v);
+          }
+          else{
+            results.set(val, (V) DISCARD_KEY);
           }
           
         }
