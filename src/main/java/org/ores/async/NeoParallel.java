@@ -44,10 +44,10 @@ class NeoParallel {
       this.r = r;
     }
   
-    @Override
-    public void done(E e) {
-       this.done(e,null);
-    }
+//    @Override
+//    public void done(E e) {
+//       this.done(e,null);
+//    }
   
     @Override
     public void done(E e, T v) {
@@ -125,10 +125,10 @@ class NeoParallel {
     
     var taskRunner = new Asyncc.AsyncCallback<T, E>(s) {
   
-      @Override
-      public void done(E e) {
-        this.done(e,null);
-      }
+//      @Override
+//      public void done(E e) {
+//        this.done(e,null);
+//      }
       
       @Override
       public void done(E e, T v) {
@@ -286,10 +286,10 @@ class NeoParallel {
       final Object key = entry.getKey();
       final var taskRunner = new AsyncCallback<T, E>(s) {
   
-        @Override
-        public void done(E e) {
-          this.done(e,null);
-        }
+//        @Override
+//        public void done(E e) {
+//          this.done(e,null);
+//        }
         
         @Override
         public void done(E e, T v) {
@@ -363,10 +363,10 @@ class NeoParallel {
       final int index = i;
       final var taskRunner = new AsyncCallback<T, E>(s) {
   
-        @Override
-        public void done(E e) {
-          this.done(e,null);
-        }
+//        @Override
+//        public void done(E e) {
+//          this.done(e,null);
+//        }
         
         @Override
         public void done(E e, T v) {

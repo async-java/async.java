@@ -81,10 +81,10 @@ class NeoSeries {
     
     var taskRunner = new AsyncCallback<T, E>(s) {
   
-      @Override
-      public void done(E e) {
-         this.done(e,null);
-      }
+//      @Override
+//      public void done(E e) {
+//         this.done(e,null);
+//      }
   
       @Override
       public void done(E e, T v) {
@@ -175,10 +175,10 @@ class NeoSeries {
     
     var taskRunner = new AsyncCallback<T, E>(s) {
   
-      @Override
-      public void done(E e) {
-        this.done(e,null);
-      }
+//      @Override
+//      public void done(E e) {
+//        this.done(e,null);
+//      }
       
       @Override
       public void done(E e, T v) {

@@ -172,10 +172,10 @@ public class NeoInject {
       final IInjectable<T, E> v = entry.getValue().getInjectable();
       final var taskRunner = new AsyncCallbackSet<T, E>(s, results) {
         
-        @Override
-        public void done(E e) {
-          this.done(e, null);
-        }
+//        @Override
+//        public void done(E e) {
+//          this.done(e, null);
+//        }
         
         @Override
         public void done(E err, T v) {

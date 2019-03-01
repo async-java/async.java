@@ -1,8 +1,14 @@
 package org.ores.async;
 
-public abstract class NeoGeneric<T,V,E> implements Asyncc.IEacher<V,E>, Asyncc.IReducer<V,E>, Asyncc.IMapper<T,V,E> {
+public abstract class NeoGeneric<T,V,E> implements
+  Asyncc.IEacher<V,E>, Asyncc.IReducer<V,E>, Asyncc.IMapper<T,V,E>, Asyncc.AsyncValueTask<V,E> {
   
   abstract void handle(Object v, Asyncc.IAsyncCallback cb);
+  
+  @Override
+  public void run(Object v, Asyncc.IAsyncCallback cb){
+    this.handle(v, cb);
+  }
   
   @Override
   public void map(T v, Asyncc.AsyncCallback<V,E> cb) {
@@ -15,7 +21,7 @@ public abstract class NeoGeneric<T,V,E> implements Asyncc.IEacher<V,E>, Asyncc.I
   }
   
   @Override
-  public void each(V v, NeoEach.EachCallback<E> cb) {
+  public void each(V v, NeoEachI.EachCallback<E> cb) {
     this.handle(v, cb);
   }
 }

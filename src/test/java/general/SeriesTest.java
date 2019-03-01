@@ -27,7 +27,30 @@ public class SeriesTest {
   @Before
   public void onBefore() {
     final Map<String, Object> results = new HashMap<>();
-    final List<Object> x= List.of(results.values());
+    final List<Object> x = List.of(results.values());
+  }
+  
+  @Test
+  public void testSeriesCompose(TestContext tc) {
+    Async z = tc.async();
+    
+    var mapper = (Asyncc.IMapper) Asyncc.Series((v, cb) -> {
+        
+        cb.done(null, (Integer) v + 3);
+      },
+      
+      v -> {
+        v.done(null, 3);
+        
+      });
+    
+    Asyncc.Map(List.of(1, 2, 3), mapper, (err, results) -> {
+      
+      assert err == null : "Err should be null";
+      System.out.println("Results: " + results);
+      z.complete();
+    });
+    
   }
   
   @Test

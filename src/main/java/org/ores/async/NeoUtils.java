@@ -40,7 +40,7 @@ class NeoUtils {
     if (!ok) {
       if (e instanceof Exception) {
         ((Exception) e).printStackTrace(System.err);
-      } else {
+      } else if(e != null){
         System.err.println(e.toString());
       }
       return;
@@ -56,9 +56,11 @@ class NeoUtils {
       return;
     }
     
-    CompletableFuture
-      .delayedExecutor(3, TimeUnit.MILLISECONDS)
-      .execute(() -> f.done((E) e));
+    
+    f.done((E)e);
+//    CompletableFuture
+//      .delayedExecutor(3, TimeUnit.MILLISECONDS)
+//      .execute(() -> f.done((E) e));
     
   }
   
@@ -79,7 +81,7 @@ class NeoUtils {
     if (!ok) {
       if (e instanceof Exception) {
         ((Exception) e).printStackTrace(System.err);
-      } else {
+      } else if(e != null){
         System.err.println(e.toString());
       }
       return;

@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Arrays.asList;
-
+import static org.ores.async.Asyncc.Overloader.GENERIC;
 
 @RunWith(VertxUnitRunner.class)
 public class MapTest {
@@ -31,7 +31,25 @@ public class MapTest {
   
   }
   
-  
+  @Test
+  public void runCompose1(TestContext tc) {
+    
+    Async v = tc.async();
+
+    var eacher =  Asyncc.Map(GENERIC, List.of(3, 4, 5), (val, cb) -> {
+      cb.done(null,val);
+    });
+
+    var x = Asyncc.Map(List.of(1, 2, 3), eacher);
+
+    x.run((err,results) -> {
+
+      System.out.println(results.toString());
+      assert err == null : err.toString();
+      v.complete();
+    });
+
+  }
   @Test
   public void runEach(TestContext tc) {
     

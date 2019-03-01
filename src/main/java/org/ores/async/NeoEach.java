@@ -21,43 +21,6 @@ import static org.ores.async.NeoUtils.handleSameTickCall;
  */
 class NeoEach {
   
-  public static abstract class EachCallback<E> extends Asyncc.AsyncCallback<Object,E> implements Asyncc.IEachCallback<E>, Asyncc.IEachCallbacks<E> {
-    
-    private ShortCircuit s;
-    private boolean isFinished = false;
-    final Object cbLock = new Object();
-    
-    public EachCallback(ShortCircuit s) {
-      super(s);
-      this.s = s;
-    }
-    
-    public boolean isShortCircuited() {
-      return this.s.isShortCircuited();
-    }
-    
-    boolean isFinished() {
-      return this.isFinished;
-    }
-    
-    boolean setFinished(boolean b) {
-      return this.isFinished = b;
-    }
-    
-    @Override
-    public void resolve() {
-      this.done(null);
-    }
-    
-  
-    
-//    @Override
-//    public void reject(E e) {
-//      this.done(e);
-//    }
-    
-  }
-  
   
   static <T, E> void Each(int limit, Iterable<T> i, Asyncc.IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     
@@ -87,7 +50,7 @@ class NeoEach {
       v = iterator.next();
     }
     
-    final var taskRunner = new EachCallback<E>(s) {
+    final var taskRunner = new NeoEachI.EachCallback<E>(s) {
   
       @Override
       public void done(E e, Object v) {

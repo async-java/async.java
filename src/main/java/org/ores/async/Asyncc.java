@@ -13,7 +13,7 @@ public class Asyncc {
     DONE
   }
   
-  static enum Overloader {
+  public static enum Overloader {
     GENERIC
   }
   
@@ -76,7 +76,7 @@ public class Asyncc {
   }
   
   public interface IEacher<T, E> {
-    void each(T v, NeoEach.EachCallback<E> cb);
+    void each(T v, NeoEachI.EachCallback<E> cb);
   }
   
   interface IErrorOnlyDoneable<T, E> {
@@ -123,7 +123,7 @@ public class Asyncc {
       this.s = s;
     }
     
-    public abstract void done(E e);
+//    public abstract void done(E e);
     
 //    @Override
 //    public void done(E e, T v) {
@@ -154,8 +154,18 @@ public class Asyncc {
     
   }
   
-  public static interface AsyncTask<T, E> {
-    public void run(AsyncCallback<T, E> cb);
+  public interface AsyncValueTask<T, E> {
+    //    public void run(AsyncCallback<T, E> cb);
+    void run(Object v, IAsyncCallback<T, E> cb);
+  }
+  
+  public interface AsyncTask<T, E> {
+//    public void run(AsyncCallback<T, E> cb);
+     void run(IAsyncCallback<T, E> cb);
+  }
+  
+  public interface AsyncEachTask<E> {
+    void run(IEachCallback<E> cb);
   }
   
   public static <T, E> AsyncTask<List<T>, E> Parallel(AsyncTask<T, E>... tasks) {
@@ -219,6 +229,19 @@ public class Asyncc {
   // end race
   
   // begin map
+  
+  public static <T, V, E> IMapper<T, V, E> Map(Overloader o, Iterable<T> i, IMapper<T,V, E> m) {
+    return (IMapper<T,V,E>)new NeoGeneric<T, V, E>() {
+      @Override
+      void handle(Object v, IAsyncCallback cb) {
+//        ((List) i).add(0, v);
+        List<T> copy = new ArrayList<>();
+        copy.add((T)v); // add v first
+        i.forEach(copy::add); // add rest of iterable after v
+        NeoMap.Map(Integer.MAX_VALUE, copy, m, cb);
+      }
+    };
+  }
   
   @SuppressWarnings("Duplicates")
   public static <V, T, E> AsyncTask<List<V>, E> Map(List<T> items, IMapper<T, V, E> m) {
@@ -333,18 +356,18 @@ public class Asyncc {
   
   // start each
   
-  public static <T, E> NeoGeneric<T, ?, E> Each(Overloader o, Iterable<T> i, IEacher<T, E> m) {
-    return new NeoGeneric<T, Object, E>() {
+  public static <T, E> IEacher<T, E> Each(Overloader o, Iterable<T> i, IEacher<T, E> m) {
+    return (IEacher<T,E>)new NeoGeneric<T, Object, E>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
-        ((List) i).add(0, v);
+//        ((List) i).add(0, v);
         NeoEach.Each(Integer.MAX_VALUE, i, m, (IEachCallback) cb);
       }
     };
   }
   
-  public static <T, E> AsyncTask<T,E> Each(Iterable<T> i, IEacher<T, E> m) {
-    return cb -> NeoEach.Each(Integer.MAX_VALUE, i, m, (IEachCallback) cb);
+  public static <T, E> AsyncEachTask<E> Each(Iterable<T> i, IEacher<T, E> m) {
+    return cb -> NeoEach.Each(Integer.MAX_VALUE, i, m, cb);
   }
   
   public static <T, E> void Each(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
@@ -396,6 +419,24 @@ public class Asyncc {
     IAsyncCallback<List<T>, E> cb) {
     NeoSeries.<T, E>Series(tasks, cb);
   }
+  
+  public static <T, E> AsyncValueTask<T, E> Series(AsyncValueTask<Object, E> z, AsyncTask<T, E> a) {
+    return new NeoGeneric<>() {
+      @Override
+      void handle(Object v, IAsyncCallback cb) {
+        
+        var t = new AsyncTask<T,E>(){
+          @Override
+          public void run(IAsyncCallback cb) {
+            z.run(v,cb);
+          }
+        };
+        
+        NeoSeries.<T, E>Series(List.of(t,a), cb);
+      }
+    };
+  }
+  
   
   public static <T, E> void Series(
     AsyncTask<T, E> a,

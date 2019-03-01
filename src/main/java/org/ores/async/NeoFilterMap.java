@@ -109,10 +109,10 @@ public class NeoFilterMap {
     
     final var taskRunner = new AsyncCallback<V, E>(s) {
   
-      @Override
-      public void done(E e) {
-        this.done(e,null);
-      }
+//      @Override
+//      public void done(E e) {
+//        this.done(e,null);
+//      }
       
       @Override
       public void done(E e, V v) {
@@ -211,10 +211,10 @@ public class NeoFilterMap {
     
     final var taskRunner = new AsyncCallback<V, E>(s) {
   
-      @Override
-      public void done(E e) {
-        this.done(e,null);
-      }
+//      @Override
+//      public void done(E e) {
+//        this.done(e,null);
+//      }
       
       @Override
       public void done(E e, V v) {

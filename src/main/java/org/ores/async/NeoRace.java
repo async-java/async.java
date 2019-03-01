@@ -68,10 +68,10 @@ class NeoRace {
     
     final var taskRunner = new RaceCallback<V, E>(s) {
       
-      @Override
-      public void done(final E e) {
-        this.done(e, null);
-      }
+//      @Override
+//      public void done(final E e) {
+//        this.done(e, null);
+//      }
       
       @Override
       public void done(final E e, final V v) {

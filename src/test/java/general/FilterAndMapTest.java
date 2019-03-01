@@ -14,6 +14,8 @@ import org.ores.async.NeoQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.ores.async.Asyncc.Overloader.GENERIC;
+
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
@@ -30,7 +32,42 @@ public class FilterAndMapTest {
   }
   
   @Test
-  public void runCompose(TestContext tc) {
+  public void runCompose0(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    var x = Asyncc.Each(List.of(1, 2, 3), (val, cb) -> {
+      cb.done(null);
+    });
+    
+    x.run((err) -> {
+      assert err == null : "Err should be null";
+      v.complete();
+    });
+    
+  }
+  
+  @Test
+  public void runCompose1(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    var eacher =  Asyncc.Each(GENERIC, List.of(3, 4, 5), (val, cb) -> {
+      cb.done(null);
+    });
+    
+    var x = Asyncc.Each(List.of(1, 2, 3), eacher);
+    
+    x.run((err) -> {
+      
+      assert err == null : err.toString();
+      v.complete();
+    });
+    
+  }
+  
+  @Test
+  public void runCompose2(TestContext tc) {
     
     Async v = tc.async();
     
@@ -50,9 +87,9 @@ public class FilterAndMapTest {
         
       }),
       
-      Asyncc.<Integer,Integer,Object>FilterMap(List.of(1, 2, 3), (x, cb) -> {
+      Asyncc.<Integer, Integer, Object>FilterMap(List.of(1, 2, 3), (x, cb) -> {
         
-        Asyncc.<Integer,Object>Parallel(
+        Asyncc.<Integer, Object>Parallel(
           z -> {
             z.done(null, 4);
           },
