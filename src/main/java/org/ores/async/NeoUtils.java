@@ -1,16 +1,10 @@
 package org.ores.async;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 class NeoUtils {
-  
-  public NeoUtils() {
-    System.out.println("here is new UTIL class");
-  }
   
   static void handleSameTickCall(ShortCircuit s) {
     synchronized (s) {
@@ -31,7 +25,7 @@ class NeoUtils {
   static <E> void fireFinalCallback(ShortCircuit s, Object e, Asyncc.IEachCallback<E> f) {
     
     var ok = false;
-  
+    
     s.setShortCircuited(true);
     
     synchronized (s) {
@@ -104,5 +98,25 @@ class NeoUtils {
       .execute(() -> f.done((E) e, (V) results));
     
   }
- 
+  
+  static <V> Map<Object, V> filterMap(Map<Object, V> m, Object uniqueValue) {
+    Map<Object, V> ret = new HashMap<>();
+    for (Map.Entry entry : m.entrySet()) {
+      if (entry.getValue() != uniqueValue) {
+        ret.put(entry.getKey(), (V)entry.getValue());
+      }
+    }
+    return ret;
+  }
+  
+  static <V> List<V> filterList(List<V> list, Object uniqueValue) {
+    List<V> ret = new ArrayList<>();
+    for (V o : list) {
+      if (o != uniqueValue) {
+        ret.add(o);
+      }
+    }
+    return ret;
+  }
+  
 }

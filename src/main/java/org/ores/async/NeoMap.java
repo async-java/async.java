@@ -159,6 +159,9 @@ class NeoMap {
     }
     
     final int val = c.getStartedCount();
+    results.add(null);
+    c.incrementStarted();
+    
     final var taskRunner = new Asyncc.AsyncCallback<V, E>(s) {
       
       @Override
@@ -206,8 +209,7 @@ class NeoMap {
       
     };
     
-    results.add(null);
-    c.incrementStarted();
+  
     
     try {
       m.map(item, taskRunner);

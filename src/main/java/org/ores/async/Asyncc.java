@@ -205,7 +205,7 @@ public class Asyncc {
     return cb -> NeoSeries.Series(tasks, cb);
   }
   
-  // being race
+  // begin race
   
   public static <T, V, E> void Race(Iterable<NeoRaceIfc.AsyncTask<T, E>> i, Asyncc.IAsyncCallback<V, E> f) {
     NeoRace.Race(Integer.MAX_VALUE, i, f);
@@ -292,16 +292,38 @@ public class Asyncc {
   
   // start each
   
-  public static <T, V, E> void Each(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, E> void Each(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(Integer.MAX_VALUE, i, m, f);
   }
   
-  public static <T, V, E> void EachLimit(int limit, Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, E> void EachLimit(int limit, Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+  
+    if(limit < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."));
+      return;
+    }
+    
     NeoEach.Each(limit, i, m, f);
   }
   
-  public static <T, V, E> void EachSeries(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+  public static <T, E> void EachSeries(Iterable<T> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
     NeoEach.Each(1, i, m, f);
+  }
+  
+  public static <T, E> void Each(Map i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+    NeoEach.Each(Integer.MAX_VALUE, (Set<T>)i.entrySet(), m, f);
+  }
+  
+  public static <T, E> void EachLimit(int limit, Map i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+    if(limit < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."));
+      return;
+    }
+    NeoEach.Each(limit, i.<T>entrySet(), m, f);
+  }
+  
+  public static <T, E> void EachSeries(Map<Object,Object> i, IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+    NeoEach.Each(1, (Set<T>)i.entrySet(), m, f);
   }
   
   // end each
@@ -392,6 +414,12 @@ public class Asyncc {
     int limit,
     Map<Object, AsyncTask<T, E>> tasks,
     IAsyncCallback<Map<Object, T>, E> f) {
+  
+    if(limit < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
+    
     NeoParallel.ParallelLimit(limit, tasks, f);
   }
   
@@ -648,6 +676,10 @@ public class Asyncc {
     int limit,
     List<AsyncTask<T, E>> tasks,
     IAsyncCallback<List<T>, E> cb) {
+    if(limit < 1){
+      cb.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
     NeoParallel.ParallelLimit(limit, tasks, cb);
   }
   
@@ -706,6 +738,12 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ConcatLimit(int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  
+    if(lim < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
+    
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
     });
@@ -727,6 +765,12 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ConcatLimit(int depth, int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  
+    if(lim < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
+    
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
     });
@@ -748,6 +792,12 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ConcatDeepLimit(int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  
+    if(lim < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
+    
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(Integer.MAX_VALUE, 0, results));
     });
@@ -769,6 +819,12 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, E> void ConcatLimit(int lim, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  
+    if(lim < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
+    
     NeoParallel.ParallelLimit(lim, tasks, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
     });
@@ -790,6 +846,12 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, E> void ConcatLimit(int depth, int lim, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  
+    if(lim < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
+    
     NeoParallel.ParallelLimit(lim, tasks, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
     });
@@ -811,26 +873,16 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, E> void ConcatDeepLimit(int lim, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  
+    if(lim < 1){
+      f.done((E)new RuntimeException("Limit value must be a positive integer."), null);
+      return;
+    }
+    
     NeoParallel.ParallelLimit(lim, tasks, (err, results) -> {
       f.done(err, NeoConcat.flatten(Integer.MAX_VALUE, 0, results));
     });
   }
   
-  static boolean isLocked;
-  
-  public static void getLockSync(Runnable r) {
-    
-    if (isLocked) {
-      r.run();
-      return;
-    }
-    
-    synchronized (Asyncc.sync) {
-      isLocked = true;
-      r.run();
-      isLocked = false;
-    }
-    
-  }
   
 }

@@ -52,12 +52,14 @@ public class EachTest {
   }
   
   @Test
-  public void runComposed0(TestContext tc) {
+  public void eachWithEntrySet(TestContext tc) {
     
     Async v = tc.async();
   
-    Asyncc.Each(Map.of("foo","bar").entrySet(), (x,cb) -> {
-  
+    var z = Map.of("foo","bar").entrySet();
+    
+    Asyncc.Each(z, (x,cb) -> {
+      
       System.out.println("We in the runeach 2");
       cb.done(null);
     
@@ -71,16 +73,25 @@ public class EachTest {
   }
   
   @Test
-  public void runComposed1(TestContext tc) {
-  
+  public void eachWithMap(TestContext tc) {
+    
     Async v = tc.async();
-  
-    System.out.println("We in the 3");
-  
-    v.complete();
+    
+    Asyncc.<Map.Entry<String,Integer>, Object>Each(Map.of("foo", Integer.valueOf(5)), (x,cb) -> {
+      
+      var z = ((Map.Entry)x).getValue();
+      
+      System.out.println("We in the runeach 2");
+      cb.done(null);
+      
+    }, err -> {
+      
+      assert err == null: "Err should be null";
+      v.complete();
+      
+    });
     
   }
-  
 
   
 }
