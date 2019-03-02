@@ -22,7 +22,7 @@ import static org.ores.async.NeoUtils.handleSameTickCall;
 class NeoEach {
   
   
-  static <T, E> void Each(int limit, Iterable<T> i, Asyncc.IEacher<T, E> m, Asyncc.IEachCallback<E> f) {
+  static <T, E> void Each(int limit, Iterable<T> i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
@@ -37,8 +37,8 @@ class NeoEach {
     final Iterator<T> iterator,
     final CounterLimit c,
     final ShortCircuit s,
-    final Asyncc.IEacher<T, E> m,
-    final Asyncc.IEachCallback<E> f) {
+    final NeoEachI.IEacher<T, E> m,
+    final NeoEachI.IEachCallback<E> f) {
     
     final T v;
     

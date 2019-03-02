@@ -31,6 +31,30 @@ public class EachTest {
    System.out.println("Running before hook in each-test.");
   }
   
+  @Test
+  public void runEachCompose(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    var eacher = Asyncc.Each((m, x, cb) -> {
+         cb.done(null);
+      },
+      List.of(1,2,3), (x,cb) -> {
+      
+      cb.done(null);
+      
+    });
+    
+    
+    var x = Asyncc.Each(List.of(5,6,7), eacher);
+    
+    x.run(err -> {
+      assert err == null: err.toString();
+      v.complete();
+    });
+    
+  }
+  
   
   @Test
   public void runEach(TestContext tc) {
@@ -39,7 +63,6 @@ public class EachTest {
 
     Asyncc.Each(List.of(1,2,3), (x,cb) -> {
       
-      System.out.println("We in the runeach 1");
       cb.done(null);
     
     }, err -> {
@@ -60,12 +83,11 @@ public class EachTest {
     
     Asyncc.Each(z, (x,cb) -> {
       
-      System.out.println("We in the runeach 2");
       cb.done(null);
     
     }, err -> {
     
-      assert err == null: "Err should be null";
+      assert err == null: err.toString();
       v.complete();
     
     });
@@ -77,11 +99,9 @@ public class EachTest {
     
     Async v = tc.async();
     
-    Asyncc.<Map.Entry<String,Integer>, Object>Each(Map.of("foo", Integer.valueOf(5)), (x,cb) -> {
+    Asyncc.<Map.Entry<String,Integer>, Object>Each(Map.of("foo", 5), (x,cb) -> {
       
-      var z = ((Map.Entry)x).getValue();
-      
-      System.out.println("We in the runeach 2");
+      var z = x.getValue();
       cb.done(null);
       
     }, err -> {

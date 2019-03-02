@@ -22,11 +22,17 @@ import static java.util.Arrays.asList;
 @RunWith(VertxUnitRunner.class)
 public class ParallelTest {
   
+  public interface IAsyncCallback<T, E> {
+    void done(E e, T v);
+  }
+  
   final static Logger log = LoggerFactory.getLogger(AsyncTest.class);
   
   @Before
   public void onBefore() {
-  
+    
+    IAsyncCallback<Optional,Object> cb = (e,v) -> {};
+    
   }
   
   

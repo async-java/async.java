@@ -1,12 +1,32 @@
 package org.ores.async;
 
+import java.util.List;
+
 public class NeoEachI {
   
   public interface AsyncEachTask<E> {
-    void run(Asyncc.IEachCallback<E> cb);
+    void run(IEachCallback<E> cb);
   }
   
-  public static abstract class EachCallback<E> extends Asyncc.AsyncCallback<Object,E> implements Asyncc.IEachCallback<E>, Asyncc.IEachCallbacks<E> {
+  public static interface AsyncValueTask<T, E> {
+    public void run(Object v, List<T> x, IEachCallback<E> cb);
+  }
+  
+  public interface IEacher<T, E> {
+    void each(T v, NeoEachI.IEachCallback<E> cb);
+  }
+  
+  public interface IEachCallback<E> {
+    void done(E e);
+  }
+  
+  public static interface IEachCallbacks<E> {
+    void resolve();
+    
+    void reject(E e);
+  }
+  
+  public static abstract class EachCallback<E> extends Asyncc.AsyncCallback<Object,E> implements IEachCallback<E>, IEachCallbacks<E> {
     
     private ShortCircuit s;
     private boolean isFinished = false;

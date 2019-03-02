@@ -22,7 +22,7 @@ class NeoUtils {
   }
   
   @SuppressWarnings("Duplicates")
-  static <E> void fireFinalCallback(ShortCircuit s, Object e, Asyncc.IEachCallback<E> f) {
+  static <E> void fireFinalCallback(ShortCircuit s, Object e, NeoEachI.IEachCallback<E> f) {
     
     var ok = false;
     
@@ -84,8 +84,8 @@ class NeoUtils {
         throw new RuntimeException("No callback passed, limit argument needs to be a *positive* integer.");
       }
       
-      if (f instanceof Asyncc.IEachCallback) {
-        ((Asyncc.IEachCallback) f).done((E) new RuntimeException("Limit value must be a positive integer."));
+      if (f instanceof NeoEachI.IEachCallback) {
+        ((NeoEachI.IEachCallback) f).done((E) new RuntimeException("Limit value must be a positive integer."));
       } else {
         f.done((E) new RuntimeException("Limit value must be a *positive* integer."), null);
       }

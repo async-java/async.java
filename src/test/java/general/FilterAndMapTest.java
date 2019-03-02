@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ores.async.Asyncc;
+import org.ores.async.NeoEachI;
 import org.ores.async.NeoInject;
 import org.ores.async.NeoQueue;
 import org.slf4j.Logger;
@@ -105,9 +106,17 @@ public class FilterAndMapTest {
     
     Async v = tc.async();
     
-    var eacher = Asyncc.Each(GENERIC, List.of(3, 4, 5), (val, cb) -> {
+    var eacher = Asyncc.Each((val,m,x) -> {
+       x.done(null);
+    },
+      List.of(3, 4, 5), (val, cb) -> {
       cb.done(null);
     });
+  
+//    var eacher = Asyncc.Each(GENERIC, List.of(3, 4, 5), (NeoEachI.IEacher) Asyncc.Waterfall(t -> {
+//
+//    }));
+    
     
     var x = Asyncc.Each(List.of(1, 2, 3), eacher);
     

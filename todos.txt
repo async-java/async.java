@@ -84,7 +84,7 @@ https://dzone.com/articles/a-guide-to-formatting-code-snippets-in-javadoc
 
 implement groupBy, groupBySeries, groupByLimit
 implement times, timesSeries, timesLimit
-
+implement while, dowhile
 
 use another env variable synchronization_off -
 if only 1 thread uses it, we can improve performance by avoiding using the synchronize keyword.
@@ -93,6 +93,24 @@ if only 1 thread uses it, we can improve performance by avoiding using the synch
     isNeverAsync = env != null && env.equals("yes");
 
 
-
+https://stackoverflow.com/questions/54955359/make-argument-optional-using-void-type/54955463#54955463
 
 implement async.race
+
+https://medium.com/pharos-production/vert-x-distributed-microservices-with-java-24ff514922eb
+
+
+
+async.waterfall([
+ (initialVal,v) => {
+   v.set('foo', 'bar');
+   v.done();
+ },
+ v => {
+    var foo = v.get("bar");
+    v.done(null, "foo", "bar");
+ }
+], new InitialVal())
+
+
+https://stackoverflow.com/questions/54955359/make-argument-optional-using-void-type/54955463#54955463

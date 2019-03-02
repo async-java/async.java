@@ -28,6 +28,31 @@ public class WaterfallTest {
   public void onBefore() {
   
   }
+  @Test
+  public void testWaterfallCompose0(TestContext tc) {
+  
+    Async z = tc.async();
+  
+    var t = (Asyncc.IMapper) Asyncc.Waterfall(
+    
+      (x, v) -> {
+        v.set("begin", x);
+        v.done(null);
+      },
+    
+      v -> {
+        v.set("stank", "kovich");
+        v.map.put("foo", "bar");
+        v.done(null);
+      });
+  
+    t.map(3, (err, results) -> {
+      assert err == null : "Err should be null";
+      System.out.println("Results: " + results);
+      z.complete();
+    });
+  }
+  
   
   @Test
   public void testWaterfallCompose(TestContext tc) {
@@ -46,6 +71,11 @@ public class WaterfallTest {
         v.map.put("foo", "bar");
         v.done(null);
       });
+    
+    
+    t.map(3, (err, results) -> {
+    
+    });
     
     Asyncc.Map(List.of(1,2,3), t, (err, results) -> {
       assert err == null : "Err should be null";
