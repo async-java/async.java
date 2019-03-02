@@ -74,6 +74,84 @@ public class EachTest {
     
   }
   
+
+  
+  
+  @Test
+  public void runEachWithInject(TestContext tc) {
+    
+    Async x = tc.async();
+  
+    var inject = Asyncc.Inject(
+    
+      v -> {
+        return Map.entry("foo", new NeoInject.Task<>(y -> {
+          y.done(null,v);
+        }));
+      },
+    
+      Map.of(
+      
+        "star", new NeoInject.Task<>(v -> {
+          Object foo = v.get("foo");
+          Object bar = v.get("bar");
+          System.out.println("foo:");
+          System.out.println(foo);
+          System.out.println("bar:");
+          System.out.println(bar);
+          v.done(null, 7);
+        }),
+      
+        "foo", new NeoInject.Task<>("star", v -> {
+          v.done(null, 3);
+        }),
+      
+        "bar", new NeoInject.Task<>(Set.of("foo"), v -> {
+          Object foo = v.get("foo");
+          System.out.println("foo:");
+          System.out.println(foo);
+          v.done(null, 5);
+        })
+    
+      ));
+    
+    
+    Asyncc.Each(List.of(1,2,3), inject, err -> {
+      
+      assert err == null: err.toString();
+      x.complete();
+      
+    });
+    
+  }
+  
+  @Test
+  public void runEachWithWaterfall(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    var water = Asyncc.Waterfall((z, t) -> {
+      
+      t.set("init", z);
+      t.done(null);
+      
+    }, t -> {
+     
+     t.set("bar", t.get("init"));
+     t.done(null);
+    
+    });
+    
+    Asyncc.Each(List.of(1,2,3), water, err -> {
+      
+      assert err == null: "Err should be null";
+      v.complete();
+      
+    });
+    
+  }
+  
+  
   @Test
   public void eachWithEntrySet(TestContext tc) {
     

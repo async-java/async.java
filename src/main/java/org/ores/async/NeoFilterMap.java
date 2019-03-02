@@ -110,7 +110,7 @@ public class NeoFilterMap {
     final var taskRunner = new AsyncCallback<V, E>(s) {
       
       @Override
-      public void done(E e, V v) {
+      public void done(final E e, final V v) {
         
         synchronized (this.cbLock) {
           
@@ -207,7 +207,7 @@ public class NeoFilterMap {
     final var taskRunner = new AsyncCallback<V, E>(s) {
       
       @Override
-      public void done(E e, V v) {
+      public void done(final E e, final V v) {
         
         synchronized (this.cbLock) {
           

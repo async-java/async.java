@@ -30,6 +30,49 @@ public class InjectTest {
   }
   
   @Test
+  public void testInjectCompose(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var inject = Asyncc.Inject(
+      
+      v -> {
+        return Map.entry("foo", new NeoInject.Task<>(y -> {
+          y.done(null,v);
+        }));
+      },
+      
+      Map.of(
+        
+        "star", new NeoInject.Task<>(v -> {
+          Object foo = v.get("foo");
+          Object bar = v.get("bar");
+          System.out.println("foo:");
+          System.out.println(foo);
+          System.out.println("bar:");
+          System.out.println(bar);
+          v.done(null, 7);
+        }),
+        
+        "foo", new NeoInject.Task<>("star", v -> {
+          v.done(null, 3);
+        }),
+        
+        "bar", new NeoInject.Task<>(Set.of("foo"), v -> {
+          Object foo = v.get("foo");
+          System.out.println("foo:");
+          System.out.println(foo);
+          v.done(null, 5);
+        })
+      
+      ));
+    
+    
+    
+    
+  }
+  
+  @Test
   public void testInjectCircular(TestContext tc) {
     
     Async z = tc.async();

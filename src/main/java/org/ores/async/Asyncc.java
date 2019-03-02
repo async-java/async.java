@@ -9,11 +9,11 @@ public class Asyncc {
   
   public final static Object sync = new Object();
   
-  static enum Marker {
+  enum Marker {
     DONE
   }
   
-  public static enum Overloader {
+  public enum Overloader {
     GENERIC
   }
   
@@ -38,6 +38,17 @@ public class Asyncc {
     Map<String, NeoInject.Task<T, E>> tasks,
     Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
     NeoInject.Inject(tasks, f);
+  }
+  
+  public static <T, E> NeoGeneric<T, Object, E> Inject(NeoInjectI.ValueTask<T, E> z, Map<String, NeoInject.Task<T, E>> tasks) {
+    return new NeoGeneric<>() {
+      @Override
+      void handle(Object v, IAsyncCallback cb) {
+        var task = z.run(v);
+        tasks.put(task.getKey(), task.getValue());
+        NeoInject.Inject(tasks, cb);
+      }
+    };
   }
   
   public static class KeyValue<K, V> {
@@ -352,7 +363,7 @@ public class Asyncc {
         o.run(v, (List) i, e -> {  // TODO: not always a list..
           
           if (e != null) {
-            cb.done((E)e, null);
+            cb.done((E) e, null);
             return;
           }
           
@@ -678,7 +689,7 @@ public class Asyncc {
     NeoWaterfall.Waterfall(tasks, cb);
   }
   
-  public static <T, E> NeoWaterfall.AsyncValueTask<T, E> Waterfall(NeoWaterfall.AsyncValueTask<T, E> z, NeoWaterfall.AsyncTask<T, E> a) {
+  public static <T, E> NeoGeneric<T, Object, E> Waterfall(NeoWaterfall.AsyncValueTask<T, E> z, NeoWaterfall.AsyncTask<T, E> a) {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {

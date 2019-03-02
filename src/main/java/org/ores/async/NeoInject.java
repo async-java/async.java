@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import static org.ores.async.NeoInjectI.IInjectable;
+import static org.ores.async.NeoInjectI.AsyncCallbackSet;
 
 /**
  * @see <a href="http://google.com">http://google.com</a>
@@ -23,13 +25,8 @@ public class NeoInject {
    *   .build();
    * </pre>
    */
-  public void whatever() {
   
-  }
-  
-  public static interface IInjectable<T, E> {
-    public void run(AsyncCallbackSet<T, E> cb);
-  }
+
   
   public static class Task<T, E> {
     
@@ -131,20 +128,7 @@ public class NeoInject {
     RunInject(started, completed, tasks, results, s, f);
   }
   
-  public static abstract class AsyncCallbackSet<T, E> extends Asyncc.AsyncCallback<T, E> {
-    
-    private Map<String, Object> values;
-    
-    public AsyncCallbackSet(ShortCircuit s, Map<String, Object> vals) {
-      super(s);
-      this.values = vals;
-    }
-    
-    public <V> V get(String s) {
-      return (V) this.values.get(s);
-    }
-    
-  }
+
   
   @SuppressWarnings("Duplicates")
   private static <T, E> void RunInject(
@@ -172,10 +156,6 @@ public class NeoInject {
       final IInjectable<T, E> v = entry.getValue().getInjectable();
       final var taskRunner = new AsyncCallbackSet<T, E>(s, results) {
         
-//        @Override
-//        public void done(E e) {
-//          this.done(e, null);
-//        }
         
         @Override
         public void done(E err, T v) {
