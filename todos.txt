@@ -114,3 +114,6 @@ async.waterfall([
 
 
 https://stackoverflow.com/questions/54955359/make-argument-optional-using-void-type/54955463#54955463
+
+
+encourage immutable collection with list.of and map.of

@@ -104,7 +104,6 @@ public class AsyncTest {
     Asyncc.setOnNext(ar);
     
     var h = new HandleRunnable().accept((x,y) -> {
-      System.out.println("Here is our int: " + x);
       return x*y;
     });
     

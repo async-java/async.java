@@ -59,7 +59,7 @@ public class WaterfallTest {
     
     Async z = tc.async();
     
-    var t =  (Asyncc.IMapper)Asyncc.Waterfall(
+    var t = Asyncc.Waterfall(
       
       (x, v) -> {
         v.set("begin",x);
@@ -67,15 +67,16 @@ public class WaterfallTest {
       },
       
       v -> {
+        
         v.set("stank", "kovich");
         v.map.put("foo", "bar");
         v.done(null);
       });
     
     
-    t.map(3, (err, results) -> {
-    
-    });
+//    t.map(3, (err, results) -> {
+//
+//    });
     
     Asyncc.Map(List.of(1,2,3), t, (err, results) -> {
       assert err == null : "Err should be null";

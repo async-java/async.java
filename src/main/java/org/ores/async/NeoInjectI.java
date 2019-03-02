@@ -8,6 +8,7 @@ public class NeoInjectI {
     void run(AsyncCallbackSet<T, E> cb);
   }
   
+  
   public static interface ValueTask<T, E> {
     public Map.Entry<String, NeoInject.Task<T,E>> run(Object v);
   }

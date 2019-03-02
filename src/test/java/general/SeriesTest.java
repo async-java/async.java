@@ -34,7 +34,7 @@ public class SeriesTest {
   public void testSeriesCompose(TestContext tc) {
     Async z = tc.async();
     
-    var mapper = (Asyncc.IMapper) Asyncc.Series((v, cb) -> {
+    var mapper = Asyncc.Series((v, cb) -> {
         
         cb.done(null, (Integer) v + 3);
       },

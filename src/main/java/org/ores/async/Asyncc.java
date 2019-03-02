@@ -27,30 +27,6 @@ public class Asyncc {
     return Asyncc.nextTick = r;
   }
   
-  public static <T, E> void Inject(
-    Map.Entry<String, NeoInject.Task<T, E>> a,
-    Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
-    // one arg
-    NeoInject.Inject(Map.ofEntries(a), f);
-  }
-  
-  public static <T, E> void Inject(
-    Map<String, NeoInject.Task<T, E>> tasks,
-    Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
-    NeoInject.Inject(tasks, f);
-  }
-  
-  public static <T, E> NeoGeneric<T, Object, E> Inject(NeoInjectI.ValueTask<T, E> z, Map<String, NeoInject.Task<T, E>> tasks) {
-    return new NeoGeneric<>() {
-      @Override
-      void handle(Object v, IAsyncCallback cb) {
-        var task = z.run(v);
-        tasks.put(task.getKey(), task.getValue());
-        NeoInject.Inject(tasks, cb);
-      }
-    };
-  }
-  
   public static class KeyValue<K, V> {
     
     public K key;
@@ -223,16 +199,25 @@ public class Asyncc {
   
   // begin map
   
-  public static <T, V, E> IMapper<T, V, E> Map(Overloader o, Iterable<T> i, IMapper<T, V, E> m) {
-    return (IMapper<T, V, E>) new NeoGeneric<T, V, E>() {
+  public static <T, V, E> NeoGeneric<T, V, E> Map(NeoEachI.AsyncValueTask<T, E> o, Iterable<T> i, IMapper<T, V, E> m) {
+    return new NeoGeneric<T, V, E>() {
       
       @Override
       void handle(Object v, IAsyncCallback cb) {
-//        ((List) i).add(0, v);
+
         List<T> copy = new ArrayList<>();
-        copy.add((T) v); // add v first
         i.forEach(copy::add); // add rest of iterable after v
-        NeoMap.Map(Integer.MAX_VALUE, copy, m, cb);
+        
+        o.run(v, copy, e -> {
+          
+          if(e != null){
+            cb.done(e,null);
+            return;
+          }
+  
+          NeoMap.Map(Integer.MAX_VALUE, copy, m, cb);
+          
+        });
       }
     };
   }
@@ -409,6 +394,55 @@ public class Asyncc {
   
   // end each
   
+  // start inject
+  
+  public static <T, E> void Inject(
+    Map.Entry<String, NeoInject.Task<T, E>> a,
+    Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
+    // one arg
+    NeoInject.Inject(Map.ofEntries(a), f);
+  }
+  
+  public static <T, E> void Inject(
+    Map<String, NeoInject.Task<T, E>> tasks,
+    Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
+    NeoInject.Inject(tasks, f);
+  }
+  
+  public static <T, E> void Inject(
+    Map<String, NeoInject.Task<T, E>> tasks,
+    NeoInjectI.AsyncCallbackSet<Map, E> f) {
+    NeoInject.Inject(tasks, (IAsyncCallback)f);
+  }
+  
+  public static <T, E> AsyncTask<Map<String, Object>, E> Inject(
+    Map<String, NeoInject.Task<T, E>> tasks) {
+    return cb -> NeoInject.Inject(tasks, cb);
+  }
+  
+  public static <T, E> NeoGeneric<T, Object, E> Inject(NeoInjectI.ValueTask<T, E> z, Map<String, NeoInject.Task<T, E>> tasks) {
+    return new NeoGeneric<>() {
+      @Override
+      void handle(Object v, IAsyncCallback cb) {
+        var task = z.run(v);
+        var m = new HashMap<>();
+        m.put(task.getKey(), task.getValue());
+        for (Map.Entry<String, NeoInject.Task<T, E>> entry : tasks.entrySet()) {
+          
+          if (m.containsKey(entry.getKey())) {
+            throw new Error("Map already contains key: " + entry.getKey());
+          }
+          
+          m.put(entry.getKey(), entry.getValue());
+        }
+        
+        NeoInject.Inject(tasks, cb);
+      }
+    };
+  }
+  
+  // end inject
+  
   // start series
   
   public static <T, E> void Series(
@@ -423,7 +457,7 @@ public class Asyncc {
     NeoSeries.<T, E>Series(tasks, cb);
   }
   
-  public static <T, E> AsyncValueTask<T, E> Series(AsyncValueTask<Object, E> z, AsyncTask<T, E> a) {
+  public static <T, E> NeoGeneric<T, Object, E> Series(AsyncValueTask<Object, E> z, AsyncTask<T, E> a) {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {

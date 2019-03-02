@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ores.async.Asyncc;
 import org.ores.async.NeoInject;
+import org.ores.async.NeoInjectI;
 import org.ores.async.NeoQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,8 +38,8 @@ public class InjectTest {
     var inject = Asyncc.Inject(
       
       v -> {
-        return Map.entry("foo", new NeoInject.Task<>(y -> {
-          y.done(null,v);
+        return Map.entry("xxx", new NeoInject.Task<>(y -> {
+          y.done(null, v);
         }));
       },
       
@@ -67,8 +68,11 @@ public class InjectTest {
       
       ));
     
-    
-    
+    inject.run("zoom", (err, results) -> {
+      assert err == null : err.toString();
+      System.out.println(results);
+      z.complete();
+    });
     
   }
   
@@ -149,6 +153,51 @@ public class InjectTest {
             System.out.println("foo:");
             System.out.println(foo);
           }
+          v.done(null, 5);
+        })
+      
+      ),
+      (err, results) -> {
+        System.out.println(results);
+        z.complete();
+      }
+    );
+    
+  }
+  
+  @Test
+  public void testInjectComposed(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var mustafa = Asyncc.Inject(Map.of("fizz", new NeoInject.Task<>(v -> {
+    
+    })));
+    
+    Asyncc.<Object, Object>Inject(
+      
+      Map.of(
+        "star", new NeoInject.Task<>(Set.of("bar"), v -> {
+          Object foo = v.get("foo");
+          Object bar = v.get("bar");
+          System.out.println("foo:");
+          System.out.println(foo);
+          System.out.println("bar:");
+          System.out.println(bar);
+          v.done(null, 7);
+        }),
+        "foo", new NeoInject.Task<>(Set.of("star"), v -> {
+          
+          Asyncc.Inject(Map.of("dage", new NeoInject.Task<>(x -> {
+              x.done(null, null);
+            })),
+            v::done);
+          
+        }),
+        "bar", new NeoInject.Task<>(Set.of(), v -> {
+          Object foo = v.get("foo");
+          System.out.println("foo:");
+          System.out.println(foo);
           v.done(null, 5);
         })
       
