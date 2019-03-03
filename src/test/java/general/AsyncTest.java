@@ -9,15 +9,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.ores.async.Asyncc;
-import org.ores.async.NeoInject;
-import org.ores.async.NeoQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-
 import static java.util.Arrays.asList;
+
+///////////////////////////////////////////////////
 
 class ZoomCounter {
   
@@ -93,15 +91,16 @@ class AcceptRunnable implements Asyncc.IAcceptRunnable {
 public class AsyncTest {
   
   final static Logger log = LoggerFactory.getLogger(AsyncTest.class);
-  static Vertx vertx = Vertx.vertx();
-  static Context context = vertx.getOrCreateContext();
-  static AcceptRunnable ar = new AcceptRunnable(vertx, context);
+  
+//  static Vertx vertx = Vertx.vertx();
+//  static Context context = vertx.getOrCreateContext();
+//  static AcceptRunnable ar = new AcceptRunnable(vertx, context);
   
   @Before
   public void onBefore() {
 
 //    ar = new AcceptRunnable(vertx, context);
-    Asyncc.setOnNext(ar);
+//    Asyncc.setOnNext(ar);
     
     var h = new HandleRunnable().accept((x,y) -> {
       return x*y;

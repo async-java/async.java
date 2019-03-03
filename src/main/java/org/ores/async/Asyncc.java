@@ -146,30 +146,33 @@ public class Asyncc {
       @Override
       void handle(Object v, IAsyncCallback cb) {
         
-        var task = new AsyncTask<>(){
+        final var task = new AsyncTask<>(){
           @Override
           public void run(IAsyncCallback<Object, Object> cb) {
             o.run(v, cb::done);
           }
         };
       
-        var x = new ArrayList(Arrays.asList(tasks));
-        x.add(0, task);
-  
+        final var x = new ArrayList<AsyncTask<T, E>>();
+        x.add((AsyncTask)task);
+        x.addAll(Arrays.asList(tasks));
         NeoParallel.Parallel(x, cb);
       }
     };
   }
   
   public static <T, E> AsyncTask<List<T>, E> Parallel(AsyncTask<T, E> t, AsyncTask<T, E>... tasks) {
+    ////
     final var listOfTasks = new ArrayList<>(Arrays.asList(tasks));
     listOfTasks.add(0,t);
     return cb -> NeoParallel.Parallel(listOfTasks, cb);
   }
   
   public static <T, E> AsyncTask<List<T>, E> Series(AsyncTask<T, E> t, AsyncTask<T, E>... tasks) {
-    final var listOfTasks = new ArrayList<>(Arrays.asList(tasks));
-    listOfTasks.add(0,t);
+    ////
+    final var listOfTasks = new ArrayList<AsyncTask<T, E>>();
+    listOfTasks.add(t);
+    listOfTasks.addAll(Arrays.asList(tasks));
     return cb -> NeoSeries.Series(listOfTasks, cb);
   }
   
