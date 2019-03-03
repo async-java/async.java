@@ -21,7 +21,7 @@ public class NeoTimesI {
     void run(Integer v, ITimesCallback<T,E> cb);
   }
   
-  public interface ITimesCallback<T,E> {
+  public interface ITimesCallback<T,E> extends Asyncc.IAsyncCallback<T,E> {
     void done(E e, T v);
   }
   

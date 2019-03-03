@@ -1,7 +1,9 @@
 package org.ores.async;
 
 import java.util.Iterator;
-
+import static org.ores.async.NeoEachI.IEacher;
+import static org.ores.async.NeoEachI.IEachCallback;
+import static org.ores.async.NeoEachI.EachCallback;
 import static org.ores.async.NeoUtils.handleSameTickCall;
 
 /**
@@ -22,7 +24,7 @@ import static org.ores.async.NeoUtils.handleSameTickCall;
 class NeoEach {
   
   
-  static <T, E> void Each(int limit, Iterable<T> i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
+  static <T, E> void Each(int limit, Iterable<T> i, IEacher<T, E> m, IEachCallback<E> f) {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
@@ -37,8 +39,8 @@ class NeoEach {
     final Iterator<T> iterator,
     final CounterLimit c,
     final ShortCircuit s,
-    final NeoEachI.IEacher<T, E> m,
-    final NeoEachI.IEachCallback<E> f) {
+    final IEacher<T, E> m,
+    final IEachCallback<E> f) {
     
     final T v;
     
@@ -50,7 +52,7 @@ class NeoEach {
       v = iterator.next();
     }
     
-    final var taskRunner = new NeoEachI.EachCallback<E>(s) {
+    final var taskRunner = new EachCallback<E>(s) {
       
       @Override
       public void done(E e, Object v) {

@@ -35,7 +35,7 @@ class NeoTimes {
       return;
     }
     
-    final CounterLimit c = new CounterLimit(limit);
+    final CounterLimit c = new CounterLimit(limit, count);
     final ShortCircuit s = new ShortCircuit();
     RunTimes(c, s, results, m, f);
     handleSameTickCall(s);
@@ -49,17 +49,18 @@ class NeoTimes {
     final ITimesr<T, E> m,
     final ITimesCallback<List<T>, E> f) {
     
-    final int v;
+    final int val;
     
     synchronized (c){
-      v = c.getStartedCount();
-      if (v > c.getMax()) {
-        new RuntimeException("Warning: hit max but should not be reached.").printStackTrace(System.err);
+      val = c.getStartedCount();
+      if (val >= c.getMax()) {
+        new RuntimeException("Warning: hit max, but this should not be reached.").printStackTrace(System.err);
         return;
       }
     }
     
     c.incrementStarted();
+    results.add(null);
     
     final var taskRunner = new TimesCallback<T, E>(s) {
       
@@ -80,28 +81,30 @@ class NeoTimes {
           }
           
           c.incrementFinished();
+          results.set(val, v);
           
         }
         
         if (e != null) {
           s.setShortCircuited(true);
-          NeoUtils.fireFinalCallback(s, e, results, (Asyncc.IAsyncCallback) f);
+          NeoUtils.fireFinalCallback(s, e, results, f);
           return;
         }
         
-        final boolean isDone, isBelowCapacity;
+        final boolean isDone, isBelowCapacity, maxxedOut;
         
         synchronized (c) {
-          isDone = c.getMax() == c.getStartedCount() && c.getFinishedCount() == c.getStartedCount();
+          isDone = c.getFinishedCount() == c.getMax();
           isBelowCapacity = c.isBelowCapacity();
+          maxxedOut = c.getStartedCount() >= c.getMax();
         }
         
         if (isDone) {
-          NeoUtils.fireFinalCallback(s, null, results, (Asyncc.IAsyncCallback) f);
+          NeoUtils.fireFinalCallback(s, null, results, f);
           return;
         }
         
-        if (isBelowCapacity) {
+        if (!maxxedOut && isBelowCapacity) {
           RunTimes(c, s, results, m, f);
         }
         
@@ -110,20 +113,22 @@ class NeoTimes {
     };
     
     try {
-      m.run(v, taskRunner);
+      m.run(val, taskRunner);
     } catch (Exception err) {
       s.setShortCircuited(true);
-      NeoUtils.fireFinalCallback(s, err, results, (Asyncc.IAsyncCallback) f);
+      NeoUtils.fireFinalCallback(s, err, results, f);
       return;
     }
     
-    final boolean isBelowCapacity;
+    final boolean isBelowCapacity, isDone, maxxedOut;
     
     synchronized (c) {
+      isDone = c.getFinishedCount() == c.getMax();
       isBelowCapacity = c.isBelowCapacity();
+      maxxedOut = c.getStartedCount() >= c.getMax();
     }
     
-    if (isBelowCapacity) {
+    if (!isDone && !maxxedOut && isBelowCapacity) {
       RunTimes(c, s, results, m, f);
     }
     
