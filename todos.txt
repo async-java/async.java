@@ -117,3 +117,6 @@ https://stackoverflow.com/questions/54955359/make-argument-optional-using-void-t
 
 
 encourage immutable collection with list.of and map.of
+
+get the library on vertx awesome list!
+https://github.com/vert-x3/vertx-awesome
