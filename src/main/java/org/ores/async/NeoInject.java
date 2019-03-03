@@ -25,7 +25,6 @@ public class NeoInject {
    *   .build();
    * </pre>
    */
-  
 
   
   public static class Task<T, E> {

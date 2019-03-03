@@ -6,7 +6,7 @@ import static org.ores.async.NeoUtils.fireFinalCallback;
 
 class NeoSeries {
   
-  public static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T, E> {
+  static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T, E> {
     
     public AsyncCallback(ShortCircuit s) {
       super(s);
@@ -57,7 +57,7 @@ class NeoSeries {
   
   
   @SuppressWarnings("Duplicates")
-  static <T, E> void RunTaskMapSerially(
+  private static <T, E> void RunTaskMapSerially(
     final Iterator<Map.Entry<Object, Asyncc.AsyncTask<T, E>>> entries,
     final int size,
     final Map<Object, T> results,
@@ -79,15 +79,10 @@ class NeoSeries {
     
     c.incrementStarted();
     
-    var taskRunner = new AsyncCallback<T, E>(s) {
-  
-//      @Override
-//      public void done(E e) {
-//         this.done(e,null);
-//      }
+    final var taskRunner = new AsyncCallback<T, E>(s) {
   
       @Override
-      public void done(E e, T v) {
+      public void done(final E e, final T v) {
         
         synchronized (this.cbLock) {
           
@@ -148,7 +143,7 @@ class NeoSeries {
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, E> void RunTasksSerially(
+  private static <T, E> void RunTasksSerially(
     final Iterator<Asyncc.AsyncTask<T, E>> iterator,
     final int size,
     final List<T> results,
@@ -173,11 +168,10 @@ class NeoSeries {
     
     results.add(null);
     
-    var taskRunner = new AsyncCallback<T, E>(s) {
-      
-      
+    final var taskRunner = new AsyncCallback<T, E>(s) {
+
       @Override
-      public void done(E e, T v) {
+      public void done(final E e, final T v) {
         
         synchronized (this.cbLock) {
           

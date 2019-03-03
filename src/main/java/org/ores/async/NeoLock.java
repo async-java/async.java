@@ -17,13 +17,13 @@ public class NeoLock {
   
   private boolean locked = false;
   private String namespace;
-  private ArrayList<Asyncc.IAsyncCallback> queue = new ArrayList<Asyncc.IAsyncCallback>();
+  private ArrayList<Asyncc.IAsyncCallback> queue = new ArrayList<>();
   
-  public NeoLock(String name) {
+  public NeoLock(final String name) {
     this.namespace = name;
   }
   
-  public Unlock makeUnlock(boolean isImmediate) {
+  public Unlock makeUnlock(final boolean isImmediate) {
     var lck = this;
     return new Unlock(isImmediate) {
       @Override
@@ -45,7 +45,7 @@ public class NeoLock {
     };
   }
   
-  public void acquire(Asyncc.IAsyncCallback<Unlock, Object> cb) {
+  public void acquire(final Asyncc.IAsyncCallback<Unlock, Object> cb) {
     
     boolean addToQueue = false;
     

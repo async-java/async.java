@@ -1,9 +1,9 @@
 package org.ores.async;
 
-public class NeoParallelI {
+class NeoParallelI {
   
-  public static interface AsyncValueTask<T, E> {
-    public void run(Object v, Asyncc.IAsyncCallback<T, E> cb);
+  public interface AsyncValueTask<T, E> {
+     void run(Object v, Asyncc.IAsyncCallback<T, E> cb);
   }
   
 }
