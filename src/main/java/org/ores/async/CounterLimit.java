@@ -8,9 +8,15 @@ class CounterLimit {
   private Integer limit;
   private Integer started = 0;
   private Integer finished = 0;
+  private Integer max = null;
   
   public CounterLimit(Integer limit) {
     this.limit = limit;
+  }
+  
+  public CounterLimit(Integer limit, Integer max) {
+    this.limit = limit;
+    this.max = max;
   }
   
   Integer getConcurrency() {
@@ -43,5 +49,13 @@ class CounterLimit {
   
   boolean isIdle() {
     return this.finished >= this.started;
+  }
+  
+  public Integer getMax() {
+    return this.max;
+  }
+  
+  public Integer setMax(Integer max) {
+    return this.max = max;
   }
 }

@@ -120,7 +120,7 @@ public class EachTest {
     
     Async v = tc.async();
     
-    var water = Asyncc.Waterfall((z, t) -> {
+    var wf = Asyncc.Waterfall((z, t) -> {
       
       t.set("init", z);
       t.done(null);
@@ -132,7 +132,7 @@ public class EachTest {
       
     });
     
-    Asyncc.Each(List.of(1, 2, 3), water, err -> {
+    Asyncc.Each(List.of(1, 2, 3), wf, err -> {
       
       assert err == null : err.toString();
       v.complete();

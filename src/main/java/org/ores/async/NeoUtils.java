@@ -54,10 +54,10 @@ class NeoUtils {
       return;
     }
     
-//    f.done((E) e);
-    CompletableFuture
-      .delayedExecutor(3, TimeUnit.MILLISECONDS)
-      .execute(() -> f.done((E) e));
+    f.done((E) e);
+//    CompletableFuture
+//      .delayedExecutor(5, TimeUnit.MILLISECONDS)
+//      .execute(() -> f.done((E) e));
     
   }
 
@@ -122,15 +122,17 @@ class NeoUtils {
       f.done((E) e, (V) results);
       return;
     }
-    
+
     if (isNeverAsync) {
       f.done((E) e, (V) results);
       return;
     }
+  
+    f.done((E) e, (V) results);
     
-    CompletableFuture
-      .delayedExecutor(3, TimeUnit.MILLISECONDS)
-      .execute(() -> f.done((E) e, (V) results));
+//    CompletableFuture
+//      .delayedExecutor(3, TimeUnit.MILLISECONDS)
+//      .execute(() -> f.done((E) e, (V) results));
     
   }
   

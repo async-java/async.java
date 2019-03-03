@@ -1,8 +1,13 @@
 package org.ores.async;
 
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.ores.async.NeoUtils.handleSameTickCall;
+import static org.ores.async.NeoTimesI.AsyncTimesTask;
+import static org.ores.async.NeoTimesI.ITimesCallback;
+import static org.ores.async.NeoTimesI.ITimesr;
+import static org.ores.async.NeoTimesI.TimesCallback;
 
 /**
  * @see <a href="http://google.com">http://google.com</a>
@@ -19,47 +24,47 @@ import static org.ores.async.NeoUtils.handleSameTickCall;
  *   .build();
  * </pre>
  */
-class NeoEach {
+class NeoTimes {
   
-  
-  static <T, E> void Each(int limit, Iterable<T> i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
+  static <T, E> void Times(int limit, int count, ITimesr<T, E> m, ITimesCallback<List<T>, E> f) {
+    
+    var results = new ArrayList<T>();
+    
+    if (count < 1) {
+      f.done(null, results);
+      return;
+    }
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
-    final var iterator = i.iterator();
-    RunEach(iterator, c, s, m, f);
+    RunTimes(c, s, results, m, f);
     handleSameTickCall(s);
   }
   
-  
   @SuppressWarnings("Duplicates")
-  private static <T, E> void RunEach(
-    final Iterator<T> iterator,
+  private static <T, E> void RunTimes(
     final CounterLimit c,
     final ShortCircuit s,
-    final NeoEachI.IEacher<T, E> m,
-    final NeoEachI.IEachCallback<E> f) {
+    final ArrayList<T> results,
+    final ITimesr<T, E> m,
+    final ITimesCallback<List<T>, E> f) {
     
-    final T v;
+    final int v;
     
-    synchronized (iterator){
-      if (!iterator.hasNext()) {
+    synchronized (c){
+      v = c.getStartedCount();
+      if (v > c.getMax()) {
+        new RuntimeException("Warning: hit max but should not be reached.").printStackTrace(System.err);
         return;
       }
-      
-      v = iterator.next();
     }
     
-    final var taskRunner = new NeoEachI.EachCallback<E>(s) {
+    c.incrementStarted();
+    
+    final var taskRunner = new TimesCallback<T, E>(s) {
       
       @Override
-      public void done(E e, Object v) {
-        new RuntimeException("Warning: async.each does not accept an mapped argument.").printStackTrace(System.err);
-        this.done(e);
-      }
-      
-      @Override
-      public void done(E e) {
+      public void done(final E e, final T v) {
         
         synchronized (this.cbLock) {
           
@@ -80,37 +85,35 @@ class NeoEach {
         
         if (e != null) {
           s.setShortCircuited(true);
-          NeoUtils.fireFinalCallback(s, e, f);
+          NeoUtils.fireFinalCallback(s, e, results, (Asyncc.IAsyncCallback) f);
           return;
         }
         
         final boolean isDone, isBelowCapacity;
         
         synchronized (c) {
-          isDone = !iterator.hasNext() && (c.getFinishedCount() == c.getStartedCount());
+          isDone = c.getMax() == c.getStartedCount() && c.getFinishedCount() == c.getStartedCount();
           isBelowCapacity = c.isBelowCapacity();
         }
         
         if (isDone) {
-          NeoUtils.fireFinalCallback(s, null, f);
+          NeoUtils.fireFinalCallback(s, null, results, (Asyncc.IAsyncCallback) f);
           return;
         }
         
         if (isBelowCapacity) {
-          RunEach(iterator, c, s, m, f);
+          RunTimes(c, s, results, m, f);
         }
         
       }
       
     };
     
-    c.incrementStarted();
-    
     try {
-      m.each(v, taskRunner);
+      m.run(v, taskRunner);
     } catch (Exception err) {
       s.setShortCircuited(true);
-      NeoUtils.fireFinalCallback(s, err, f);
+      NeoUtils.fireFinalCallback(s, err, results, (Asyncc.IAsyncCallback) f);
       return;
     }
     
@@ -121,7 +124,7 @@ class NeoEach {
     }
     
     if (isBelowCapacity) {
-      RunEach(iterator, c, s, m, f);
+      RunTimes(c, s, results, m, f);
     }
     
   }

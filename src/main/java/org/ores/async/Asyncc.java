@@ -385,7 +385,7 @@ public class Asyncc {
             return;
           }
           
-          NeoEach.Each(Integer.MAX_VALUE, copy, m, err -> {
+          NeoEach.Times(Integer.MAX_VALUE, copy, m, err -> {
             cb.done(err, null);
           });
           
@@ -413,7 +413,7 @@ public class Asyncc {
             return;
           }
           
-          NeoEach.Each(Integer.MAX_VALUE, (Iterable<T>)copy.entrySet(), m, err -> {
+          NeoEach.Times(Integer.MAX_VALUE, (Iterable<T>)copy.entrySet(), m, err -> {
             cb.done(err, null);
           });
           
@@ -424,33 +424,33 @@ public class Asyncc {
   }
   
   public static <T, E> NeoEachI.AsyncEachTask<E> Each(Iterable<T> i, NeoEachI.IEacher<T, E> m) {
-    return cb -> NeoEach.Each(Integer.MAX_VALUE, i, m, cb);
+    return cb -> NeoEach.Times(Integer.MAX_VALUE, i, m, cb);
   }
   
   public static <T, E> void Each(Iterable<T> i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
-    NeoEach.Each(Integer.MAX_VALUE, i, m, f);
+    NeoEach.Times(Integer.MAX_VALUE, i, m, f);
   }
   
   public static <T, E> void EachLimit(int limit, Iterable<T> i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
     NeoUtils.validateLimit(limit);
-    NeoEach.Each(limit, i, m, f);
+    NeoEach.Times(limit, i, m, f);
   }
   
   public static <T, E> void EachSeries(Iterable<T> i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
-    NeoEach.Each(1, i, m, f);
+    NeoEach.Times(1, i, m, f);
   }
   
   public static <T, E> void Each(Map i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
-    NeoEach.Each(Integer.MAX_VALUE, (Set<T>) i.entrySet(), m, f);
+    NeoEach.Times(Integer.MAX_VALUE, (Set<T>) i.entrySet(), m, f);
   }
   
   public static <T, E> void EachLimit(int limit, Map i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
     NeoUtils.validateLimit(limit);
-    NeoEach.Each(limit, i.<T>entrySet(), m, f);
+    NeoEach.Times(limit, i.<T>entrySet(), m, f);
   }
   
   public static <T, E> void EachSeries(Map<Object, Object> i, NeoEachI.IEacher<T, E> m, NeoEachI.IEachCallback<E> f) {
-    NeoEach.Each(1, (Set<T>) i.entrySet(), m, f);
+    NeoEach.Times(1, (Set<T>) i.entrySet(), m, f);
   }
   
   // end each
