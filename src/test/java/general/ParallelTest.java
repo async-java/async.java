@@ -42,7 +42,7 @@ public class ParallelTest {
     
     Async z = tc.async();
     
-    Asyncc.Parallel(asList(
+    Asyncc.Parallel(List.of(
       
       v -> {
         
@@ -61,7 +61,32 @@ public class ParallelTest {
   }
   
   
-  
+  @Test
+  public void testParallelComposed(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    Asyncc.Parallel(List.of(
+      
+      Asyncc.Parallel(t -> {
+      
+      }),
+      
+      v -> {
+        
+        v.done(null, null);
+      }
+    
+    ), (e, results) -> {
+      
+      if (e != null) {
+        z.complete();
+      } else {
+        z.complete();
+      }
+      
+    });
+  }
   
   
   @Test

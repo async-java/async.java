@@ -134,7 +134,7 @@ public class EachTest {
     
     Asyncc.Each(List.of(1, 2, 3), water, err -> {
       
-      assert err == null : "Err should be null";
+      assert err == null : err.toString();
       v.complete();
       
     });
@@ -173,7 +173,7 @@ public class EachTest {
       
     }, err -> {
       
-      assert err == null : "Err should be null";
+      assert err == null : err.toString();
       v.complete();
       
     });

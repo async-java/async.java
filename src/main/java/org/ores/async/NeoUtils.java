@@ -54,10 +54,10 @@ class NeoUtils {
       return;
     }
     
-//    f.done((E) e);
-    CompletableFuture
-      .delayedExecutor(3, TimeUnit.MILLISECONDS)
-      .execute(() -> f.done((E) e));
+    f.done((E) e);
+//    CompletableFuture
+//      .delayedExecutor(3, TimeUnit.MILLISECONDS)
+//      .execute(() -> f.done((E) e));
     
   }
 

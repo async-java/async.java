@@ -1,6 +1,7 @@
 package org.ores.async;
 
 import java.util.List;
+import java.util.Map;
 
 public class NeoEachI {
   
@@ -10,6 +11,10 @@ public class NeoEachI {
   
   public static interface AsyncValueTask<T, E> {
     public void run(Object v, List<T> x, IEachCallback<E> cb);
+  }
+  
+  public static interface AsyncValueMapTask<T, E> {
+    public void run(Object v, Map<Object,Object> x, IEachCallback<E> cb);
   }
   
   public interface IEacher<T, E> {

@@ -137,12 +137,40 @@ public class Asyncc {
     void run(IAsyncCallback<T, E> cb);
   }
   
-  public static <T, E> AsyncTask<List<T>, E> Parallel(AsyncTask<T, E>... tasks) {
-    return cb -> NeoParallel.Parallel(List.of(tasks), cb);
+  
+  // begin parallel
+  
+  public static <T, V, E> NeoGeneric<T, V, E> Parallel(NeoParallelI.AsyncValueTask<T, E> o, AsyncTask<T, E>... tasks) {
+    return new NeoGeneric<>() {
+      
+      @Override
+      void handle(Object v, IAsyncCallback cb) {
+        
+        var task = new AsyncTask<>(){
+          @Override
+          public void run(IAsyncCallback<Object, Object> cb) {
+            o.run(v, cb::done);
+          }
+        };
+      
+        var x = new ArrayList(Arrays.asList(tasks));
+        x.add(0, task);
+  
+        NeoParallel.Parallel(x, cb);
+      }
+    };
   }
   
-  public static <T, E> AsyncTask<List<T>, E> Series(AsyncTask<T, E>... tasks) {
-    return cb -> NeoSeries.Series(List.of(tasks), cb);
+  public static <T, E> AsyncTask<List<T>, E> Parallel(AsyncTask<T, E> t, AsyncTask<T, E>... tasks) {
+    var listOfTasks = Arrays.asList(tasks);
+    listOfTasks.add(t);
+    return cb -> NeoParallel.Parallel(listOfTasks, cb);
+  }
+  
+  public static <T, E> AsyncTask<List<T>, E> Series(AsyncTask<T, E> t, AsyncTask<T, E>... tasks) {
+    var listOfTasks = Arrays.asList(tasks);
+    listOfTasks.add(t);
+    return cb -> NeoSeries.Series(listOfTasks, cb);
   }
   
   public static <T, E> AsyncTask<List<T>, E> Parallel(List<AsyncTask<T, E>> tasks) {
@@ -204,17 +232,17 @@ public class Asyncc {
       
       @Override
       void handle(Object v, IAsyncCallback cb) {
-
+        
         List<T> copy = new ArrayList<>();
         i.forEach(copy::add); // add rest of iterable after v
         
         o.run(v, copy, e -> {
           
-          if(e != null){
-            cb.done(e,null);
+          if (e != null) {
+            cb.done(e, null);
             return;
           }
-  
+          
           NeoMap.Map(Integer.MAX_VALUE, copy, m, cb);
           
         });
@@ -340,19 +368,49 @@ public class Asyncc {
   
   // start each
   
-  public static <T, E> NeoGeneric<T, Object, E> Each(NeoEachI.AsyncValueTask<T, E> o, Iterable<T> i, NeoEachI.IEacher<T, E> m) {
+  public static <T, E> NeoGeneric<T, Object, E> Each(NeoEachI.AsyncValueTask<T, E> o, List<T> i, NeoEachI.IEacher<T, E> m) {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
         
-        o.run(v, (List) i, e -> {  // TODO: not always a list..
+        final List<T> copy = new ArrayList<>(i);
+        
+        o.run(v, copy, e -> {  // TODO: not always a list..
           
           if (e != null) {
             cb.done((E) e, null);
             return;
           }
           
-          NeoEach.Each(Integer.MAX_VALUE, i, m, err -> {
+          NeoEach.Each(Integer.MAX_VALUE, copy, m, err -> {
+            cb.done(err, null);
+          });
+          
+        });
+        
+      }
+    };
+  }
+  
+  public static <T, E> NeoGeneric<T, Object, E> Each(
+    final NeoEachI.AsyncValueMapTask<T, E> o,
+    final Map<Object,Object> i,
+    final NeoEachI.IEacher<T, E> m) {
+    
+    return new NeoGeneric<>() {
+      @Override
+      void handle(Object v, IAsyncCallback cb) {
+  
+        final Map<Object,Object> copy = new HashMap<>(i);
+        
+        o.run(v, copy, e -> {
+          
+          if (e != null) {
+            cb.done((E) e, null);
+            return;
+          }
+          
+          NeoEach.Each(Integer.MAX_VALUE, (Iterable<T>)copy.entrySet(), m, err -> {
             cb.done(err, null);
           });
           
@@ -394,7 +452,7 @@ public class Asyncc {
   
   // end each
   
-  // start inject
+  // start inject / begin inject INJECT_TAG
   
   public static <T, E> void Inject(
     Map.Entry<String, NeoInject.Task<T, E>> a,
@@ -412,7 +470,7 @@ public class Asyncc {
   public static <T, E> void Inject(
     Map<String, NeoInject.Task<T, E>> tasks,
     NeoInjectI.AsyncCallbackSet<Map, E> f) {
-    NeoInject.Inject(tasks, (IAsyncCallback)f);
+    NeoInject.Inject(tasks, (IAsyncCallback) f);
   }
   
   public static <T, E> AsyncTask<Map<String, Object>, E> Inject(
@@ -424,19 +482,16 @@ public class Asyncc {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
+        
         var task = z.run(v);
-        var m = new HashMap<>();
-        m.put(task.getKey(), task.getValue());
-        for (Map.Entry<String, NeoInject.Task<T, E>> entry : tasks.entrySet()) {
-          
-          if (m.containsKey(entry.getKey())) {
-            throw new Error("Map already contains key: " + entry.getKey());
-          }
-          
-          m.put(entry.getKey(), entry.getValue());
+        var m = new HashMap<>(tasks);
+  
+        if (m.containsKey(task.getKey())) {
+          throw new Error("Map already contains key: " + task.getKey());
         }
         
         NeoInject.Inject(tasks, cb);
+        
       }
     };
   }
@@ -457,7 +512,7 @@ public class Asyncc {
     NeoSeries.<T, E>Series(tasks, cb);
   }
   
-  public static <T, E> NeoGeneric<T, Object, E> Series(AsyncValueTask<Object, E> z, AsyncTask<T, E> a) {
+  public static <T, E> NeoGeneric<T, Void, E> Series(AsyncValueTask<T, E> z, AsyncTask<T, E> ...args) {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
@@ -468,8 +523,10 @@ public class Asyncc {
             z.run(v, cb);
           }
         };
-        
-        NeoSeries.<T, E>Series(List.of(t, a), cb);
+  
+        var x = new ArrayList<>(Arrays.asList(args));
+        x.add(0,t);
+        NeoSeries.<T, E>Series(x, cb);
       }
     };
   }
@@ -511,7 +568,7 @@ public class Asyncc {
     AsyncTask<T, E> d,
     AsyncTask<T, E> e,
     IAsyncCallback<List<T>, E> cb) {
-    
+    ////
     NeoSeries.Series(List.of(a, b, c, d, e), cb);
   }
   
@@ -523,7 +580,7 @@ public class Asyncc {
     AsyncTask<T, E> e,
     AsyncTask<T, E> f,
     IAsyncCallback<List<T>, E> cb) {
-    
+    ////
     NeoSeries.Series(List.of(a, b, c, d, e, f), cb);
   }
   
@@ -536,7 +593,7 @@ public class Asyncc {
     AsyncTask<T, E> f,
     AsyncTask<T, E> g,
     IAsyncCallback<List<T>, E> cb) {
-    
+    /////
     NeoSeries.Series(List.of(a, b, c, d, e, f, g), cb);
   }
   
@@ -546,7 +603,7 @@ public class Asyncc {
     int limit,
     Map<Object, AsyncTask<T, E>> tasks,
     IAsyncCallback<Map<Object, T>, E> f) {
-    
+    ////
     NeoUtils.validateLimit(limit);
     NeoParallel.ParallelLimit(limit, tasks, f);
   }
@@ -554,6 +611,7 @@ public class Asyncc {
   public static <T, E> void Parallel(
     Map.Entry<Object, AsyncTask<T, E>> a,
     IAsyncCallback<Map<Object, T>, E> f) {
+    ////
     NeoParallel.Parallel(Map.ofEntries(a), f);
   }
   
@@ -561,6 +619,7 @@ public class Asyncc {
     Map.Entry<Object, AsyncTask<T, E>> a,
     Map.Entry<Object, AsyncTask<T, E>> b,
     IAsyncCallback<Map<Object, T>, E> f) {
+    /////
     NeoParallel.Parallel(Map.ofEntries(a, b), f);
   }
   
@@ -569,6 +628,7 @@ public class Asyncc {
     Map.Entry<Object, AsyncTask<T, E>> b,
     Map.Entry<Object, AsyncTask<T, E>> c,
     IAsyncCallback<Map<Object, T>, E> f) {
+    ////
     NeoParallel.Parallel(Map.ofEntries(a, b, c), f);
   }
   
@@ -581,6 +641,7 @@ public class Asyncc {
     Map.Entry<Object, AsyncTask<T, E>> c,
     Map.Entry<Object, AsyncTask<T, E>> d,
     IAsyncCallback<Map<Object, T>, E> f) {
+    ////
     NeoParallel.Parallel(Map.ofEntries(a, b, c, d), f);
   }
   
@@ -594,6 +655,7 @@ public class Asyncc {
     Map.Entry<Object, AsyncTask<T, E>> d,
     Map.Entry<Object, AsyncTask<T, E>> e,
     IAsyncCallback<Map<Object, T>, E> f) {
+    ////
     NeoParallel.Parallel(Map.ofEntries(a, b, c, d, e), f);
   }
   
@@ -608,6 +670,7 @@ public class Asyncc {
     Map.Entry<Object, AsyncTask<T, E>> e,
     Map.Entry<Object, AsyncTask<T, E>> f,
     IAsyncCallback<Map<Object, T>, E> cb) {
+    /////
     NeoParallel.Parallel(Map.ofEntries(a, b, c, d, e, f), cb);
   }
   
@@ -620,16 +683,19 @@ public class Asyncc {
     Map.Entry<Object, AsyncTask<T, E>> f,
     Map.Entry<Object, AsyncTask<T, E>> g,
     IAsyncCallback<Map<Object, T>, E> cb) {
+    /////
     NeoParallel.Parallel(Map.ofEntries(a, b, c, d, e, f, g), cb);
   }
   
   public static <T, E> void Parallel(Map<Object, AsyncTask<T, E>> tasks, IAsyncCallback<Map<Object, T>, E> f) {
+    ////
     NeoParallel.Parallel(tasks, f);
   }
   
   public static <T, E> void Parallel(
     AsyncTask<T, E> a,
     IAsyncCallback<List<T>, E> cb) {
+    ////
     NeoParallel.Parallel(List.of(a), cb);
   }
   
@@ -637,6 +703,7 @@ public class Asyncc {
     AsyncTask<T, E> a,
     AsyncTask<T, E> b,
     IAsyncCallback<List<T>, E> cb) {
+    ////
     NeoParallel.Parallel(List.of(a, b), cb);
   }
   
@@ -715,41 +782,43 @@ public class Asyncc {
     NeoParallel.Parallel(List.of(a, b, c, d, e, f, g, h), cb);
   }
   
-  // begin waterfall
+  // begin waterfall / start waterfall  TAG_WATERFALL
   
   public static <T, E> void Waterfall(
-    List<NeoWaterfall.AsyncTask<T, E>> tasks,
+    List<NeoWaterfallI.AsyncTask<T, E>> tasks,
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(tasks, cb);
   }
   
-  public static <T, E> NeoGeneric<T, Object, E> Waterfall(NeoWaterfall.AsyncValueTask<T, E> z, NeoWaterfall.AsyncTask<T, E> a) {
+  public static <T, E> NeoGeneric<T, Object, E> Waterfall(NeoWaterfallI.AsyncValueTask<T, E> z, NeoWaterfallI.AsyncTask<T, E> ...args) {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
         
-        var t = new NeoWaterfall.AsyncTask<T, E>() {
+        var t = new NeoWaterfallI.AsyncTask<T, E>() {
           
           @Override
-          public void run(NeoWaterfall.AsyncCallback<T, E> cb) {
+          public void run(NeoWaterfallI.AsyncCallback<T, E> cb) {
             z.run(v, cb);
           }
         };
         
-        NeoWaterfall.Waterfall(List.of(t, a), cb);
+        var c = new ArrayList<>(Arrays.asList(args));
+        c.add(0,t);
+        NeoWaterfall.Waterfall(c, cb);
       }
     };
   }
   
   public static <T, E> void Waterfall(
-    NeoWaterfall.AsyncTask<T, E> a,
+    NeoWaterfallI.AsyncTask<T, E> a,
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(List.of(a), cb);
   }
   
   public static <T, E> void Waterfall(
-    NeoWaterfall.AsyncTask<T, E> a,
-    NeoWaterfall.AsyncTask<T, E> b,
+    NeoWaterfallI.AsyncTask<T, E> a,
+    NeoWaterfallI.AsyncTask<T, E> b,
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(List.of(a, b), cb);
   }
@@ -760,9 +829,9 @@ public class Asyncc {
    * @Since 1.2.0
    */
   public static <T, E> void Waterfall(
-    NeoWaterfall.AsyncTask<T, E> a,
-    NeoWaterfall.AsyncTask<T, E> b,
-    NeoWaterfall.AsyncTask<T, E> c,
+    NeoWaterfallI.AsyncTask<T, E> a,
+    NeoWaterfallI.AsyncTask<T, E> b,
+    NeoWaterfallI.AsyncTask<T, E> c,
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(List.of(a, b, c), cb);
   }
@@ -771,10 +840,10 @@ public class Asyncc {
    * @exclude
    */
   public static <T, E> void Waterfall(
-    NeoWaterfall.AsyncTask<T, E> a,
-    NeoWaterfall.AsyncTask<T, E> b,
-    NeoWaterfall.AsyncTask<T, E> c,
-    NeoWaterfall.AsyncTask<T, E> d,
+    NeoWaterfallI.AsyncTask<T, E> a,
+    NeoWaterfallI.AsyncTask<T, E> b,
+    NeoWaterfallI.AsyncTask<T, E> c,
+    NeoWaterfallI.AsyncTask<T, E> d,
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(List.of(a, b, c, d), cb);
   }
@@ -783,22 +852,22 @@ public class Asyncc {
    * @exclude
    */
   public static <T, E> void Waterfall(
-    NeoWaterfall.AsyncTask<T, E> a,
-    NeoWaterfall.AsyncTask<T, E> b,
-    NeoWaterfall.AsyncTask<T, E> c,
-    NeoWaterfall.AsyncTask<T, E> d,
-    NeoWaterfall.AsyncTask<T, E> e,
+    NeoWaterfallI.AsyncTask<T, E> a,
+    NeoWaterfallI.AsyncTask<T, E> b,
+    NeoWaterfallI.AsyncTask<T, E> c,
+    NeoWaterfallI.AsyncTask<T, E> d,
+    NeoWaterfallI.AsyncTask<T, E> e,
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(List.of(a, b, c, d, e), cb);
   }
   
   public static <T, E> void Waterfall(
-    NeoWaterfall.AsyncTask<T, E> a,
-    NeoWaterfall.AsyncTask<T, E> b,
-    NeoWaterfall.AsyncTask<T, E> c,
-    NeoWaterfall.AsyncTask<T, E> d,
-    NeoWaterfall.AsyncTask<T, E> e,
-    NeoWaterfall.AsyncTask<T, E> f,
+    NeoWaterfallI.AsyncTask<T, E> a,
+    NeoWaterfallI.AsyncTask<T, E> b,
+    NeoWaterfallI.AsyncTask<T, E> c,
+    NeoWaterfallI.AsyncTask<T, E> d,
+    NeoWaterfallI.AsyncTask<T, E> e,
+    NeoWaterfallI.AsyncTask<T, E> f,
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(List.of(a, b, c, d, e, f), cb);
   }

@@ -15,9 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
-import static java.util.Arrays.asList;
 
 @RunWith(VertxUnitRunner.class)
 public class WaterfallTest {
@@ -33,7 +31,7 @@ public class WaterfallTest {
   
     Async z = tc.async();
   
-    var t = (Asyncc.IMapper) Asyncc.Waterfall(
+    var t = Asyncc.Waterfall(
     
       (x, v) -> {
         v.set("begin", x);
