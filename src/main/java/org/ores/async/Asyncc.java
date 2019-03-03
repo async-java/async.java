@@ -162,14 +162,14 @@ public class Asyncc {
   }
   
   public static <T, E> AsyncTask<List<T>, E> Parallel(AsyncTask<T, E> t, AsyncTask<T, E>... tasks) {
-    var listOfTasks = Arrays.asList(tasks);
-    listOfTasks.add(t);
+    final var listOfTasks = new ArrayList<>(Arrays.asList(tasks));
+    listOfTasks.add(0,t);
     return cb -> NeoParallel.Parallel(listOfTasks, cb);
   }
   
   public static <T, E> AsyncTask<List<T>, E> Series(AsyncTask<T, E> t, AsyncTask<T, E>... tasks) {
-    var listOfTasks = Arrays.asList(tasks);
-    listOfTasks.add(t);
+    final var listOfTasks = new ArrayList<>(Arrays.asList(tasks));
+    listOfTasks.add(0,t);
     return cb -> NeoSeries.Series(listOfTasks, cb);
   }
   

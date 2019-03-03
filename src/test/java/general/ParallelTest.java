@@ -31,11 +31,10 @@ public class ParallelTest {
   @Before
   public void onBefore() {
     
-    IAsyncCallback<Optional,Object> cb = (e,v) -> {};
+    IAsyncCallback<Optional, Object> cb = (e, v) -> {
+    };
     
   }
-  
-  
   
   @Test
   public void testParallel(TestContext tc) {
@@ -60,7 +59,6 @@ public class ParallelTest {
     });
   }
   
-  
   @Test
   public void testParallelComposed(TestContext tc) {
     
@@ -69,8 +67,11 @@ public class ParallelTest {
     Asyncc.Parallel(List.of(
       
       Asyncc.Parallel(t -> {
-      
-      }),
+          t.done(null, 5);
+        },
+        t -> {
+          t.done(null, 8);
+        }),
       
       v -> {
         
@@ -87,7 +88,6 @@ public class ParallelTest {
       
     });
   }
-  
   
   @Test
   public void testParallelLimitMap(TestContext tc) {
