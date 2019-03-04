@@ -82,11 +82,6 @@ class NeoMap {
     
     final var taskRunner = new AsyncCallback<V, E>(s) {
       
-//      @Override
-//      public void done(E e) {
-//        this.done(e, null);
-//      }
-      
       @Override
       public void done(E e, V v) {
         
@@ -176,11 +171,6 @@ class NeoMap {
     c.incrementStarted();
     
     final var taskRunner = new AsyncCallback<V, E>(s) {
-      
-//      @Override
-//      public void done(E e) {
-//        this.done(e, null);
-//      }
       
       @Override
       public void done(E e, V v) {
