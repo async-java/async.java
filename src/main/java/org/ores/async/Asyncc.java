@@ -88,7 +88,7 @@ public class Asyncc {
   
   public static abstract class AsyncCallback<T, E> implements IAsyncCallback<T, E>, ICallbacks<T, E> {
     
-    protected ShortCircuit s;
+    protected final ShortCircuit s;
     protected boolean isFinished = false;
     protected final Object cbLock = new Object();
     

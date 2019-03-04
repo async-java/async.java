@@ -25,7 +25,7 @@ import static org.ores.async.NeoRaceIfc.AsyncTask;
  */
 class NeoRace {
   
-  static <T, V, E> void Race(int limit, Iterable<AsyncTask<T, E>> i, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void Race(final int limit, final Iterable<AsyncTask<T, E>> i, final Asyncc.IAsyncCallback<V, E> f) {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
@@ -34,7 +34,7 @@ class NeoRace {
     handleSameTickCall(s);
   }
   
-  static <T, V, E> void Race(int limit, Iterable<T> i, IMapper<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void Race(final int limit, final Iterable<T> i, final IMapper<T, V, E> m, final Asyncc.IAsyncCallback<V, E> f) {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
@@ -44,7 +44,7 @@ class NeoRace {
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, V, E> void RunRace(
+  private static <T, V, E> void RunRace(
     final Iterator<T> iterator,
     final CounterLimit c,
     final ShortCircuit s,
@@ -67,11 +67,6 @@ class NeoRace {
     }
     
     final var taskRunner = new RaceCallback<V, E>(s) {
-      
-//      @Override
-//      public void done(final E e) {
-//        this.done(e, null);
-//      }
       
       @Override
       public void done(final E e, final V v) {

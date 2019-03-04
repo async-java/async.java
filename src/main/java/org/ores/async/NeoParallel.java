@@ -268,7 +268,7 @@ class NeoParallel {
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, E> void Parallel(Map<Object, Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<Map<Object, T>, E> f) {
+  static <T, E> void Parallel(final Map<Object, Asyncc.AsyncTask<T, E>> tasks, final Asyncc.IAsyncCallback<Map<Object, T>, E> f) {
     
     final Map<Object, T> results = new HashMap<>();
     final CounterLimit c = new CounterLimit(Integer.MAX_VALUE);
@@ -276,18 +276,13 @@ class NeoParallel {
     final Set<Map.Entry<Object, Asyncc.AsyncTask<T, E>>> entrySet = tasks.entrySet();
     final int size = entrySet.size();
     
-    for (Map.Entry<Object, Asyncc.AsyncTask<T, E>> entry : entrySet) {
+    for (final Map.Entry<Object, Asyncc.AsyncTask<T, E>> entry : entrySet) {
       
       final Object key = entry.getKey();
       final var taskRunner = new AsyncCallback<T, E>(s) {
-  
-//        @Override
-//        public void done(E e) {
-//          this.done(e,null);
-//        }
-        
+
         @Override
-        public void done(E e, T v) {
+        public void done(final E e, final T v) {
           
           synchronized (this.cbLock) {
             
@@ -297,16 +292,17 @@ class NeoParallel {
             }
             
             this.setFinished(true);
-            
+
+            c.incrementFinished();
+            results.put(key, v);
+
             if (s.isShortCircuited()) {
               return;
             }
             
           }
           
-          c.incrementFinished();
-          results.put(key, v);
-          
+
           if (e != null) {
             s.setShortCircuited(true);
             fireFinalCallback(s, e, results, f);
@@ -329,15 +325,19 @@ class NeoParallel {
       } catch (Exception e) {
         s.setShortCircuited(true);
         fireFinalCallback(s, e, results, f);
-        return;
+        break; // breaks us out of loop
       }
       
+    }
+
+    if (s.isFinalCallbackFired()) {
+      s.setSameTick(false);
     }
     
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, E> void Parallel(List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  static <T, E> void Parallel(final List<Asyncc.AsyncTask<T, E>> tasks, final Asyncc.IAsyncCallback<List<T>, E> f) {
     
     final List<T> results = new ArrayList<T>();
     final int size = tasks.size();
@@ -359,7 +359,7 @@ class NeoParallel {
       final var taskRunner = new AsyncCallback<T, E>(s) {
         
         @Override
-        public void done(E e, T v) {
+        public void done(final E e, final T v) {
           
           synchronized (this.cbLock) {
             
@@ -369,13 +369,13 @@ class NeoParallel {
             }
             
             this.setFinished(true);
+
+            c.incrementFinished();
+            results.set(index, v);
             
             if (s.isShortCircuited()) {
               return;
             }
-            
-            c.incrementFinished();
-            results.set(index, v);
           }
           
           if (e != null) {

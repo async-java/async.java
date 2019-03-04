@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class NeoWaterfallI {
   
-  static class UserMap extends HashMap<String, Object> {
+  private static class UserMap extends HashMap<String, Object> {
   
   }
   
@@ -44,7 +44,7 @@ public class NeoWaterfallI {
     public <V> V get(String s) {
       return (V) this.map.get(s);
     }
-    
+
     boolean isFinished() {
       return this.isFinished;
     }
@@ -53,9 +53,6 @@ public class NeoWaterfallI {
       return this.isFinished = b;
     }
 
-//    public Object get(String s) {
-//      return this.map.get(s);
-//    }
     
     public <V> void set(String s, V v) {
       this.map.put(s, v);

@@ -10,7 +10,7 @@ import java.util.List;
  **/
 class NeoConcat {
   
-  static <T> List<T> flatten(int desiredDepth, int currentDepth, Collection<T> results) {
+  static <T> List<T> flatten(final int desiredDepth, int currentDepth, final Collection<T> results) {
     
     if (currentDepth >= desiredDepth) {
       return (List) results;
@@ -31,7 +31,7 @@ class NeoConcat {
     return concatenated;
   }
   
-  static <T> List<T> concatenate(List<T> results) {
+  static <T> List<T> concatenate(final List<T> results) {
     
     ArrayList<T> concatenated = new ArrayList<>();
     
