@@ -32,27 +32,27 @@ public class NeoInject {
     Set<String> s;
     IInjectable<T, E> i;
     
-    public Task(Set<String> s, IInjectable<T, E> i) {
+    public Task(final Set<String> s, final IInjectable<T, E> i) {
       this.s = s;
       this.i = i;
     }
     
-    public Task(IInjectable<T, E> i) {
+    public Task(final IInjectable<T, E> i) {
       this.s = Set.of();
       this.i = i;
     }
     
-    public Task(String a, IInjectable<T, E> i) {
+    public Task(final String a, final IInjectable<T, E> i) {
       this.s = Set.of(a);
       this.i = i;
     }
     
-    public Task(String a, String b, IInjectable<T, E> i) {
+    public Task(final String a, final String b, final IInjectable<T, E> i) {
       this.s = Set.of(a, b);
       this.i = i;
     }
     
-    public Task(String a, String b, String c, IInjectable<T, E> i) {
+    public Task(final String a, final String b, final String c, final IInjectable<T, E> i) {
       this.s = Set.of(a, b, c);
       this.i = i;
     }
@@ -86,7 +86,10 @@ public class NeoInject {
     }
   }
   
-  static <T, E> void checkForCircularDep(String key, Set<String> h, Map<String, Task<T, E>> tasks) {
+  static <T, E> void checkForCircularDep(
+    final String key,
+    final Set<String> h,
+    final Map<String, Task<T, E>> tasks) {
     
     if (h.contains(key)) {
       throw new Error("The following key has a circular dep: " + key);
@@ -113,7 +116,7 @@ public class NeoInject {
       return;
     }
     
-    for (Map.Entry<String, Task<T, E>> entry : tasks.entrySet()) {
+    for (final Map.Entry<String, Task<T, E>> entry : tasks.entrySet()) {
       
       final String key = entry.getKey();
       final Set<String> set = entry.getValue().getSet();
@@ -138,7 +141,7 @@ public class NeoInject {
     final ShortCircuit s,
     final Asyncc.IAsyncCallback<Map<String, Object>, E> f) {
     
-    for (Map.Entry<String, Task<T, E>> entry : m.entrySet()) {
+    for (final Map.Entry<String, Task<T, E>> entry : m.entrySet()) {
       
       final String key = entry.getKey();
       final Set<String> set = entry.getValue().getSet();

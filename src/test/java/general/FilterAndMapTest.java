@@ -139,6 +139,20 @@ public class FilterAndMapTest {
         z.done(null, null);
       },
       
+      z -> {
+  
+        Asyncc.FilterMap(List.of(1, 2, 3), (x, cb) -> {
+    
+          if (x == 2) {
+            cb.discard();
+          }
+    
+          cb.done(null, x);
+    
+        }, z);
+        
+    
+      },
       Asyncc.FilterMap(List.of(1, 2, 3), (x, cb) -> {
         
         if (x == 2) {
@@ -191,6 +205,45 @@ public class FilterAndMapTest {
     }, (err, results) -> {
       
       assert err == null : "Err should be null";
+      System.out.println(results.toString());
+      v.complete();
+      
+    });
+  }
+  
+  
+  @Test
+  public void useOptionalType(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    Asyncc.FilterMap(List.of(1, 2, 3), (x, cb) -> {
+      
+      cb.done(null, Optional.empty());
+      
+    }, (err, results) -> {
+      
+      assert err == null : err.toString();
+      assert results.size() == 0 : "results length should be zero.";
+      System.out.println(results.toString());
+      v.complete();
+      
+    });
+  }
+  
+  @Test
+  public void useOptionalTypeAllValues(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    Asyncc.FilterMap(List.of(1, 2, 3), (x, cb) -> {
+      
+      cb.done(null, Optional.of(x));
+      
+    }, (err, results) -> {
+      
+      assert err == null : err.toString();
+      assert results.size() == 3 : "results length should be 3.";
       System.out.println(results.toString());
       v.complete();
       

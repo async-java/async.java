@@ -1,22 +1,21 @@
 package org.ores.async;
 
 import java.util.*;
+import static org.ores.async.NeoMapI.AsyncCallback;
 
 /*
  * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
  **/
 class NeoMap {
   
-  public static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T, E> {
-    
-    public AsyncCallback(ShortCircuit s) {
-      super(s);
-    }
-    
-  }
+
   
   @SuppressWarnings("Duplicates")
-  static <V, T, E> void Map(int limit, Iterable<T> items, Asyncc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
+  static <V, T, E> void Map(
+    final int limit,
+    final Iterable<T> items,
+    final Asyncc.IMapper<T, V, E> m,
+    final Asyncc.IAsyncCallback<List<V>, E> f) {
     
     final List<V> results = new ArrayList<V>();
     final Iterator<T> iterator = items.iterator();
@@ -37,7 +36,11 @@ class NeoMap {
   }
   
   @SuppressWarnings("Duplicates")
-  static <V, T, E> void Map(int limit, Map<Object, T> map, Asyncc.IMapper<T, V, E> m, Asyncc.IAsyncCallback<Map<Object, V>, E> f) {
+  static <V, T, E> void Map(
+    final int limit,
+    final Map<Object, T> map,
+    final Asyncc.IMapper<T, V, E> m,
+    final Asyncc.IAsyncCallback<Map<Object, V>, E> f) {
     
     final HashMap<Object, V> results = new HashMap<>();
     final Iterator<Map.Entry<Object, T>> iterator = map.entrySet().iterator();
@@ -83,7 +86,7 @@ class NeoMap {
     final var taskRunner = new AsyncCallback<V, E>(s) {
       
       @Override
-      public void done(E e, V v) {
+      public void done(final E e, final V v) {
         
         synchronized (this.cbLock) {
           
@@ -173,7 +176,7 @@ class NeoMap {
     final var taskRunner = new AsyncCallback<V, E>(s) {
       
       @Override
-      public void done(E e, V v) {
+      public void done(final E e, final V v) {
         
         synchronized (this.cbLock) {
           
