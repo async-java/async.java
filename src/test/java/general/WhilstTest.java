@@ -181,4 +181,168 @@ public class WhilstTest {
         
       });
   }
+  
+  @Test
+  public void testWhilstWithTrue(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.Whilst(() -> c.count < 3, t -> {
+      
+      c.count++;
+      t.done(null, null);
+      
+    }, (err, results) -> {
+      
+      assert err == null : err.toString();
+      System.out.println(results.toString());
+      assert results.size() == 3 : "results size should be 2.";
+      assert c.count == 3 : "count should be 2.";
+      z.complete();
+      
+    });
+  }
+  
+  @Test
+  public void testDoWhilstWithTrue(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.DoWhilst(() -> c.count < 3, t -> {
+      
+      c.count++;
+      t.done(null, null);
+      
+    }, (err, results) -> {
+      
+      assert err == null : err.toString();
+      assert results.size() == 3 : "results size should be one.";
+      assert c.count == 3 : "count should be one.";
+      z.complete();
+      
+    });
+  }
+  
+  @Test
+  public void testWhilstAsyncTestWithTrue(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.Whilst(test -> {
+      
+      test.done(null, c.count < 3);
+      
+    }, t -> {
+      
+      c.count++;
+      t.done(null, null);
+      
+    }, (err, results) -> {
+      
+      assert err == null : err.toString();
+      assert results.size() == 3 : "results size should be zero.";
+      assert c.count == 3 : "count should be zero.";
+      z.complete();
+      
+    });
+  }
+  
+  @Test
+  public void testDoWhilstAsyncTestWithTrue(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.DoWhilst(test -> {
+      
+      test.done(null, c.count < 5);
+      
+    }, t -> {
+      
+      c.count++;
+      t.done(null, null);
+      
+    }, (err, results) -> {
+      
+      assert err == null : err.toString();
+      assert results.size() == 5 : "results size should be one.";
+      assert c.count == 5 : "count should be one.";
+      z.complete();
+      
+    });
+  }
+  
+  @Test
+  public void testWhilstAsyncTest2WithTrue(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.Whilst(
+      test -> {
+        CompletableFuture.runAsync(() -> {
+          test.done(null, c.count < 5);
+        });
+      },
+      task -> {
+        c.count++;
+        task.done(null, null);
+        
+      }, (err, results) -> {
+        
+        assert err == null : err.toString();
+        assert results.size() == 5 : "results size should be zero.";
+        assert c.count == 5 : "count should be zero.";
+        z.complete();
+        
+      });
+  }
+  
+  @Test
+  public void testDoWhilstAsyncTest2WithTrue(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.DoWhilst(
+      test -> {
+        CompletableFuture.runAsync(() -> {
+          test.done(null, c.count < 3);
+        });
+      },
+      
+      task -> {
+        c.count++;
+        task.done(null, null);
+        
+      }, (err, results) -> {
+        
+        assert err == null : err.toString();
+        assert results.size() == 3 : "results size should be one.";
+        assert c.count == 3 : "count should be one.";
+        z.complete();
+        
+      });
+  }
 }
