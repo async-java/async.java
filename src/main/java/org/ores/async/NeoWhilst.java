@@ -15,6 +15,9 @@ public class NeoWhilst {
     final Asyncc.IAsyncCallback<Boolean, Object> cb
   ) {
     
+    // no try/catch here
+    // using try/catch here will lead to indeterminate behavior
+    
     if (syncTest != null) {
       cb.done(null, syncTest.test());
       return;
