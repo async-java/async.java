@@ -454,6 +454,23 @@ public class Asyncc {
   
   // end each
   
+  // start groupby / begin groupby GROUP_BY_TAG / GROUPBY_TAG
+  
+  public static <T, V, E> void GroupBy(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String,List<V>>,E> f) {
+    NeoGroupBy.Group(Integer.MAX_VALUE, i, m, f);
+  }
+  
+  public static <T, V, E> void GroupBySeries(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String,List<V>>,E> f) {
+    NeoGroupBy.Group(1, i, m, f);
+  }
+  
+  public static <T, V, E> void GroupByLimit(int limit, Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String,List<V>>,E> f) {
+    NeoUtils.validateLimit(limit);
+    NeoGroupBy.Group(limit, i, m, f);
+  }
+  
+  // end groupby
+  
   // start inject / begin inject INJECT_TAG
   
   public static <T, E> void Inject(
