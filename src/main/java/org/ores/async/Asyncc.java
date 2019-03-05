@@ -137,7 +137,6 @@ public class Asyncc {
     void run(IAsyncCallback<T, E> cb);
   }
   
-  
   // begin parallel
   
   public static <T, V, E> NeoGeneric<T, V, E> Parallel(NeoParallelI.AsyncValueTask<T, E> o, AsyncTask<T, E>... tasks) {
@@ -146,15 +145,15 @@ public class Asyncc {
       @Override
       void handle(Object v, IAsyncCallback cb) {
         
-        final var task = new AsyncTask<>(){
+        final var task = new AsyncTask<>() {
           @Override
           public void run(IAsyncCallback<Object, Object> cb) {
             o.run(v, cb::done);
           }
         };
-      
+        
         final var x = new ArrayList<AsyncTask<T, E>>();
-        x.add((AsyncTask)task);
+        x.add((AsyncTask) task);
         x.addAll(Arrays.asList(tasks));
         NeoParallel.Parallel(x, cb);
       }
@@ -164,7 +163,7 @@ public class Asyncc {
   public static <T, E> AsyncTask<List<T>, E> Parallel(AsyncTask<T, E> t, AsyncTask<T, E>... tasks) {
     ////
     final var listOfTasks = new ArrayList<>(Arrays.asList(tasks));
-    listOfTasks.add(0,t);
+    listOfTasks.add(0, t);
     return cb -> NeoParallel.Parallel(listOfTasks, cb);
   }
   
@@ -397,14 +396,14 @@ public class Asyncc {
   
   public static <T, E> NeoGeneric<T, Object, E> Each(
     final NeoEachI.AsyncValueMapTask<T, E> o,
-    final Map<Object,Object> i,
+    final Map<Object, Object> i,
     final NeoEachI.IEacher<T, E> m) {
     
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
-  
-        final Map<Object,Object> copy = new HashMap<>(i);
+        
+        final Map<Object, Object> copy = new HashMap<>(i);
         
         o.run(v, copy, e -> {
           
@@ -413,7 +412,7 @@ public class Asyncc {
             return;
           }
           
-          NeoEach.Each(Integer.MAX_VALUE, (Iterable<T>)copy.entrySet(), m, err -> {
+          NeoEach.Each(Integer.MAX_VALUE, (Iterable<T>) copy.entrySet(), m, err -> {
             cb.done(err, null);
           });
           
@@ -488,7 +487,7 @@ public class Asyncc {
         
         var task = z.run(v);
         var m = new HashMap<>(tasks);
-  
+        
         if (m.containsKey(task.getKey())) {
           throw new Error("Map already contains key: " + task.getKey());
         }
@@ -515,7 +514,7 @@ public class Asyncc {
     NeoSeries.<T, E>Series(tasks, cb);
   }
   
-  public static <T, E> NeoGeneric<T, Void, E> Series(AsyncValueTask<T, E> z, AsyncTask<T, E> ...args) {
+  public static <T, E> NeoGeneric<T, Void, E> Series(AsyncValueTask<T, E> z, AsyncTask<T, E>... args) {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
@@ -526,9 +525,9 @@ public class Asyncc {
             z.run(v, cb);
           }
         };
-  
+        
         var x = new ArrayList<>(Arrays.asList(args));
-        x.add(0,t);
+        x.add(0, t);
         NeoSeries.<T, E>Series(x, cb);
       }
     };
@@ -793,7 +792,7 @@ public class Asyncc {
     NeoWaterfall.Waterfall(tasks, cb);
   }
   
-  public static <T, E> NeoGeneric<T, Object, E> Waterfall(NeoWaterfallI.AsyncValueTask<T, E> z, NeoWaterfallI.AsyncTask<T, E> ...args) {
+  public static <T, E> NeoGeneric<T, Object, E> Waterfall(NeoWaterfallI.AsyncValueTask<T, E> z, NeoWaterfallI.AsyncTask<T, E>... args) {
     return new NeoGeneric<>() {
       @Override
       void handle(Object v, IAsyncCallback cb) {
@@ -807,7 +806,7 @@ public class Asyncc {
         };
         
         var c = new ArrayList<>(Arrays.asList(args));
-        c.add(0,t);
+        c.add(0, t);
         NeoWaterfall.Waterfall(c, cb);
       }
     };
@@ -1101,5 +1100,57 @@ public class Asyncc {
   }
   
   // end times
+  
+  // start whilst / begin whilst WHILST_TAG
+  
+  public static <T, E> void DoWhilst(NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(1, test, null, task, f);
+  }
+  
+  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(limit, test, null, task, f);
+  }
+  
+  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.SyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(1, test, null, task, f);
+  }
+  
+  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.SyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(limit, test, null, task, f);
+  }
+  
+  public static <T, E> void Whilst(NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.Whilst(1, test, null, task, f);
+  }
+  
+  public static <T, E> void WhilstLimit(int limit, NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.Whilst(limit, test, null, task, f);
+  }
+  
+  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(1, null, test, task, f);
+  }
+  
+  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(1, null, test, task, f);
+  }
+  
+  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(limit, null, test, task, f);
+  }
+  
+  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(limit, null, test, task, f);
+  }
+  
+  public static <T, E> void Whilst(NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.Whilst(1, null, test, task, f);
+  }
+  
+  public static <T, E> void WhilstLimit(int limit, NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.Whilst(limit, null, test, task, f);
+  }
+  
+  // end whilst
   
 }

@@ -1,66 +1,98 @@
 package org.ores.async;
 
 import java.util.*;
+
 import static org.ores.async.NeoWhilstI.AsyncCallback;
+import static org.ores.async.NeoWhilstI.AsyncTruthTest;
+import static org.ores.async.NeoWhilstI.SyncTruthTest;
+import static org.ores.async.NeoWhilstI.AsyncTask;
 
 public class NeoWhilst {
   
-  
-  @SuppressWarnings("Duplicates")
-  static <V, T, E> void Map(
-    final int limit,
-    final Iterable<T> items,
-    final Asyncc.IMapper<T, V, E> m,
-    final Asyncc.IAsyncCallback<List<V>, E> f) {
+  private static void runTest(
+    final SyncTruthTest syncTest,
+    final AsyncTruthTest asyncTest,
+    final Asyncc.IAsyncCallback<Boolean, Object> cb
+  ) {
     
-    final List<V> results = new ArrayList<V>();
-    final Iterator<T> iterator = items.iterator();
-    
-    if (!iterator.hasNext()) {
-      f.done(null, results);
+    if (syncTest != null) {
+      cb.done(null, syncTest.test());
       return;
     }
     
+    asyncTest.test(cb);
+    
+  }
+  
+  @SuppressWarnings("Duplicates")
+  static <T, E> void DoWhilst(
+    final int limit,
+    final SyncTruthTest syncTest,
+    final AsyncTruthTest asyncTest,
+    final AsyncTask<T, E> m,
+    final Asyncc.IAsyncCallback<List<T>, E> f) {
+    
+    final List<T> results = new ArrayList<>();
+    
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
-    RunMap(iterator, m, results, c, s, f);
+    
+    RunMap(syncTest, asyncTest, m, results, c, s, f);
     
     if (s.isFinalCallbackFired()) {
       s.setSameTick(false);
     }
     
   }
-
-  
-
   
   @SuppressWarnings("Duplicates")
-  private static <T, V, E> void RunMap(
-    final Iterator<T> iterator,
-    final Asyncc.IMapper<T, V, E> m,
-    final List<V> results,
-    final CounterLimit c,
-    final ShortCircuit s,
-    final Asyncc.IAsyncCallback<List<V>, E> f) {
+  static <T, E> void Whilst(
+    final int limit,
+    final SyncTruthTest syncTest,
+    final AsyncTruthTest asyncTest,
+    final AsyncTask<T, E> m,
+    final Asyncc.IAsyncCallback<List<T>, E> f) {
     
-    final T item;
+    final var results = new ArrayList<T>();
     
-    synchronized (iterator) {
-      if (!iterator.hasNext()) {
+    runTest(syncTest, asyncTest, (e, v) -> {
+      
+      if (e != null || v.equals(false)) {
+        f.done((E) e, results);
         return;
       }
       
-      item = (T) iterator.next();
-    }
+      final CounterLimit c = new CounterLimit(limit);
+      final ShortCircuit s = new ShortCircuit();
+      
+      RunMap(syncTest, asyncTest, m, results, c, s, f);
+      
+      if (s.isFinalCallbackFired()) {
+        s.setSameTick(false);
+      }
+      
+    });
+    
+  }
+  
+  @SuppressWarnings("Duplicates")
+  private static <T, E> void RunMap(
+    final SyncTruthTest syncTest,
+    final AsyncTruthTest asyncTest,
+    final AsyncTask<T, E> m,
+    final List<T> results,
+    final CounterLimit c,
+    final ShortCircuit s,
+    final Asyncc.IAsyncCallback<List<T>, E> f) {
     
     final int val = c.getStartedCount();
     results.add(null);
     c.incrementStarted();
     
-    final var taskRunner = new AsyncCallback<V, E>(s) {
+    final var taskRunner = new AsyncCallback<T, E>(s) {
       
       @Override
-      public void done(final E e, final V v) {
+      public void done(final E e, final T v) {
         
         synchronized (this.cbLock) {
           
@@ -70,13 +102,15 @@ public class NeoWhilst {
           }
           
           this.setFinished(true);
+  
+          results.set(val, v);
           
           if (s.isShortCircuited()) {
             return;
           }
           
           c.incrementFinished();
-          results.set(val, v);
+          
         }
         
         if (e != null) {
@@ -85,42 +119,72 @@ public class NeoWhilst {
           return;
         }
         
-        final boolean isDone, isBelowCapacity;
+        runTest(syncTest, asyncTest, (err, b) -> {
+          
+          if (err != null) {
+            s.setShortCircuited(true);
+            NeoUtils.fireFinalCallback(s, err, results, f);
+            return;
+          }
+          
+          final boolean isBelowCapacity;
+          
+          synchronized (c) {
+            isBelowCapacity = c.isBelowCapacity();
+          }
+          
+          if (!b) {
+            NeoUtils.fireFinalCallback(s, null, results, f);
+            return;
+          }
+          
+          if (isBelowCapacity) {
+            RunMap(syncTest, asyncTest, m, results, c, s, f);
+          }
+          
+        });
         
-        synchronized (c) {
-          isDone = !iterator.hasNext() && (c.getFinishedCount() == c.getStartedCount());
-          isBelowCapacity = c.isBelowCapacity();
-        }
-        
-        if (isDone) {
-          NeoUtils.fireFinalCallback(s, null, results, f);
-          return;
-        }
-        
-        if (isBelowCapacity) {
-          RunMap(iterator, m, results, c, s, f);
-        }
       }
       
     };
     
     try {
-      m.map(item, taskRunner);
+      m.run(taskRunner);
     } catch (Exception e) {
       s.setShortCircuited(true);
       NeoUtils.fireFinalCallback(s, e, results, f);
       return;
     }
     
-    final boolean isBelowCapacity;
+    final var o = new Object() {
+      boolean isBelowCapacity;
+    };
     
     synchronized (c) {
-      isBelowCapacity = c.isBelowCapacity();
+      o.isBelowCapacity = c.isBelowCapacity();
     }
     
-    if (isBelowCapacity) {
-      RunMap(iterator, m, results, c, s, f);
+    if (!o.isBelowCapacity) {
+      return;
     }
+    
+    runTest(syncTest, asyncTest, (err, b) -> {
+      
+      if (err != null) {
+        s.setShortCircuited(true);
+        NeoUtils.fireFinalCallback(s, err, results, f);
+        return;
+      }
+      
+      synchronized (c) {
+        o.isBelowCapacity = c.isBelowCapacity();
+      }
+      
+      if (b & o.isBelowCapacity) {
+        RunMap(syncTest, asyncTest, m, results, c, s, f);
+      }
+      
+    });
     
   }
 }

@@ -2,12 +2,17 @@ package org.ores.async;
 
 public class NeoWhilstI {
   
-  interface SyncTruthTest {
+  public interface SyncTruthTest {
     boolean test();
   }
   
-  interface AsyncTruthTest {
-    void test(Asyncc.AsyncCallback<Boolean,Object> v);
+  public interface AsyncTruthTest {
+    void test(Asyncc.IAsyncCallback<Boolean,Object> v);
+  }
+  
+  public interface AsyncTask<T, E> {
+    //    public void run(AsyncCallback<T, E> cb);
+    void run(AsyncCallback<T, E> cb);
   }
   
   public static abstract class AsyncCallback<T, E> extends Asyncc.AsyncCallback<T, E> {
