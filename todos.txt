@@ -100,7 +100,6 @@ implement async.race
 https://medium.com/pharos-production/vert-x-distributed-microservices-with-java-24ff514922eb
 
 
-
 async.waterfall([
  (initialVal,v) => {
    v.set('foo', 'bar');
@@ -120,3 +119,6 @@ encourage immutable collection with list.of and map.of
 
 get the library on vertx awesome list!
 https://github.com/vert-x3/vertx-awesome
+
+
+use Optional with filter
