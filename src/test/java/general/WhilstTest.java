@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @RunWith(VertxUnitRunner.class)
 public class WhilstTest {
@@ -42,8 +43,8 @@ public class WhilstTest {
       
     }, (err, results) -> {
       
-      assert err == null: err.toString();
-      assert results.size() == 0: "results size should be zero.";
+      assert err == null : err.toString();
+      assert results.size() == 0 : "results size should be zero.";
       assert c.count == 0 : "count should be zero.";
       z.complete();
       
@@ -66,15 +67,13 @@ public class WhilstTest {
       
     }, (err, results) -> {
       
-      assert err == null: err.toString();
-      assert results.size() == 1: "results size should be one.";
+      assert err == null : err.toString();
+      assert results.size() == 1 : "results size should be one.";
       assert c.count == 1 : "count should be one.";
       z.complete();
       
     });
   }
-  
-  
   
   @Test
   public void testWhilstAsyncTest(TestContext tc) {
@@ -85,15 +84,15 @@ public class WhilstTest {
       int count = 0;
     };
     
-    Asyncc.Whilst(test -> test.done(null,false), t -> {
+    Asyncc.Whilst(test -> test.done(null, false), t -> {
       
       c.count++;
       t.done(null, null);
       
     }, (err, results) -> {
       
-      assert err == null: err.toString();
-      assert results.size() == 0: "results size should be zero.";
+      assert err == null : err.toString();
+      assert results.size() == 0 : "results size should be zero.";
       assert c.count == 0 : "count should be zero.";
       z.complete();
       
@@ -109,18 +108,77 @@ public class WhilstTest {
       int count = 0;
     };
     
-    Asyncc.DoWhilst(test -> test.done(null,false), t -> {
+    Asyncc.DoWhilst(test -> test.done(null, false), t -> {
       
       c.count++;
       t.done(null, null);
       
     }, (err, results) -> {
       
-      assert err == null: err.toString();
-      assert results.size() == 1: "results size should be one.";
+      assert err == null : err.toString();
+      assert results.size() == 1 : "results size should be one.";
       assert c.count == 1 : "count should be one.";
       z.complete();
       
     });
+  }
+  
+  @Test
+  public void testWhilstAsyncTest2(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.Whilst(
+      test -> {
+        CompletableFuture.runAsync(() -> {
+          test.done(null, false);
+        });
+      },
+      task -> {
+        c.count++;
+        task.done(null, null);
+        
+      }, (err, results) -> {
+        
+        assert err == null : err.toString();
+        assert results.size() == 0 : "results size should be zero.";
+        assert c.count == 0 : "count should be zero.";
+        z.complete();
+        
+      });
+  }
+  
+  @Test
+  public void testDoWhilstAsyncTest2(TestContext tc) {
+    
+    Async z = tc.async();
+    
+    var c = new Object() {
+      int count = 0;
+    };
+    
+    Asyncc.DoWhilst(
+      test -> {
+        CompletableFuture.runAsync(() -> {
+          test.done(null, false);
+        });
+      },
+      
+      task -> {
+        c.count++;
+        task.done(null, null);
+        
+      }, (err, results) -> {
+        
+        assert err == null : err.toString();
+        assert results.size() == 1 : "results size should be one.";
+        assert c.count == 1 : "count should be one.";
+        z.complete();
+        
+      });
   }
 }

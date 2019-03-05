@@ -1103,44 +1103,12 @@ public class Asyncc {
   
   // start whilst / begin whilst WHILST_TAG
   
-  public static <T, E> void DoWhilst(NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(1, test, null, task, f);
-  }
-  
-  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(limit, test, null, task, f);
-  }
-  
-  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.SyncTruthTest test, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(1, test, null, task, f);
-  }
-  
-  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.SyncTruthTest test, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(limit, test, null, task, f);
-  }
-  
   public static <T, E> void Whilst(NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
     NeoWhilst.Whilst(1, test, null, task, f);
   }
   
   public static <T, E> void WhilstLimit(int limit, NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
     NeoWhilst.Whilst(limit, test, null, task, f);
-  }
-  
-  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(1, null, test, task, f);
-  }
-  
-  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(1, null, test, task, f);
-  }
-  
-  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(limit, null, test, task, f);
-  }
-  
-  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
-    NeoWhilst.DoWhilst(limit, null, test, task, f);
   }
   
   public static <T, E> void Whilst(NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
@@ -1150,6 +1118,46 @@ public class Asyncc {
   public static <T, E> void WhilstLimit(int limit, NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
     NeoWhilst.Whilst(limit, null, test, task, f);
   }
+  
+  // end whilst
+  
+  // start DoWhilist / begin DoWhilist DO_WHILST_TAG DOWHILST_TAG
+  
+  // dowhilst has 2x as many variants as whilst, since dowhilst puts the truth test in 2 places, for convenience
+  
+  public static <T, E> void DoWhilst(NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(1, test, null, task, f);
+  }
+
+//  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.SyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+//    NeoWhilst.DoWhilst(1, test, null, task, f);
+//  }
+  
+  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(limit, test, null, task, f);
+  }
+  
+  
+//  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.SyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+//    NeoWhilst.DoWhilst(limit, test, null, task, f);
+//  }
+  
+  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(1, null, test, task, f);
+  }
+  
+//  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+//    NeoWhilst.DoWhilst(1, null, test, task, f);
+//  }
+  
+  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
+    NeoWhilst.DoWhilst(limit, null, test, task, f);
+  }
+  
+//  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
+//    NeoWhilst.DoWhilst(limit, null, test, task, f);
+//  }
+  
   
   // end whilst
   
