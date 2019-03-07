@@ -43,11 +43,7 @@ class NeoParallel {
       this.results = results;
       this.r = r;
     }
-  
-//    @Override
-//    public void done(E e) {
-//       this.done(e,null);
-//    }
+
   
     @Override
     public void done(E e, T v) {
@@ -64,16 +60,15 @@ class NeoParallel {
         if (this.s.isShortCircuited()) {
           return;
         }
+  
+        results.set(index, v);
+        c.incrementFinished();
         
         if (e != null) {
           s.setShortCircuited(true);
           NeoUtils.fireFinalCallback(s, e, results, f);
           return;
         }
-        
-        results.set(index, v);
-        c.incrementFinished();
-        
       }
       
       final boolean isDone, isBelowCapacity, isCountEqual;
@@ -287,6 +282,9 @@ class NeoParallel {
           synchronized (this.cbLock) {
             
             if (this.isFinished()) {
+              if(e != null){
+                System.err.println(e.toString());
+              }
               new Error("Warning: Callback fired more than once.").printStackTrace();
               return;
             }
@@ -297,6 +295,9 @@ class NeoParallel {
             results.put(key, v);
 
             if (s.isShortCircuited()) {
+              if(e != null){
+                System.err.println(e.toString());
+              }
               return;
             }
             

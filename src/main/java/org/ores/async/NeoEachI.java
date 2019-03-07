@@ -17,8 +17,18 @@ public class NeoEachI {
     void run(Object v, Map<Object, Object> x, IEachCallback<E> cb);
   }
 
-  public interface IEacher<T, E> {
+  
+  interface IEach {
+     // parent type placeholder
+  }
+  
+  public interface IEacher<T, E> extends IEach{
     void each(T v, NeoEachI.IEachCallback<E> cb);
+  }
+  
+  
+  public interface IEacherWithTypedIndex<T, V, E> extends IEach {
+    void each(T v, V i, NeoEachI.IEachCallback<E> cb);
   }
 
   public interface IEachCallback<E> {

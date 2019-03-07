@@ -6,11 +6,15 @@ import java.util.Map;
 
 public class NeoWaterfallI {
   
+  enum Marker {
+    DONE
+  }
+  
   private static class UserMap extends HashMap<String, Object> {
   
   }
   
-  public interface IAsyncCallback<T, E> {
+  public interface IAsyncCallback<T, E> extends Asyncc.IAsyncCallback<Map.Entry<String,T>,E>  {  //
     void done(E e);
     
     void done(E e, UserMap.Entry<String, T> m);
@@ -58,36 +62,37 @@ public class NeoWaterfallI {
       this.map.put(s, v);
     }
     
-    protected abstract void doneInternal(Asyncc.Marker done, E e, Map.Entry<String, T> m);
+    protected abstract void doneInternal(Marker done, E e, Map.Entry<String, T> m);
+    
     
     @Override
     public void done(E e, Map.Entry<String, T> m) {
-      this.doneInternal(Asyncc.Marker.DONE, e, m);
+      this.doneInternal(Marker.DONE, e, m);
     }
     
     @Override
     public void done(E e, String k, T v) {
-      this.doneInternal(Asyncc.Marker.DONE, e, new AbstractMap.SimpleEntry(k, v));
+      this.doneInternal(Marker.DONE, e, new AbstractMap.SimpleEntry(k, v));
     }
     
     @Override
     public void resolve(Map.Entry<String, T> m) {
-      this.doneInternal(Asyncc.Marker.DONE, null, m);
+      this.doneInternal(Marker.DONE, null, m);
     }
     
     @Override
     public void resolve(String k, T v) {
-      this.doneInternal(Asyncc.Marker.DONE, null, new AbstractMap.SimpleEntry(k, v));
+      this.doneInternal(Marker.DONE, null, new AbstractMap.SimpleEntry(k, v));
     }
     
     @Override
     public void reject(E e) {
-      this.doneInternal(Asyncc.Marker.DONE, e, null);
+      this.doneInternal(Marker.DONE, e, null);
     }
     
     @Override
     public void done(E e) {
-      this.doneInternal(Asyncc.Marker.DONE, e, null);
+      this.doneInternal(Marker.DONE, e, null);
     }
     
   }

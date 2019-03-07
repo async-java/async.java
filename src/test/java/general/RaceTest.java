@@ -11,6 +11,7 @@ import org.junit.runner.RunWith;
 import org.ores.async.Asyncc;
 import org.ores.async.NeoInject;
 import org.ores.async.NeoQueue;
+import org.ores.async.NeoRaceIfc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,35 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 import static java.util.Arrays.asList;
+
+class RaceTestCaller implements NeoRaceIfc.IMapper<Integer,Integer,Object>{
+  
+  @Override
+  public void map(Integer x, NeoRaceIfc.RaceCallback cb) {
+  
+    if (x == 3) {
+      cb.done(null, cb.setValue(true, x));
+      return;
+    }
+  
+    cb.done(null, cb.setValue(false, x));
+  }
+  
+}
+
+
+class RaceTestCallerStatic {
+  
+  public static void map(Integer x, NeoRaceIfc.RaceCallback cb) {
+    
+    if (x == 3) {
+      cb.done(null, cb.setValue(true, x));
+      return;
+    }
+    
+    cb.done(null, cb.setValue(false, x));
+  }
+}
 
 @RunWith(VertxUnitRunner.class)
 public class RaceTest {
@@ -172,4 +202,39 @@ public class RaceTest {
     });
     
   }
+  
+  @Test
+  public void shouldBeThirdTaskUseMethod(TestContext tc) {
+    
+    Async v = tc.async();
+    var race = new RaceTestCaller();
+    
+    Asyncc.Race(List.of(1, 2, 3), race, (err, results) -> {
+      
+      assert err == null : "Err should be null";
+      System.out.println("Results: " + results);
+      assert Objects.equals(results, 3) : "Should be 3";
+      v.complete();
+      
+    });
+    
+  }
+  
+  
+  @Test
+  public void shouldBeThirdTaskUseStaticMethod(TestContext tc) {
+    
+    Async v = tc.async();
+    
+    Asyncc.Race(List.of(1, 2, 3), RaceTestCallerStatic::map, (err, results) -> {
+      
+      assert err == null : "Err should be null";
+      System.out.println("Results: " + results);
+      assert Objects.equals(results, 3) : "Should be 3";
+      v.complete();
+      
+    });
+    
+  }
+  
 }

@@ -9,9 +9,6 @@ public class Asyncc {
   
   public final static Object sync = new Object();
   
-  enum Marker {
-    DONE
-  }
   
   public enum Overloader {
     GENERIC
@@ -47,20 +44,7 @@ public class Asyncc {
     void map(T v, IAsyncCallback<V, E> cb);
   }
   
-  public static class ReduceArg<T, V> {
-    
-    final public T prev;
-    final public V curr;
-    
-    public ReduceArg(T prev, V curr) {
-      this.prev = prev;
-      this.curr = curr;
-    }
-  }
-  
-  public interface IReducer<V, E> {
-    void reduce(ReduceArg v, AsyncCallback<V, E> cb);
-  }
+
   
   interface IErrorOnlyDoneable<T, E> {
     void done(E e, T v);
@@ -95,13 +79,6 @@ public class Asyncc {
     public AsyncCallback(ShortCircuit s) {
       this.s = s;
     }
-
-//    public abstract void done(E e);
-
-//    @Override
-//    public void done(E e, T v) {
-//      this.done(null);
-//    }
     
     @Override
     public void resolve(final T v) {
@@ -454,19 +431,89 @@ public class Asyncc {
   
   // end each
   
+  // start eachOf
+  
+  public static <T, V, E> NeoEachI.AsyncEachTask<E> EachOf(Iterable<T> i, NeoEachI.IEacherWithTypedIndex<T, V, E> m) {
+    return cb -> NeoEach.EachOf(Integer.MAX_VALUE, i, m, cb);
+  }
+  
+  public static <T, V, E> void EachOf(Iterable<T> i, NeoEachI.IEacherWithTypedIndex<T, V, E> m, NeoEachI.IEachCallback<E> f) {
+    NeoEach.EachOf(Integer.MAX_VALUE, i, m, f);
+  }
+  
+  public static <T, V, E> void EachOfLimit(
+    int limit, Iterable<T> i,
+    NeoEachI.IEacherWithTypedIndex<T, V, E> m,
+    NeoEachI.IEachCallback<E> f) {
+    ///
+    NeoUtils.validateLimit(limit);
+    NeoEach.EachOf(limit, i, m, f);
+  }
+  
+  public static <T, V, E> void EachOfSeries(
+    Iterable<T> i,
+    NeoEachI.IEacherWithTypedIndex<T, V, E> m,
+    NeoEachI.IEachCallback<E> f) {
+    ///
+    NeoEach.EachOf(1, i, m, f);
+  }
+  
+  public static <T, V, E> void EachOf(
+    final Map i,
+    final NeoEachI.IEacherWithTypedIndex<T, V, E> m,
+    final NeoEachI.IEachCallback<E> f) {
+    ///
+    NeoEach.EachOf(Integer.MAX_VALUE, (Set<T>) i.entrySet(), m, f);
+  }
+  
+  public static <T, V, E> void EachOfLimit(
+    final int limit,
+    final Map i,
+    final NeoEachI.IEacherWithTypedIndex<T, V, E> m,
+    final NeoEachI.IEachCallback<E> f) {
+    /////
+    NeoUtils.validateLimit(limit);
+    NeoEach.EachOf(limit, i.<T>entrySet(), m, f);
+  }
+  
+  public static <T, V, E> void EachOfSeries(
+    final Map<Object, Object> i,
+    final NeoEachI.IEacherWithTypedIndex<T, V, E> m,
+    final NeoEachI.IEachCallback<E> f) {
+    //////
+    NeoEach.EachOf(1, (Set<T>) i.entrySet(), m, f);
+  }
+  
+  // end eachOf
+  
   // start groupby / begin groupby GROUP_BY_TAG / GROUPBY_TAG
   
-  public static <T, V, E> void GroupBy(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String,List<V>>,E> f) {
-    NeoGroupBy.Group(Integer.MAX_VALUE, i, m, f);
+  // use Set
+  public static <T, V, E> void GroupToSets(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String, Set<V>>, E> f) {
+    NeoGroupBy.GroupToSets(Integer.MAX_VALUE, i, m, f);
   }
   
-  public static <T, V, E> void GroupBySeries(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String,List<V>>,E> f) {
-    NeoGroupBy.Group(1, i, m, f);
+  public static <T, V, E> void GroupToSetsSeries(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String, Set<V>>, E> f) {
+    NeoGroupBy.GroupToSets(1, i, m, f);
   }
   
-  public static <T, V, E> void GroupByLimit(int limit, Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String,List<V>>,E> f) {
+  public static <T, V, E> void GroupToSetsLimit(int limit, Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String, Set<V>>, E> f) {
     NeoUtils.validateLimit(limit);
-    NeoGroupBy.Group(limit, i, m, f);
+    NeoGroupBy.GroupToSets(limit, i, m, f);
+  }
+  
+  // use List
+  public static <T, V, E> void GroupBy(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String, List<V>>, E> f) {
+    NeoGroupBy.GroupToLists(Integer.MAX_VALUE, i, m, f);
+  }
+  
+  public static <T, V, E> void GroupBySeries(Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String, List<V>>, E> f) {
+    NeoGroupBy.GroupToLists(1, i, m, f);
+  }
+  
+  public static <T, V, E> void GroupByLimit(int limit, Iterable<T> i, NeoGroupByI.IMapper<T, E> m, IAsyncCallback<Map<String, List<V>>, E> f) {
+    NeoUtils.validateLimit(limit);
+    NeoGroupBy.GroupToLists(limit, i, m, f);
   }
   
   // end groupby
@@ -911,16 +958,21 @@ public class Asyncc {
    * </pre>
    */
   public static <T, E> void ParallelLimit(
-    int limit,
-    List<AsyncTask<T, E>> tasks,
-    IAsyncCallback<List<T>, E> cb) {
-    
+    final int limit,
+    final List<AsyncTask<T, E>> tasks,
+    final IAsyncCallback<List<T>, E> cb) {
+    /////
     NeoUtils.validateLimit(limit);
     NeoParallel.ParallelLimit(limit, tasks, cb);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <I, T, V, E> void ReduceRight(I initialVal, List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <I, T, V, E> void ReduceRight(
+    final I initialVal,
+    final List<T> tasks,
+    final NeoReduceI.IReducer<T, V, E> m,
+    final Asyncc.IAsyncCallback<V, E> f) {
+    ////
     NeoReduce.ReduceRight(initialVal, tasks, m, f);
   }
   
@@ -930,7 +982,11 @@ public class Asyncc {
    * Returns an Image object that can then be painted on the screen.
    */
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void ReduceRight(List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <T, V, E> void ReduceRight(
+    final List<T> tasks,
+    final NeoReduceI.IReducer<T, V, E> m,
+    final Asyncc.IAsyncCallback<V, E> f) {
+    /////
     NeoReduce.ReduceRight(tasks, m, f);
   }
   
@@ -949,12 +1005,17 @@ public class Asyncc {
    * </pre>
    */
   @SuppressWarnings("Duplicates")
-  public static <I, T, V, E> void Reduce(I initialVal, List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <I, T, V, E> void Reduce(
+    final I initialVal,
+    final List<T> tasks,
+    final NeoReduceI.IReducer<T, V, E> m,
+    final Asyncc.IAsyncCallback<V, E> f) {
+    ////
     NeoReduce.Reduce(initialVal, tasks, m, f);
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, V, E> void Reduce(List<T> tasks, IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  public static <T, V, E> void Reduce(List<T> tasks, NeoReduceI.IReducer<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     NeoReduce.Reduce(tasks, m, f);
   }
   
@@ -974,7 +1035,6 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ConcatLimit(int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
-    
     NeoUtils.validateLimit(lim);
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
@@ -997,7 +1057,6 @@ public class Asyncc {
   
   @SuppressWarnings("Duplicates")
   public static <T, V, E> void ConcatLimit(int depth, int lim, List<T> tasks, IMapper<T, V, E> m, Asyncc.IAsyncCallback<List<V>, E> f) {
-    
     NeoUtils.validateLimit(lim);
     NeoMap.Map(lim, tasks, m, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
@@ -1153,8 +1212,7 @@ public class Asyncc {
   public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.SyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
     NeoWhilst.DoWhilst(limit, test, null, task, f);
   }
-  
-  
+
 //  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.SyncTruthTest test, IAsyncCallback<List<T>, E> f) {
 //    NeoWhilst.DoWhilst(limit, test, null, task, f);
 //  }
@@ -1162,7 +1220,7 @@ public class Asyncc {
   public static <T, E> void DoWhilst(NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
     NeoWhilst.DoWhilst(1, null, test, task, f);
   }
-  
+
 //  public static <T, E> void DoWhilst(NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
 //    NeoWhilst.DoWhilst(1, null, test, task, f);
 //  }
@@ -1170,11 +1228,10 @@ public class Asyncc {
   public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTruthTest test, NeoWhilstI.AsyncTask<T, E> task, IAsyncCallback<List<T>, E> f) {
     NeoWhilst.DoWhilst(limit, null, test, task, f);
   }
-  
+
 //  public static <T, E> void DoWhilstLimit(int limit, NeoWhilstI.AsyncTask<T, E> task, NeoWhilstI.AsyncTruthTest test, IAsyncCallback<List<T>, E> f) {
 //    NeoWhilst.DoWhilst(limit, null, test, task, f);
 //  }
-  
   
   // end whilst
   

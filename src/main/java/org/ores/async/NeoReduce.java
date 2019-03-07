@@ -2,14 +2,10 @@ package org.ores.async;
 
 import java.util.*;
 
-interface IGroupBy {
-  String getGroupById();
-}
-
-public class NeoReduce {
+class NeoReduce {
   
   @SuppressWarnings("Duplicates")
-  static <T, V, E> void ReduceRight(Object initialVal, List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void ReduceRight(Object initialVal, List<T> tasks, NeoReduceI.IReducer<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, (V) initialVal);
@@ -34,7 +30,7 @@ public class NeoReduce {
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, V, E> void ReduceRight(List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void ReduceRight(List<T> tasks, NeoReduceI.IReducer<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, null);
@@ -55,7 +51,7 @@ public class NeoReduce {
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, V, E> void Reduce(Object initialVal, List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void Reduce(Object initialVal, List<T> tasks, NeoReduceI.IReducer<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, (V) initialVal);
@@ -70,7 +66,7 @@ public class NeoReduce {
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, V, E> void Reduce(List<T> tasks, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  static <T, V, E> void Reduce(List<T> tasks, NeoReduceI.IReducer<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (tasks.size() < 1) {
       f.done(null, null);
@@ -95,7 +91,7 @@ public class NeoReduce {
   }
   
   @SuppressWarnings("Duplicates")
-  private static <V, T, E> void RunReduce(V prev, ShortCircuit s, Iterator<T> iterator, Asyncc.IReducer<V, E> m, Asyncc.IAsyncCallback<V, E> f) {
+  private static <V, T, E> void RunReduce(V prev, ShortCircuit s, Iterator<T> iterator, NeoReduceI.IReducer<T, V, E> m, Asyncc.IAsyncCallback<V, E> f) {
     
     if (!iterator.hasNext()) {
       return;
@@ -103,7 +99,9 @@ public class NeoReduce {
     
     T next = iterator.next();
     
-    m.reduce(new Asyncc.ReduceArg(prev, next), new Asyncc.AsyncCallback<V, E>(s) {
+    // new NeoReduceI.ReduceArg(prev, next)
+    
+    m.reduce(prev, next, new Asyncc.AsyncCallback<V, E>(s) {
       
       @Override
       public void resolve(V v) {

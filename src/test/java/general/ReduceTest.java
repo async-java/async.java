@@ -29,34 +29,31 @@ public class ReduceTest {
   
   }
   
-  public <T> void run(T x){
+  public <T> void run(T x) {
     
-    if(x instanceof HashMap){
-      ((HashMap)x).put("foo","bar");
+    if (x instanceof HashMap) {
+      ((HashMap) x).put("foo", "bar");
     }
-   
+    
   }
-  
-  
   
   @Test
   public void testReduce(TestContext tc) {
     
     Async z = tc.async();
     
-    Asyncc.Reduce(List.of(1,2,3), (r, v) -> {
+    Asyncc.Reduce(List.of(1, 2, 3), (prev, curr, v) -> {
       
-      v.done(null, (Integer)r.prev + (Integer)r.curr);
+      v.done(null, (Integer) prev + curr);
       
     }, (err, result) -> {
       
       System.out.println("The result:");
       System.out.println(result);
-      tc.assertEquals(result,6);
+      tc.assertEquals(result, 6);
       z.complete();
       
     });
-    
     
   }
   
@@ -65,22 +62,19 @@ public class ReduceTest {
     
     Async z = tc.async();
     
-    Asyncc.Reduce(1, List.of(1,2,3), (r, v) -> {
+    Asyncc.Reduce(1, List.of(1, 2, 3), (prev, curr, v) -> {
       
-      v.done(null, (Integer)r.prev + (Integer)r.curr);
+      v.done(null, (Integer) prev + curr);
       
     }, (err, result) -> {
       
       System.out.println("The result:");
       System.out.println(result);
-      tc.assertEquals(result,7);
+      tc.assertEquals(result, 7);
       z.complete();
       
     });
     
-    
   }
-    
-
   
 }

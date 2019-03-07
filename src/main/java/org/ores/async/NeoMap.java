@@ -1,14 +1,13 @@
 package org.ores.async;
 
 import java.util.*;
+
 import static org.ores.async.NeoMapI.AsyncCallback;
 
 /*
  * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
  **/
 class NeoMap {
-  
-
   
   @SuppressWarnings("Duplicates")
   static <V, T, E> void Map(
@@ -27,7 +26,7 @@ class NeoMap {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
-    RunMap(iterator, m, results, c, s, f);
+    RunMapWithList(iterator, m, results, c, s, f);
     
     if (s.isFinalCallbackFired()) {
       s.setSameTick(false);
@@ -151,7 +150,7 @@ class NeoMap {
   }
   
   @SuppressWarnings("Duplicates")
-  private static <T, V, E> void RunMap(
+  private static <T, V, E> void RunMapWithList(
     final Iterator<T> iterator,
     final Asyncc.IMapper<T, V, E> m,
     final List<V> results,
@@ -214,7 +213,7 @@ class NeoMap {
         }
         
         if (isBelowCapacity) {
-          RunMap(iterator, m, results, c, s, f);
+          RunMapWithList(iterator, m, results, c, s, f);
         }
       }
       
@@ -235,7 +234,7 @@ class NeoMap {
     }
     
     if (isBelowCapacity) {
-      RunMap(iterator, m, results, c, s, f);
+      RunMapWithList(iterator, m, results, c, s, f);
     }
     
   }

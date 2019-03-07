@@ -122,3 +122,16 @@ https://github.com/vert-x3/vertx-awesome
 
 
 use Optional with filter
+
+https://springframework.guru/gang-of-four-design-patterns/
+
+https://springframework.guru/principles-of-object-oriented-design/open-closed-principle/
+
+
+async.map(List.of(1,2,3), this::foo, (err,results) -> {
+   // need to make sure it works with this::foo
+});
+
+what about mapOf?
+
+https://docs.oracle.com/javase/tutorial/essential/concurrency/deadlock.html

@@ -8,12 +8,12 @@ import static org.ores.async.NeoGroupByI.AsyncCallback;
 public class NeoGroupBy {
   
   @SuppressWarnings("Duplicates")
-  static <V, T, E> void Group(
+  static <V, T, E> void GroupToLists(
     final int limit,
     final Iterable<T> items,
     final IMapper<T, E> m,
-    final Asyncc.IAsyncCallback<Map<String,List<V>>, E> f) {
-  
+    final Asyncc.IAsyncCallback<Map<String, List<V>>, E> f) {
+    
     final HashMap<String, List<V>> results = new HashMap<>();
     final Iterator<T> iterator = items.iterator();
     
@@ -24,7 +24,7 @@ public class NeoGroupBy {
     
     final CounterLimit c = new CounterLimit(limit);
     final ShortCircuit s = new ShortCircuit();
-    RunMap(iterator, m, results, c, s, f);
+    RunMap(false, iterator, m, results, c, s, f);
     
     if (s.isFinalCallbackFired()) {
       s.setSameTick(false);
@@ -32,15 +32,40 @@ public class NeoGroupBy {
     
   }
   
+  @SuppressWarnings("Duplicates")
+  static <V, T, E> void GroupToSets(
+    final int limit,
+    final Iterable<T> items,
+    final IMapper<T, E> m,
+    final Asyncc.IAsyncCallback<Map<String, Set<V>>, E> f) {
+    
+    final HashMap<String, Set<V>> results = new HashMap<>();
+    final Iterator<T> iterator = items.iterator();
+    
+    if (!iterator.hasNext()) {
+      f.done(null, results);
+      return;
+    }
+    
+    final CounterLimit c = new CounterLimit(limit);
+    final ShortCircuit s = new ShortCircuit();
+    RunMap(true, iterator, m,results, c, s, f);
+    
+    if (s.isFinalCallbackFired()) {
+      s.setSameTick(false);
+    }
+    
+  }
   
   @SuppressWarnings("Duplicates")
-  private static <T, V, E> void RunMap(
+  private static <T, V, X  extends Iterable<V>, E> void RunMap(
+    final boolean isToSet,
     final Iterator<T> iterator,
     final IMapper<T, E> m,
-    final Map<String,List<V>> results,
+    final Map<String, X> results,
     final CounterLimit c,
     final ShortCircuit s,
-    final Asyncc.IAsyncCallback<Map<String,List<V>>, E> f) {
+    final Asyncc.IAsyncCallback<Map<String, X>, E> f) {
     
     final T item;
     
@@ -52,10 +77,9 @@ public class NeoGroupBy {
       item = (T) iterator.next();
     }
     
-    final int val = c.getStartedCount();
     c.incrementStarted();
     
-    final var taskRunner = new AsyncCallback<String , E>(s) {
+    final var taskRunner = new AsyncCallback<String, E>(s) {
       
       @Override
       public void done(final E e, final String v) {
@@ -69,12 +93,21 @@ public class NeoGroupBy {
           
           this.setFinished(true);
           
-          if(!results.containsKey(v)){
-            results.put(v, new ArrayList<>());
+          if (!results.containsKey(v)) {
+            if (isToSet) {
+              results.put(v, (X)new HashSet());
+            } else {
+              results.put(v, (X)new ArrayList());
+            }
+            
           }
           
           // TODO: allow user to map item to a different object
-          results.get(v).add((V)item);
+          if (isToSet) {
+            ((Set<V>) results.get(v)).add((V) item);
+          } else {
+            ((List<V>) results.get(v)).add((V) item);
+          }
           
           if (s.isShortCircuited()) {
             return;
@@ -82,12 +115,12 @@ public class NeoGroupBy {
           
           c.incrementFinished();
           
-        }
-        
-        if (e != null) {
-          s.setShortCircuited(true);
-          NeoUtils.fireFinalCallback(s, e, results, f);
-          return;
+          if (e != null) {
+            s.setShortCircuited(true);
+            NeoUtils.fireFinalCallback(s, e, results, f);
+            return;
+          }
+          
         }
         
         final boolean isDone, isBelowCapacity;
@@ -103,7 +136,7 @@ public class NeoGroupBy {
         }
         
         if (isBelowCapacity) {
-          RunMap(iterator, m, results, c, s, f);
+          RunMap(isToSet, iterator, m, results, c, s, f);
         }
       }
       
@@ -124,7 +157,7 @@ public class NeoGroupBy {
     }
     
     if (isBelowCapacity) {
-      RunMap(iterator, m, results, c, s, f);
+      RunMap(isToSet, iterator, m, results, c, s, f);
     }
     
   }

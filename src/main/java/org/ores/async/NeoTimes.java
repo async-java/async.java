@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.ores.async.NeoUtils.handleSameTickCall;
-import static org.ores.async.NeoTimesI.AsyncTimesTask;
 import static org.ores.async.NeoTimesI.ITimesCallback;
 import static org.ores.async.NeoTimesI.ITimesr;
 import static org.ores.async.NeoTimesI.TimesCallback;
@@ -53,7 +52,7 @@ class NeoTimes {
     
     synchronized (c){
       val = c.getStartedCount();
-      if (val >= c.getMax()) {
+      if (val >= c.getTimesTotal()) {
         new RuntimeException("Warning: hit max, but this should not be reached.").printStackTrace(System.err);
         return;
       }
@@ -82,21 +81,21 @@ class NeoTimes {
           
           c.incrementFinished();
           results.set(val, v);
+  
+          if (e != null) {
+            s.setShortCircuited(true);
+            NeoUtils.fireFinalCallback(s, e, results, f);
+            return;
+          }
           
-        }
-        
-        if (e != null) {
-          s.setShortCircuited(true);
-          NeoUtils.fireFinalCallback(s, e, results, f);
-          return;
         }
         
         final boolean isDone, isBelowCapacity, maxxedOut;
         
         synchronized (c) {
-          isDone = c.getFinishedCount() == c.getMax();
+          isDone = c.getFinishedCount() == c.getTimesTotal();
           isBelowCapacity = c.isBelowCapacity();
-          maxxedOut = c.getStartedCount() >= c.getMax();
+          maxxedOut = c.getStartedCount() >= c.getTimesTotal();
         }
         
         if (isDone) {
@@ -123,9 +122,9 @@ class NeoTimes {
     final boolean isBelowCapacity, isDone, maxxedOut;
     
     synchronized (c) {
-      isDone = c.getFinishedCount() == c.getMax();
+      isDone = c.getFinishedCount() == c.getTimesTotal();
       isBelowCapacity = c.isBelowCapacity();
-      maxxedOut = c.getStartedCount() >= c.getMax();
+      maxxedOut = c.getStartedCount() >= c.getTimesTotal();
     }
     
     if (!isDone && !maxxedOut && isBelowCapacity) {

@@ -9,6 +9,8 @@ import static org.ores.async.NeoWaterfallI.AsyncCallback;
  */
 class NeoWaterfall {
   
+
+  
   @SuppressWarnings("Duplicates")
   static <T, E> void Waterfall(
     final List<AsyncTask<T, E>> tasks,
@@ -46,8 +48,8 @@ class NeoWaterfall {
     
     final AsyncTask<T, E> t = tasks.get(startedCount);
     final var taskRunner = new AsyncCallback<T, E>(s, results) {
-      
-      protected void doneInternal(final Asyncc.Marker done, final E e, final Map.Entry<String, T> m) {
+  
+      protected void doneInternal(final NeoWaterfallI.Marker done, final E e, final Map.Entry<String, T> m) {
         
         synchronized (this.cbLock) {
           
