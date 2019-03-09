@@ -153,11 +153,11 @@ public class ParallelTest {
     Asyncc.ParallelLimit(4, asList(
       
       v -> {
-        v.done(null, null);
+        v.done(null, 1);
       },
       
       v -> {
-        v.done(null, null);
+        v.done(null, 2);
       },
       
       v -> {
@@ -168,7 +168,7 @@ public class ParallelTest {
           } catch (Exception e) {
             System.out.println(e);
           }
-          v.done(null, null);
+          v.done(null, 3);
         })
           .start();
       },
@@ -180,17 +180,17 @@ public class ParallelTest {
           } catch (Exception e) {
             System.out.println(e);
           }
-          v.done(null, null);
+          v.done(null, 4);
         })
           .start();
       },
       
       v -> {
-        v.done(null, null);
+        v.done(null, 5);
       },
       
       v -> {
-        v.done(null, null);
+        v.done(null, 6);
       },
       
       v -> {
@@ -201,24 +201,23 @@ public class ParallelTest {
             System.out.println(e);
           }
           
-          v.done(null, null);
+          v.done(null, 7);
         })
           .start();
       },
       
       v -> {
-        v.done(null, null);
+        v.done(null, 8);
       }
     
     ), (e, results) -> {
+  
+      assert e == null : e.toString();
+  
+      System.out.println("DDDDDDDAMN results:");
+      System.out.println(results.toString());
       
-      System.out.println("DDDDDDDAMN");
-      
-      if (e != null) {
-        z.complete();
-      } else {
-        z.complete();
-      }
+      z.complete();
       
     });
   }
