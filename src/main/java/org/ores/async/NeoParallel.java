@@ -1,6 +1,5 @@
 package org.ores.async;
 
-import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.ores.async.NeoUtils.fireFinalCallback;
@@ -8,13 +7,13 @@ import static org.ores.async.NeoParallelI.AsyncCallback;
 
 class NeoParallel {
   
-  private static class AsyncDetonator<T,E> extends AsyncCallback<T, E>  {
+  private static class AsyncDetonator<T, E> extends AsyncCallback<T, E> {
     
-    ParallelRunner p;
-    Runnable r;
-    Integer index;
+    final private ParallelRunner p;
+    final private Runnable r;
+    final private Integer index;
     
-    AsyncDetonator(ParallelRunner p, Integer index, Runnable r){
+    private AsyncDetonator(ParallelRunner p, Integer index, Runnable r) {
       super(p.s);
       this.p = p;
       this.r = r;
@@ -23,55 +22,62 @@ class NeoParallel {
     
     @Override
     public void done(final E e, final T v) {
-    
-      synchronized (this.cbLock) {
       
+      synchronized (this.cbLock) {
+        
         if (this.isFinished()) {
           new Error("Warning: Callback fired more than once.").printStackTrace(System.err);
           return;
         }
-      
+        
         this.setFinished(true);
-      
+        
         if (this.s.isShortCircuited()) {
           return;
         }
-      
-        p.results.set(index, v);
+
+//        p.results.set(index, v);
+        this.p.handleValue(index, v);
         p.c.incrementFinished();
-      
+        
         if (e != null) {
           s.setShortCircuited(true);
           NeoUtils.fireFinalCallback(s, e, p.results, p.f);
           return;
         }
       }
-    
-      final boolean isDone, isBelowCapacity, isCountEqual;
-    
-      synchronized (p.c) {
-        isBelowCapacity = p.c.isBelowCapacity();
-        isCountEqual = p.c.getFinishedCount() == p.c.getStartedCount();
-      }
-    
-      synchronized (p.iterator) {
-        isDone = !p.iterator.hasNext() && isCountEqual;
-      }
-    
-      if (isDone) {
+      
+//      final boolean isDone, isBelowCapacity, isCountEqual;
+//
+//      synchronized (p.c) {
+//        isBelowCapacity = p.c.isBelowCapacity();
+//        isCountEqual = p.c.getFinishedCount() == p.c.getStartedCount();
+//      }
+//
+//      synchronized (p.iterator) {
+//        isDone = !p.iterator.hasNext() && isCountEqual;
+//      }
+      
+      if (this.p.isDone()) {
         NeoUtils.fireFinalCallback(s, null, p.results, p.f);
         return;
       }
-    
-      if (isBelowCapacity && this.r != null) {
-//        RunTasksLimit(iterator, results, c, s, f);
+      
+      if (this.r != null && this.p.isBelowCapacity()) {
         this.r.run();
       }
     }
   }
   
+  private abstract static class AbstractParallelRunner<T, E> {
+    protected abstract void handleValue(Object key, Object val);
+    
+    protected abstract boolean isBelowCapacity();
+    
+    protected abstract boolean isDone();
+  }
   
-  private static class ParallelRunner<T, E> {
+  private static class ParallelRunner<T, E> extends AbstractParallelRunner<T, E> {
     
     protected final Iterator<Asyncc.AsyncTask<T, E>> iterator;
     protected final CounterLimit c;
@@ -80,7 +86,7 @@ class NeoParallel {
     protected final Integer size;
     protected final ShortCircuit s;
     
-    ParallelRunner(
+    private ParallelRunner(
       final Iterator<Asyncc.AsyncTask<T, E>> iterator,
       final CounterLimit c,
       final ShortCircuit s,
@@ -96,11 +102,31 @@ class NeoParallel {
       this.results = results;
     }
     
+    @Override
+    protected void handleValue(Object key, Object val) {
+      this.results.set((Integer) key, (T) val);
+    }
+    
+    @Override
+    protected boolean isBelowCapacity() {
+      synchronized (this.c) {
+        return this.c.isBelowCapacity();
+      }
+    }
+    
+    @Override
+    protected boolean isDone() {
+      synchronized (this.iterator) {
+        synchronized (this.c) {
+          return !this.iterator.hasNext() && this.c.getFinishedCount() == this.c.getStartedCount();
+        }
+      }
+    }
   }
   
   @SuppressWarnings("Duplicates")
-  private static class RunTasksLimit<T,E> extends ParallelRunner<T,E> implements Runnable {
-  
+  private static class RunTasksLimit<T, E> extends ParallelRunner<T, E> implements Runnable {
+    
     private RunTasksLimit(
       final Iterator<Asyncc.AsyncTask<T, E>> iterator,
       final CounterLimit c,
@@ -112,37 +138,37 @@ class NeoParallel {
       super(iterator, c, s, size, results, f);
     }
     
-    public void run(){
+    public void run() {
       
       final int val;
       final Asyncc.AsyncTask<T, E> t;
-  
+      
       synchronized (iterator) {
-    
+        
         if (!iterator.hasNext()) {
           return;
         }
-    
+        
         val = c.getStartedCount();
         c.incrementStarted();
         t = iterator.next();
       }
       
       this.results.add(null);
-  
+      
       final var taskRunner = new AsyncDetonator<T, E>(this, val, this);
-  
+      
       try {
         t.run(taskRunner);
       } catch (Exception e) {
         NeoUtils.fireFinalCallback(s, e, results, f);
         return;
       }
-  
+      
       if (!iterator.hasNext()) {
         return;
       }
-  
+      
       if (c.isBelowCapacity()) {
         this.run();
       }
@@ -151,7 +177,7 @@ class NeoParallel {
   }
   
   @SuppressWarnings("Duplicates")
-  static <T, E> void RunMapLimit(
+  private static <T, E> void RunMapLimit(
     final Iterator<Map.Entry<Object, Asyncc.AsyncTask<T, E>>> entries,
     final int size,
     final Map<Object, T> results,
@@ -268,53 +294,10 @@ class NeoParallel {
     final ShortCircuit s = new ShortCircuit();
     final CounterLimit c = new CounterLimit(limit);
     final Iterator<Asyncc.AsyncTask<T, E>> iterator = tasks.iterator();
-    
+
 //    RunTasksLimit(iterator, results, c, s, f);
-    new RunTasksLimit<T,E>(iterator, c, s, null, results, f).run();
+    new RunTasksLimit<T, E>(iterator, c, s, null, results, f).run();
     NeoUtils.handleSameTickCall(s);
-    
-  }
-  
-  @SuppressWarnings("Duplicates")
-  private static <T, E> void RunTasksLimit(
-    final Iterator<Asyncc.AsyncTask<T, E>> iterator,
-    final List<T> results,
-    final CounterLimit c,
-    final ShortCircuit s,
-    final Asyncc.IAsyncCallback<List<T>, E> f) {
-    
-    final int val;
-    final Asyncc.AsyncTask<T, E> t;
-    
-    synchronized (iterator) {
-      
-      if (!iterator.hasNext()) {
-        return;
-      }
-      
-      val = c.getStartedCount();
-      c.incrementStarted();
-      t = iterator.next();
-    }
-    
-//    final var taskRunner = new ParallelRunner<T, E>(iterator, c, s, val, null, results, f, () -> {
-//      RunTasksLimit(iterator, results, c, s, f);
-//    });
-//
-//    try {
-//      t.run(taskRunner);
-//    } catch (Exception e) {
-//      NeoUtils.fireFinalCallback(s, e, results, f);
-//      return;
-//    }
-    
-    if (!iterator.hasNext()) {
-      return;
-    }
-    
-    if (c.isBelowCapacity()) {
-      RunTasksLimit(iterator, results, c, s, f);
-    }
     
   }
   
@@ -333,14 +316,14 @@ class NeoParallel {
       
       final Object key = entry.getKey();
       final var taskRunner = new AsyncCallback<T, E>(s) {
-
+        
         @Override
         public void done(final E e, final T v) {
           
           synchronized (this.cbLock) {
             
             if (this.isFinished()) {
-              if(e != null){
+              if (e != null) {
                 System.err.println(e.toString());
               }
               new Error("Warning: Callback fired more than once.").printStackTrace();
@@ -348,12 +331,12 @@ class NeoParallel {
             }
             
             this.setFinished(true);
-
+            
             c.incrementFinished();
             results.put(key, v);
-
+            
             if (s.isShortCircuited()) {
-              if(e != null){
+              if (e != null) {
                 System.err.println(e.toString());
               }
               return;
@@ -361,7 +344,6 @@ class NeoParallel {
             
           }
           
-
           if (e != null) {
             s.setShortCircuited(true);
             fireFinalCallback(s, e, results, f);
@@ -373,7 +355,7 @@ class NeoParallel {
             return;
           }
           
-          if(c.getFinishedCount() >= size){
+          if (c.getFinishedCount() >= size) {
             throw new RuntimeException("Finished count was greater than number of tasks. This is a bug.");
           }
         }
@@ -388,7 +370,7 @@ class NeoParallel {
       }
       
     }
-
+    
     if (s.isFinalCallbackFired()) {
       s.setSameTick(false);
     }
@@ -430,7 +412,7 @@ class NeoParallel {
             }
             
             this.setFinished(true);
-
+            
             c.incrementFinished();
             results.set(index, v);
             

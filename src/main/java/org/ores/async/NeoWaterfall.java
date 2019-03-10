@@ -9,7 +9,6 @@ import static org.ores.async.NeoWaterfallI.AsyncCallback;
  */
 class NeoWaterfall {
   
-
   
   @SuppressWarnings("Duplicates")
   static <T, E> void Waterfall(
