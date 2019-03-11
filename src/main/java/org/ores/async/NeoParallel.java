@@ -7,13 +7,13 @@ import static org.ores.async.NeoParallelI.AsyncCallback;
 
 class NeoParallel {
   
-  private static class AsyncDetonator<T, E> extends AsyncCallback<T, E> {
+  private static class AsyncTaskRunner<T, E> extends AsyncCallback<T, E> {
     
     final private ParallelRunner p;
     final private Runnable r;
     final private Integer index;
     
-    private AsyncDetonator(ParallelRunner p, Integer index, Runnable r) {
+    private AsyncTaskRunner(ParallelRunner p, Integer index, Runnable r) {
       super(p.s);
       this.p = p;
       this.r = r;
@@ -156,7 +156,7 @@ class NeoParallel {
       
       this.results.add(null);
       
-      final var taskRunner = new AsyncDetonator<T, E>(this, val, this);
+      final var taskRunner = new AsyncTaskRunner<T, E>(this, val, this);
       
       try {
         t.run(taskRunner);

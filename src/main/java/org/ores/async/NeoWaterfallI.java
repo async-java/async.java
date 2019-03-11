@@ -105,11 +105,11 @@ public class NeoWaterfallI {
 //    public void run(IAsyncCallback<T, E> cb);
 //  }
   
-  public static interface AsyncValueTask<T, E> {
+  public interface AsyncValueTask<T, E> {
     public void run(Object v, AsyncCallback<T, E> cb);
   }
   
-  public static interface AsyncTask<T, E> {
+  public interface AsyncTask<T, E> {
     public void run(AsyncCallback<T, E> cb);
   }
   

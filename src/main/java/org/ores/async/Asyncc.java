@@ -855,6 +855,12 @@ public class Asyncc {
     IAsyncCallback<HashMap<String, Object>, E> cb) {
     NeoWaterfall.Waterfall(tasks, cb);
   }
+
+  public static <T, E> void Waterfall2(
+    List<NeoWaterfallI.AsyncTask<T, E>> tasks,
+    IAsyncCallback<HashMap<String, Object>, E> cb) {
+    NeoWaterfall.Waterfall2(tasks, cb);
+  }
   
   public static <T, E> NeoGeneric<T, Object, E> Waterfall(NeoWaterfallI.AsyncValueTask<T, E> z, NeoWaterfallI.AsyncTask<T, E>... args) {
     return new NeoGeneric<>() {
