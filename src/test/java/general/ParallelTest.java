@@ -22,17 +22,12 @@ import static java.util.Arrays.asList;
 @RunWith(VertxUnitRunner.class)
 public class ParallelTest {
   
-  public interface IAsyncCallback<T, E> {
-    void done(E e, T v);
-  }
-  
   final static Logger log = LoggerFactory.getLogger(AsyncTest.class);
   
   @Before
   public void onBefore() {
     
-    IAsyncCallback<Optional, Object> cb = (e, v) -> {
-    };
+    System.out.println("here is the before hook");
     
   }
   
@@ -41,14 +36,12 @@ public class ParallelTest {
     
     Async z = tc.async();
     
-    Asyncc.Parallel(List.of(
+    Asyncc.Parallel(
       
       v -> {
         
         v.done(null, null);
-      }
-    
-    ), (e, results) -> {
+      }, (e, results) -> {
       
       if (e != null) {
         z.complete();
@@ -64,7 +57,7 @@ public class ParallelTest {
     
     Async z = tc.async();
     
-    Asyncc.Parallel(List.of(
+    Asyncc.Parallel(
       
       Asyncc.Parallel(t -> {
           t.done(null, 5);
@@ -78,7 +71,7 @@ public class ParallelTest {
         v.done(null, null);
       }
     
-    ), (e, results) -> {
+    , (e, results) -> {
       
       if (e != null) {
         z.complete();

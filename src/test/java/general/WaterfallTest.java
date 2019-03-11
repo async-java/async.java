@@ -135,7 +135,6 @@ public class WaterfallTest {
   public void speedTest1(TestContext tc) {
 
     Async z = tc.async();
-
     List<AsyncTask<Map<String, Object>, Object>> a = new ArrayList<>();
 
     for (int i = 0; i < 1000000; i++) {
@@ -176,9 +175,7 @@ public class WaterfallTest {
   @Test
   public void speedTest2(TestContext tc) {
 
-
     Async z = tc.async();
-
     List<AsyncTask<Map<String, Object>, Object>> a = new ArrayList<>();
 
     for (int i = 0; i < 1000000; i++) {
