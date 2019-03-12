@@ -138,7 +138,9 @@ public class WaterfallTest {
     List<AsyncTask<Map<String, Object>, Object>> a = new ArrayList<>();
 
     for (int i = 0; i < 1000000; i++) {
+      
       final int index = i;
+      
       a.add(v -> {
 
         if (index % 15 != 0) {
@@ -151,6 +153,7 @@ public class WaterfallTest {
         });
 
       });
+      
     }
 
 
@@ -179,7 +182,9 @@ public class WaterfallTest {
     List<AsyncTask<Map<String, Object>, Object>> a = new ArrayList<>();
 
     for (int i = 0; i < 1000000; i++) {
+      
       final int index = i;
+      
       a.add(v -> {
 
         if (index % 15 != 0) {
@@ -192,6 +197,7 @@ public class WaterfallTest {
         });
 
       });
+      
     }
 
     final long startTime = System.currentTimeMillis();
