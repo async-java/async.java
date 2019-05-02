@@ -65,8 +65,8 @@ public class NeoWhilst {
         return;
       }
       
-      final CounterLimit c = new CounterLimit(limit);
-      final ShortCircuit s = new ShortCircuit();
+      final var c = new CounterLimit(limit);
+      final var s = new ShortCircuit();
       
       RunMap(syncTest, asyncTest, m, results, c, s, f);
       
