@@ -211,6 +211,29 @@
                     </execution>
                 </executions>
                 <configuration>
+
+                    <tags>
+                        <tag>
+                            <name>exclude</name>
+                            <!-- The value X makes javadoc ignoring the tag -->
+                            <placement>X</placement>
+                        </tag>
+                        <tag>
+                            <name>SuppressWarnings</name>
+                            <placement>X</placement>
+                        </tag>
+                        <tag>
+                            <name>Since</name>
+                            <placement>X</placement>
+                        </tag>
+                        <tag>
+                            <name>Version</name>
+                            <placement>X</placement>
+                        </tag>
+                    </tags>
+
+                    <doclint>all,-missing</doclint>
+
                     <additionalOptions>-html5</additionalOptions>
                     <additionalJOptions>--allow-script-in-comments</additionalJOptions>
                 </configuration>

@@ -956,10 +956,10 @@ public class Asyncc {
    *   // indentation and line breaks are kept
    *
    *   @SuppressWarnings
-   *   public List<String> generics(){
+   *   {@code public List<String> generics(){
    *     // '@', '<' and '>'  have to be escaped with HTML codes
    *     // when used in annotations or generics
-   *   }
+   *   }}
    * }
    * </pre>
    */
