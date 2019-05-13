@@ -3,10 +3,10 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.oresoftware</groupId>
-    <artifactId>async.0.1</artifactId>
+    <artifactId>async1</artifactId>
     <packaging>jar</packaging>
     <version>0.1.1012</version>
-    <name>org.ores.async.Asyncc</name>
+    <name>org.ores.async1.Asyncc</name>
     <url>https://github.com/ORESoftware/async.java</url>
 
     <properties>

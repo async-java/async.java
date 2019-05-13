@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# https://medium.freecodecamp.org/how-to-upload-an-open-source-java-library-to-maven-central-cac7ce2f57c
+
+# https://dzone.com/articles/publish-your-artifacts-to-maven-central
 
 gpg --export -a 437A774CD1F35D00 | pbcopy  # public_key
 

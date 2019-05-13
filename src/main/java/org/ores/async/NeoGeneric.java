@@ -1,7 +1,5 @@
 package org.ores.async;
 
-import java.util.Map;
-
 public abstract class NeoGeneric<T, V, E> implements
   NeoEachI.IEacher<V, E>, NeoReduceI.IReducer<T, V, E>, Asyncc.IMapper<T, V, E>, Asyncc.AsyncValueTask<V, E>, NeoWaterfallI.AsyncValueTask<V, E> {
   

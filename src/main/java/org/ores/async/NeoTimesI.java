@@ -1,6 +1,5 @@
 package org.ores.async;
 
-import java.util.List;
 import java.util.Map;
 
 public class NeoTimesI {

@@ -1,8 +1,6 @@
 package org.ores.async;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 class NeoUtils {
   
