@@ -1,3 +1,7 @@
+whilst and queue test are commented out - now tests are deterministic, so something is wrong with whilst and queue
+whilst has synchronous and asynchronous check/truth-check which is bad
+
+
 https://www.mkyong.com/maven/how-to-create-a-jar-file-with-maven/
 
 https://www.rainerhahnekamp.com/en/publishing-a-java-library-to-maven-central/

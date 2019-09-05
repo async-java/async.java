@@ -18,13 +18,10 @@ public class LockTest {
   
   final static Logger log = LoggerFactory.getLogger(LockTest.class);
 
-  
   @Before
   public void onBefore() {
 
-
   }
-  
 
   
   @Test
