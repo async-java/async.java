@@ -6,7 +6,117 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.2.3] - TBD
+## [0.2.4] - 2026-05-17
+
+Ergonomics release plus one real concurrency fix. More concise call sites
+for the common case and a substantial Javadoc rewrite. The at-most-once
+final-callback contract, short-circuit semantics, and counter-correctness
+properties from v0.2.0 - v0.2.2 all still apply.
+
+### Fixed
+
+- **`NeoParallel.Parallel(List, callback)` could lose result-slot writes
+  under high-throughput fan-out.** The dispatch loop grew the result
+  `ArrayList` by `add(null)` *inside* the iteration that submitted tasks:
+
+  ```java
+  for (int i = 0; i < size; i++) {
+      results.add(null);            // may resize the backing array
+      tasks.get(i).run(taskRunner); // may complete on another thread
+                                    // immediately and call results.set(j,v)
+  }
+  ```
+
+  `ArrayList` grows its backing array geometrically (10 → 15 → 22 → 33 →
+  ...). When the main thread was mid-resize (allocating a new backing
+  array and copying), a concurrent `results.set(j, v)` from a
+  fast-completing task could land on the **old** backing array, after
+  which the new array replaced the field reference — silently losing the
+  write. The slot then read as `null` in the final callback. Surfaced
+  intermittently by
+  `MisuseTest#parallelCrossThreadCallbackThousandFanOut` (1 000 fan-out
+  tasks × 16 threads, position varied across runs: 15, 429, etc.). Pinned
+  with a regression test running the scenario 5× back-to-back.
+
+  Fix: pre-allocate **and** pre-fill the result list to `size` *before*
+  submitting any task. The backing array is now stable for the duration
+  of the combinator call and every task writes to the same array.
+
+  This bug only fires when at least one task completes before the main
+  thread finishes adding nulls. Sub-millisecond completion latencies
+  on a pre-warmed VT executor are enough.
+
+### Added
+
+- **`IAsyncCallback.success(V)` and `IAsyncCallback.fail(E)`** default
+  methods. Equivalent to `done(null, v)` / `done(e, null)` but read
+  cleaner at call sites:
+
+  ```java
+  // before
+  c.done(null, value);   c.done(err, null);
+  // after (still works, additive only)
+  c.success(value);      c.fail(err);
+  ```
+
+  Existing callers pass `(e, v) -> ...` lambdas and need no changes; the
+  shorthands are available on any `IAsyncCallback` instance.
+
+- **`org.ores.async.WrapErrFirst`** — adapter that wraps a value-only
+  consumer (or a value-consumer + error-consumer pair) into the canonical
+  error-first callback. Reduces the boilerplate `if (err != null) {
+  handle(err); return; }` preamble at every callback site:
+
+  ```java
+  import static org.ores.async.WrapErrFirst.wrap;
+
+  Asyncc.Parallel(tasks, wrap(results -> {
+      var scored = score(req, results.get(0), results.get(1));
+      reply.send(serialize(scored));
+  }));
+  ```
+
+  The single-arg form throws `RuntimeException` (preserving the original
+  `Throwable` as the cause when available) on unhandled errors. The
+  two-arg form `wrap(onSuccess, onError)` keeps both branches explicit.
+
+  See `WrapErrFirstTest` for the contract: success path, throw-on-error
+  with `Throwable` cause, throw-on-error with non-`Throwable` object,
+  two-arg routing, end-to-end integration with `Asyncc.Parallel`.
+
+- **Conventional parameter name `c` for continuations.** The docs now
+  consistently use `c` instead of `cb` in code examples — `c` is short
+  for *continuation*, which is what the callback parameter actually is
+  in this library (the "what happens next" of an async step). This is
+  a documentation convention, not an API change; existing code using
+  `cb` or any other name keeps working unchanged.
+
+### Changed
+
+- **Minimum JDK is now 17** (was 11). Both downstream consumers in the
+  k8s-cluster monorepo (`dd-spark-pipeline-server` on JDK 17,
+  `dd-akka-ws-server` on JDK 21) already run on 17+. The library now uses
+  `instanceof` pattern matching (Java 16+) in `WrapErrFirst` and assumes
+  JDK 17 source/target throughout. CI matrix is now `17, 21`.
+
+  Consumers still on JDK 11 should pin `v0.2.3` or `v0.2.2`.
+
+### Why an ergonomics release rather than 0.3.0
+
+The library has a stable public surface and v0.2.x has been about
+hardening correctness under load (CounterLimit race, NeoParallel double
+fire, slot-write-order). Adding `success`/`fail` and `WrapErrFirst` is
+strictly additive — no callers break. The JDK floor bump from 11 to 17
+is the only thing that argues for 0.3.0, but in practice every consumer
+we know about is already on 17+ and the original tier-up to JDK 11 was
+itself a quiet patch-release move. Keeping the 0.2.x line means we can
+keep shipping minor improvements without forcing every downstream to
+update major-version dependency pins.
+
+## [0.2.3] - skipped
+
+Numbered for the doc work that ended up rolled into 0.2.4. No 0.2.3 tag
+was ever cut.
 
 ## [0.2.2] - 2026-05-17
 

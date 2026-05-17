@@ -381,23 +381,42 @@ class NeoParallel {
   static <T, E> void Parallel(
     final List<Asyncc.AsyncTask<T, E>> tasks,
     final Asyncc.IAsyncCallback<List<T>, E> f) {
-    
-    final List<T> results = new ArrayList<T>();
+
     final int size = tasks.size();
-    
+
+    // Pre-allocate AND pre-fill the result list before submitting any task. Earlier versions
+    // grew the ArrayList one element at a time inside the dispatch loop:
+    //
+    //     for (int i = 0; i < size; i++) {
+    //         results.add(null);          // may trigger backing-array resize
+    //         tasks.get(i).run(taskRunner); // may complete on another thread immediately
+    //                                       // and call results.set(j, v) where j < i
+    //     }
+    //
+    // ArrayList grows its backing array geometrically (10 -> 15 -> 22 -> 33 -> ...). When the
+    // main thread is mid-resize (allocating a new backing array and copying), a concurrent
+    // results.set(j, v) from a fast-completing task can land on the *old* backing array, after
+    // which the new array replaces the field reference — losing the write. Surfaced
+    // intermittently by MisuseTest#parallelCrossThreadCallbackThousandFanOut at varying
+    // positions (15, 429, ...). Pre-filling to `size` first means no further resize can occur,
+    // and every task's set(index, v) writes to the same stable backing array.
+    final List<T> results = new ArrayList<T>(size);
+    for (int i = 0; i < size; i++) {
+      results.add(null);
+    }
+
     if (size < 1) {
       f.done(null, results);
       return;
     }
-    
+
     final CounterLimit c = new CounterLimit(Integer.MAX_VALUE);
     final ShortCircuit s = new ShortCircuit();
-    
+
     for (int i = 0; i < size; i++) {
-      
-      results.add(null);
+
       c.incrementStarted();
-      
+
       final int index = i;
       final var taskRunner = new AsyncCallback<T, E>(s) {
         

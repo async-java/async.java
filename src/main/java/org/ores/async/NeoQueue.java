@@ -14,6 +14,54 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
+/**
+ * A bounded async work queue.
+ *
+ * <p>Hand the queue a task handler; push tasks; the queue dispatches them via the shared
+ * executor, respecting a concurrency cap. Callers can subscribe to {@code saturated},
+ * {@code unsaturated}, and {@code drain} lifecycle events for back-pressure modelling.
+ *
+ * <h3>Why a queue (and not just {@link Asyncc#ParallelLimit})?</h3>
+ *
+ * <p>{@code ParallelLimit} takes a fixed list of tasks. A {@code NeoQueue} accepts <em>streaming
+ * arrivals</em> &mdash; you push tasks as they show up and the queue keeps the concurrency cap
+ * honoured. Useful for incoming WS frames, paged downstream calls, file watcher events.
+ *
+ * <h3>Usage</h3>
+ *
+ * <p>The handler's continuation parameter is conventionally named {@code c} (for
+ * <em>continuation</em>). Fire it via {@code c.success(value)}, {@code c.fail(error)}, or the
+ * canonical {@code c.done(err, value)}.
+ *
+ * <pre>
+ *   NeoQueue&lt;JobSpec, JobResult&gt; queue = new NeoQueue&lt;&gt;(4); // concurrency = 4
+ *
+ *   queue.setTaskHandler((task, c) -&gt; {
+ *       try {
+ *           c.success(processJob(task.getValue()));
+ *       } catch (Throwable t) {
+ *           c.fail(t);
+ *       }
+ *   });
+ *
+ *   queue.saturated((q) -&gt; log.warn("queue saturated; in-flight at cap"));
+ *   queue.drain((q) -&gt; log.info("queue drained"));
+ *
+ *   incoming.forEach(spec -&gt; queue.push(spec));
+ * </pre>
+ *
+ * <h3>With virtual threads</h3>
+ *
+ * <p>The queue ships with a daemon-threaded default executor. For production deployments on
+ * JDK 21+, swap it for a VT executor once at startup:
+ *
+ * <pre>
+ *   NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+ * </pre>
+ *
+ * @param <T> task input type
+ * @param <V> task result type
+ */
 public class NeoQueue<T, V> {
 
   /**

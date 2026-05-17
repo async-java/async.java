@@ -17,7 +17,7 @@
     <groupId>io.github.async-java</groupId>
     <artifactId>async-java</artifactId>
     <packaging>jar</packaging>
-    <version>0.2.3-SNAPSHOT</version>
+    <version>0.2.4</version>
     <name>async-java</name>
     <url>https://github.com/async-java/async.java</url>
 
@@ -29,7 +29,7 @@
           Bumped to 11 (LTS) so the project compiles on a supported JDK.
           JDK 10 went EOL in September 2018; CI providers no longer ship it.
         -->
-        <jdk.version>11</jdk.version>
+        <jdk.version>17</jdk.version>
 
         <!--
           Vert.x 3.9.16 is the final patch of the 3.x line and is API-compatible

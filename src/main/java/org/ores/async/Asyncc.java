@@ -3,7 +3,150 @@ package org.ores.async;
 import java.util.*;
 
 /**
- * <script src="https://cdn.rawgit.com/google/code-prettify/master/loader/run_prettify.js"></script>
+ * Entry point for async.java's combinators.
+ *
+ * <p>All public combinator methods are static. They share a common shape: take a collection of
+ * tasks (or values) and an error-first final callback. The final callback fires <strong>at most
+ * once</strong>, with either {@code (err, null)} if any task failed or {@code (null, results)}
+ * once all tasks have completed.
+ *
+ * <h3>The combinator catalogue</h3>
+ *
+ * <table>
+ *   <caption>Combinators and their shape</caption>
+ *   <tr><th>combinator</th><th>shape</th><th>typical use</th></tr>
+ *   <tr><td>{@code Parallel}</td>
+ *       <td>fan out N tasks, await all</td>
+ *       <td>independent async lookups that combine into one response</td></tr>
+ *   <tr><td>{@code ParallelLimit}</td>
+ *       <td>parallel with concurrency cap</td>
+ *       <td>many tasks, bounded in-flight (avoid downstream overload)</td></tr>
+ *   <tr><td>{@code Series}</td>
+ *       <td>sequential tasks, collect each result</td>
+ *       <td>step-by-step workflows where each step is independent</td></tr>
+ *   <tr><td>{@code Waterfall}</td>
+ *       <td>each task receives the prior task's value</td>
+ *       <td>typed pipelines (parse &rarr; validate &rarr; transform &rarr; persist)</td></tr>
+ *   <tr><td>{@code Race}</td>
+ *       <td>first task to finish wins</td>
+ *       <td>primary + replica lookups, timeout-via-task patterns</td></tr>
+ *   <tr><td>{@code Times}</td>
+ *       <td>run the same task N times</td>
+ *       <td>batch generators, repeat-with-different-id workflows</td></tr>
+ *   <tr><td>{@code Each}</td>
+ *       <td>parallel "for each" with concurrency cap; no collected result</td>
+ *       <td>fire-and-forget batches (e.g. send email per user)</td></tr>
+ *   <tr><td>Map / FilterMap / Reduce / GroupBy / Concat / Inject</td>
+ *       <td>collection transforms with async element functions</td>
+ *       <td>data pipelines where each element does I/O</td></tr>
+ *   <tr><td>Whilst / DoWhilst</td>
+ *       <td>async loop with sync test</td>
+ *       <td>polling, retry-until-success</td></tr>
+ * </table>
+ *
+ * <h3>The {@code c} convention</h3>
+ *
+ * <p>Examples in this Javadoc consistently name the continuation parameter {@code c}, short for
+ * <em>continuation</em>. A continuation is fired with either a successful value or an error;
+ * three equivalent ways to do that:
+ *
+ * <pre>
+ *   c.done(null, value);   // canonical error-first form
+ *   c.success(value);      // shorthand for done(null, value)     — v0.2.4+
+ *   c.fail(err);           // shorthand for done(err, null)       — v0.2.4+
+ * </pre>
+ *
+ * <h3>Minimal example</h3>
+ *
+ * <pre>
+ *   List&lt;Asyncc.AsyncTask&lt;String, Throwable&gt;&gt; tasks = List.of(
+ *       c -&gt; exec.submit(() -&gt; c.success(fetchA())),
+ *       c -&gt; exec.submit(() -&gt; c.success(fetchB()))
+ *   );
+ *
+ *   Asyncc.Parallel(tasks, (err, results) -&gt; {
+ *       if (err != null) { handleError(err); return; }
+ *       // results.get(0) and results.get(1) are in submission order
+ *   });
+ * </pre>
+ *
+ * <h3>Skipping the error-check boilerplate</h3>
+ *
+ * <p>For call sites that do not want to write the {@code if (err != null) ...} preamble, wrap a
+ * value-only consumer with {@link WrapErrFirst#wrap(java.util.function.Consumer)}:
+ *
+ * <pre>
+ *   import static org.ores.async.WrapErrFirst.wrap;
+ *
+ *   Asyncc.Parallel(tasks, wrap(results -&gt; {
+ *       var scored = score(req, results.get(0), results.get(1));
+ *       reply.send(serialize(scored));
+ *   }));
+ * </pre>
+ *
+ * <p>{@code wrap(onSuccess)} throws on any unhandled error (preserving the original
+ * {@code Throwable} as the cause when available). For explicit error handling without the
+ * if/else preamble, use the two-arg form {@code wrap(onSuccess, onError)}.
+ *
+ * <h3>Error handling</h3>
+ *
+ * <p>The first task to call {@code c.fail(err)} (or {@code c.done(err, null)}) short-circuits
+ * the combinator: the final callback fires <em>immediately</em> with that error, and any later
+ * task completions are discarded (the at-most-once guard absorbs duplicate fires). This makes
+ * error handling local: you do not need to coordinate cancellation across siblings &mdash; just
+ * report the error.
+ *
+ * <pre>
+ *   Asyncc.Parallel(tasks, (err, results) -&gt; {
+ *       if (err instanceof TimeoutException) { reply.timeout(); return; }
+ *       if (err != null)                     { reply.error(err);  return; }
+ *       reply.success(results);
+ *   });
+ * </pre>
+ *
+ * <h3>Composition (real-world example)</h3>
+ *
+ * <p>Combinators nest because they all honour the same callback shape. The pipeline below uses
+ * {@code Waterfall}, {@code Map}, {@code Parallel}, and {@code Reduce} together:
+ *
+ * <pre>
+ *   // For each input URL: fetch the page, extract links, classify each link in parallel,
+ *   // then aggregate per-domain counts.
+ *   Asyncc.Map(urls, (url, perUrl) -&gt; {
+ *       Asyncc.Waterfall(List.of(
+ *           c -&gt; fetchPage(url, c),
+ *           (html, c) -&gt; c.success(extractLinks(html)),
+ *           (links, c) -&gt; Asyncc.Map(links, (link, inner) -&gt; {
+ *               Asyncc.Parallel(List.of(
+ *                   c2 -&gt; exec.submit(() -&gt; c2.success(headOk(link))),
+ *                   c2 -&gt; exec.submit(() -&gt; c2.success(classify(link)))
+ *               ), inner);
+ *           }, c)
+ *       ), perUrl);
+ *   }, (err, perUrlResults) -&gt; {
+ *       Asyncc.Reduce(perUrlResults, new HashMap&lt;String, Integer&gt;(), (acc, list, c) -&gt; {
+ *           list.forEach(pair -&gt; acc.merge(pair.get(1).toString(), 1, Integer::sum));
+ *           c.success(acc);
+ *       }, (err2, totals) -&gt; reply.send(totals));
+ *   });
+ * </pre>
+ *
+ * <h3>Concurrency contract (v0.2.x)</h3>
+ *
+ * <ul>
+ *   <li><strong>At-most-once final callback</strong>, even under concurrent task completion.</li>
+ *   <li><strong>Result-slot visibility</strong>: per-index writes happen-before the atomic counter
+ *       increment that releases the final callback (v0.2.2 fix).</li>
+ *   <li><strong>Lost-update-free counters</strong>: {@link CounterLimit} uses {@code AtomicInteger}
+ *       (v0.2.0 fix; pinned by {@code CounterLimitRaceTest}).</li>
+ *   <li><strong>No duplicate fires</strong>: routed through {@link NeoUtils#fireFinalCallback}.</li>
+ * </ul>
+ *
+ * <p>See <a href="https://async-java.github.io/blog/">async-java.github.io/blog</a> for benchmark
+ * results and design notes.
+ *
+ * @see NeoQueue
+ * @see NeoLock
  */
 public class Asyncc {
   
@@ -54,13 +197,60 @@ public class Asyncc {
     void done(final E e, final T v);
   }
   
+  /**
+   * Error-first callback (Node.js-style). The combinators' final callback and per-task callback
+   * both use this interface.
+   *
+   * <p>The conventional parameter name in user code is {@code c}, short for <em>continuation</em>.
+   * The continuation receives the result of an async step and is responsible for "what happens
+   * next" &mdash; either the final callback of the combinator, or the next inner step.
+   *
+   * <p>Three ways to fire the continuation:
+   *
+   * <pre>
+   *   c.done(null, value);   // legacy / explicit error-first form (still works)
+   *   c.success(value);      // shorthand for done(null, value) — added in v0.2.4
+   *   c.fail(err);           // shorthand for done(err, null)   — added in v0.2.4
+   * </pre>
+   *
+   * <p>For the common case where the caller does not want to handle the error inline, use
+   * {@link WrapErrFirst#wrap(java.util.function.Consumer)} to wrap a value-only consumer into
+   * an error-first callback that throws on any non-null error.
+   *
+   * @param <T> result value type
+   * @param <E> error type (typically {@code Throwable}, but can be any reference type)
+   */
   public interface IAsyncCallback<T, E> {
     boolean isDone = false;
-    
+
+    /**
+     * Fire the continuation with either an error or a value (never both).
+     *
+     * @param e the error, or {@code null} for success
+     * @param v the value, or {@code null} when {@code e} is non-null
+     */
     void done(final E e, final T v);
-    
+
+    /**
+     * Fire the continuation with a successful value. Equivalent to {@code done(null, v)}.
+     *
+     * <p>Added in v0.2.4.
+     */
+    default void success(final T v) {
+      done(null, v);
+    }
+
+    /**
+     * Fire the continuation with an error. Equivalent to {@code done(e, null)}.
+     *
+     * <p>Added in v0.2.4.
+     */
+    default void fail(final E e) {
+      done(e, null);
+    }
+
     default void setDone() {
-    
+
     }
   }
   
