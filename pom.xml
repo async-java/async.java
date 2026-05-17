@@ -17,7 +17,7 @@
     <groupId>io.github.async-java</groupId>
     <artifactId>async-java</artifactId>
     <packaging>jar</packaging>
-    <version>0.2.2</version>
+    <version>0.2.3-SNAPSHOT</version>
     <name>async-java</name>
     <url>https://github.com/async-java/async.java</url>
 

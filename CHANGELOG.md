@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.3] - TBD
+
 ## [0.2.2] - 2026-05-17
 
 Visibility / API-accessibility hardening release. No combinator behaviour
