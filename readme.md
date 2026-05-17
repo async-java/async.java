@@ -65,65 +65,95 @@ The Java port of `async` is useful when:
 - Plain `ExecutorService` — install your own executor with
   `NeoQueue.setExecutor(...)` and async.java's continuations run on it.
 
-### vs virtual threads (JDK 21+)
+### Working with virtual threads (JDK 21+)
 
 [Virtual threads](https://openjdk.org/jeps/444) (GA in JDK 21, Sep 2023)
-genuinely change the calculus for a lot of what this library was built for.
-You should be honest with yourself about whether you actually need async.java
-or whether the JDK has already solved your problem:
+change one thing and leave another untouched, and the distinction matters
+when deciding whether you need a library like this one.
+
+**What VTs change: the thread-cost argument for callbacks.**
 
 ```java
 try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
-    List<Future<User>> futures = userIds.stream()
-        .map(id -> exec.submit(() -> blockingFetchUser(id)))   // each runs on a virtual thread
-        .toList();
-    for (var f : futures) processUser(f.get());                // blocks cheaply, no callback gymnastics
+    exec.submit(() -> handleRequest());   // blocks cheaply on its own virtual thread
 }
 ```
 
-**If you can rewrite your blocking code as direct, straight-line Java on
-JDK 21+, virtual threads are the simpler answer.** No callbacks, no
-combinators, no `cb.done(...)` discipline. async.java doesn't compete with
-that — it's a port of a 2014 Node.js library, and Loom is closer in spirit
-to what the JVM "should have shipped with" all along.
+Before Loom, "I want to fan out 10 000 concurrent I/O operations" forced
+you into callbacks or `CompletableFuture`. After Loom, a single
+`for` loop submitting blocking lambdas to
+`newVirtualThreadPerTaskExecutor()` is fine — VTs are cheap enough that
+the platform-thread cost that justified callback-style I/O is just gone.
 
-async.java is still useful when one of these is true:
+**What VTs do _not_ change: the coordination problem.**
 
-1. **You're bridging callback-style APIs you don't control.** Vert.x
-   `Handler<AsyncResult<T>>`, Netty `ChannelFuture`, AWS SDK v2's
-   `xxxAsync(...).whenComplete(...)`, Akka `Patterns.ask`, JDBC reactive
-   drivers — they hand you `(err, result)` and you can't make them
-   blocking from a virtual thread without pinning the carrier thread on
-   internal locks. Composing them straight-line is exactly what async.java
-   was written for.
-2. **You're inside a Vert.x event loop.** Vert.x's event-loop threads
-   must never block, even on a virtual carrier — Vert.x explicitly does
-   not (yet) ship a virtual-thread-based event loop, and `Future` chains /
-   callbacks remain the idiomatic way to compose work on the loop.
-3. **You're stuck on JDK 11 / 17 LTS.** Virtual threads don't exist
-   pre-21 and aren't getting backported. A lot of production JVM
-   deployment is still on 17 (current default in `eclipse-temurin:latest`)
-   and will be for years.
-4. **You want bounded fan-out with backpressure.** `Semaphore` + VTs
-   gets you most of the way, but `NeoQueue` packages the
-   saturated / unsaturated / drain lifecycle, FIFO task ordering, and
-   pause / resume, none of which Loom replaces.
-5. **You want a callback-style async mutex.** `NeoLock` decouples
-   the thread that acquires from the thread that releases. A VT-backed
-   `ReentrantLock` is thread-affine — release must come from the
-   acquiring (virtual) thread.
+Java has no `async`/`await` — and won't, by design. Loom is Oracle's
+explicit alternative: instead of two-colored functions, you make blocking
+free and let people write straight-line code. That works beautifully for
+*one* I/O call. The moment you need to **coordinate many concurrent
+operations**, the JDK still hands you a fairly thin set of primitives:
 
-If you're on JDK 21 and *do* still want async.java's combinator surface,
-plug a virtual-thread executor straight into `NeoQueue`:
+- `CompletableFuture.allOf` / `anyOf` — exists since 8 but erases types
+  (`CompletableFuture<Void>` / `CompletableFuture<Object>`) and gets
+  verbose past a two-way join.
+- `StructuredTaskScope` — still in preview as of JDK 24. Covers exactly
+  two shapes: `ShutdownOnFailure` (parallel-all) and
+  `ShutdownOnSuccess` (race-first).
+- `CountDownLatch`, `Semaphore`, `Phaser` — low-level building blocks
+  you assemble yourself.
+
+Patterns like **Waterfall, GroupBy, Reduce, FilterMap, `NeoQueue`
+backpressure, `NeoLock`** (a mutex whose acquire and release can happen
+on different threads) aren't in the JDK at any version, virtual threads
+or not. Cheap virtual threads actually *encourage* spawning more
+concurrent work, which means more coordination — so the orchestration
+vocabulary async.java provides is at least as useful in a VT world as
+it was pre-Loom, and arguably more so.
+
+#### A natural pairing
+
+The clearest expression of this is: **install a virtual-thread executor
+into `NeoQueue` and you keep the combinator surface while shedding the
+platform-thread overhead.**
 
 ```java
+// At app startup, JDK 21+
 NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
 ```
 
-Every queue continuation then runs on its own virtual thread, so the
-default single-daemon-thread bottleneck disappears entirely while you
-keep the saturated / drain / FIFO semantics described in the
-[Queue](#queue) section.
+Every queue continuation now runs on its own virtual thread:
+saturated / unsaturated / drain / pause / resume / FIFO ordering still
+work, but the default single-daemon-thread bottleneck is gone and a
+queue task is free to call blocking JDBC, blocking HTTP clients, or
+`Thread.sleep` without pinning anything carrier-level.
+
+#### When async.java is *not* the right answer on JDK 21+
+
+There is one case where reaching for this library is overkill: a
+**single straight-line sequence of blocking calls**. Don't write
+
+```java
+Asyncc.Waterfall(List.of(
+    cb -> cb.done(null, "user", fetchUserBlocking()),
+    cb -> cb.done(null, "perms", fetchPermsBlocking(cb.get("user")))),
+  ...);
+```
+
+when on JDK 21+ you can just write
+
+```java
+String user  = fetchUserBlocking();
+String perms = fetchPermsBlocking(user);
+```
+
+inside a virtual thread. async.java earns its place when you have
+**multiple concurrent things to orchestrate** (fan-out with a cap, race
+the first-of-N, group results, build a DAG via `Inject`), or when
+you're **bridging callback-shaped APIs** (Vert.x `Handler<AsyncResult<T>>`,
+Netty `ChannelFuture`, AWS SDK v2 `xxxAsync(...)`, Akka `Patterns.ask`,
+JDBC reactive drivers) that hand you `(err, result)` and won't go away
+just because you have virtual threads. And of course on **JDK 11 / 17
+LTS** — VTs don't exist pre-21 and aren't getting backported.
 
 ## Requirements
 

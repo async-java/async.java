@@ -29,11 +29,15 @@ indefinitely for existing consumers.
   via JitPack.
 - `RELEASING.md` end-to-end maintainer runbook (namespace verification,
   GPG, secrets, tag-driven release, manual fallback, yank policy).
-- Documentation: dedicated `vs virtual threads (JDK 21+)` section in the
-  readme explaining when virtual threads are the simpler answer and the
-  remaining niches where async.java is still useful, plus a
-  `NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor())`
-  snippet for users on 21+ who want to keep the combinator surface.
+- Documentation: dedicated `Working with virtual threads (JDK 21+)`
+  section in the readme. Virtual threads remove the *thread-cost*
+  argument for callbacks but leave the *coordination* problem untouched
+  (Java has no async/await; `StructuredTaskScope` is preview-only and
+  covers two shapes). The section explains where async.java still adds
+  value in a VT world — orchestration patterns the JDK doesn't ship
+  (Waterfall, GroupBy, Reduce, FilterMap, NeoQueue backpressure, NeoLock)
+  and bridging callback-shaped APIs — and shows the recommended pairing:
+  `NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor())`.
 
 ### Changed
 
