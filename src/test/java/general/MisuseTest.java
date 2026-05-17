@@ -338,18 +338,14 @@ public class MisuseTest {
 
       final List<String> results = done.get(8, TimeUnit.SECONDS);
       assertEquals(n, results.size());
-      // ParallelLimit has an observed off-by-one: under tight timing it can hold
-      // {limit + 1} tasks in flight momentarily, because the isBelowCapacity check that
-      // gates dispatching the next task happens *outside* the per-runner cbLock. Two
-      // task-completion callbacks racing through the gate can each pass the check before
-      // either dispatch lands a started increment. Allowing limit+1 here keeps the test
-      // honest about observable behaviour without papering over the issue — TODO open a
-      // tighter follow-up that fixes the gate (probably moving incrementStarted under the
-      // same monitor as the gate read, the same shape PR #10 used for the success-path
-      // dedup).
-      assertTrue("max in-flight (" + maxInFlight.get() + ") should not exceed limit+1 ("
-              + (limit + 1) + ")",
-          maxInFlight.get() <= limit + 1);
+      // v0.2.5 tightens the contract: max in-flight must NOT exceed `limit`. The previous
+      // assertion tolerated `limit + 1` because the isBelowCapacity check happened outside
+      // the iterator monitor, allowing two completion callbacks to race through the gate.
+      // The fix moves the check inside the monitor; ParallelLimitInvariantTest pins the new
+      // strict invariant across 100 iterations.
+      assertTrue("max in-flight (" + maxInFlight.get() + ") must not exceed limit ("
+              + limit + ")",
+          maxInFlight.get() <= limit);
       Thread.sleep(50);
       assertEquals(1, finalFires.get());
     } finally {

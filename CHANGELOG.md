@@ -6,6 +6,118 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-05-17
+
+Hardening release. One real concurrency fix in `Asyncc.ParallelLimit`, the
+first-ever set of functional tests for `NeoQueue`, a substantial audit of
+`NeoLock` with five new API additions, and a Waterfall-specific
+`success(k, v)` / `fail(e)` shorthand. No public-API breakages.
+
+### Fixed
+
+- **`Asyncc.ParallelLimit(int, List, callback)` could dispatch `limit + 1`
+  tasks momentarily under contention.** Two completion callbacks racing
+  through the dispatch gate could each observe `isBelowCapacity() == true`
+  before either landed an `incrementStarted`, so both proceeded to
+  dispatch. Moving the `isBelowCapacity` check inside the iterator
+  monitor (alongside the increment) makes check-and-act atomic. The
+  previously-relaxed `MisuseTest#parallelLimitRespectsConcurrencyCap`
+  assertion is tightened from `<= limit + 1` to `<= limit`, and a new
+  `ParallelLimitInvariantTest` pins the invariant across 100
+  back-to-back iterations.
+
+- **`Asyncc.ParallelLimit(int, List, callback)` carried the same
+  `ArrayList` resize race that v0.2.4 fixed for the simple `Parallel`
+  path.** `RunTasksLimit.run()` did `results.add(null)` once per task
+  inside the dispatch loop; a fast-completing sibling could call
+  `results.set(j, v)` mid-resize and have the write land on the old
+  backing array. The fix is the same: pre-allocate and pre-fill the
+  result list to `size` before dispatching any task.
+
+### Added
+
+- **`NeoLock.tryAcquire()`** — returns `Optional<Unlock>`; non-blocking
+  attempt. Empty if the lock was already held.
+
+- **`NeoLock.acquire(long timeoutMs, IAsyncCallback)`** — bounded-wait
+  variant. Fires the callback with a `TimeoutException` if the lock is
+  not acquired within `timeoutMs` milliseconds, cleanly removing the
+  pending waiter from the FIFO queue. Internally backed by a shared
+  daemon-threaded `ScheduledExecutorService`. Handles the
+  winner-arrives-after-timeout race: if the lock is granted just as the
+  timeout fires, the late-arrival lock is released on the caller's
+  behalf so it isn't stranded. Pinned by 4 tests in
+  `NeoLockNewApiTest`.
+
+- **`NeoLock.withLock(Runnable)`** — sync critical-section helper.
+  Acquires, runs the runnable, releases. Releases **even if the body
+  throws**, eliminating the `try / finally / unlock.releaseLock()`
+  boilerplate. Pinned by `NeoLockNewApiTest#withLock_releases_lock_even_when_body_throws`.
+
+- **`NeoLock.isLocked()`** and **`NeoLock.queueDepth()`** — diagnostics
+  / metrics. Snapshot of whether the lock is held and how many waiters
+  are queued behind the holder.
+
+- **`NeoLock()`** no-arg constructor — for callers that don't care about
+  the namespace string.
+
+- **`NeoWaterfallI.IAsyncCallback.success(String k, T v)`** — Waterfall
+  multi-value continuation shorthand. `c.success("name", value)` is
+  equivalent to `c.done(null, "name", value)`. Overrides the inherited
+  `Asyncc.IAsyncCallback.fail(E)` to route through the Waterfall-specific
+  single-arg `done(E)` (so `c.fail(err)` propagates the error correctly
+  rather than calling `done(err, (Map.Entry) null)`).
+
+- **`NeoQueue.IAsyncErrFirstCb.success(T v)` and `.fail(Object e)`**
+  default methods — same shape as the Asyncc-level shorthands. Lets
+  queue task handlers write `c.success(value)` / `c.fail(error)`
+  consistently with the rest of the library.
+
+- **First functional tests for `NeoQueue`.** Pre-v0.2.5 the only
+  `QueueTest` was entirely commented-out. Now covered by:
+    * `NeoQueueConcurrencyTest` (5 tests) — burst push at caps 1, 4, 16
+      with 100, 200, 500 tasks; trickle push from a separate producer
+      thread; repeated burst scenario 20× back-to-back. All assert that
+      max in-flight never exceeds the configured cap.
+    * `NeoQueueLifecycleTest` (4 tests) — pins `onSaturated`,
+      `onUnsaturated`, and `onDrain` semantics (exactly once per
+      backlog episode, drain fires again for subsequent bursts,
+      saturated does not fire below cap).
+
+- **First functional tests for `NeoLock`.** Pre-v0.2.5 only a thin
+  external-usage test existed. Now covered by:
+    * `NeoLockFairnessTest` (2 tests) — FIFO fairness across 100
+      sequential acquires; 1 000-acquirer stress test asserting no
+      lost wakeups, no double-hold, exact counter consistency.
+    * `NeoLockNewApiTest` (9 tests) — every new v0.2.5 API method
+      with positive, negative, and race-condition cases.
+
+- **`NeoQueue` and `NeoLock` Javadoc rewrites** — both classes now have
+  top-level Javadoc documenting their concurrency contracts (NeoQueue's
+  saturated/unsaturated/drain lifecycle semantics, NeoLock's FIFO
+  fairness guarantee, VT-pinning audit notes, non-reentrance, the new
+  API surface).
+
+### Changed
+
+- **`MisuseTest#parallelLimitRespectsConcurrencyCap` tightened** —
+  asserts `maxInFlight <= limit` (was `<= limit + 1`). The comment
+  documenting the previously-tolerated off-by-one is replaced with a
+  reference to `ParallelLimitInvariantTest`.
+
+### Not yet (deferred to v0.2.6+)
+
+- **`NeoLock` cancellable waits** (let an acquirer remove its own
+  waiter callback from the queue) — the new `tryAcquire()` and
+  `acquire(timeoutMs)` cover most of the same use cases.
+- **`NeoLock` migration to `ReentrantLock` for older-JDK VT-friendliness**
+  — audited and judged unnecessary for v0.2.5 (critical sections are
+  microseconds, no observable contention under 1k-acquirer stress).
+  Documented in the class Javadoc.
+- **`NeoQueue` global `Asyncc.sync` lock** in the completion path
+  serialises every queue's completion callbacks globally; replacing
+  with a per-queue monitor is a bigger refactor and a v0.3.0 candidate.
+
 ## [0.2.4] - 2026-05-17
 
 Ergonomics release plus one real concurrency fix. More concise call sites

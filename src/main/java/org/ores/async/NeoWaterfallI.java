@@ -16,10 +16,33 @@ public class NeoWaterfallI {
   
   public interface IAsyncCallback<T, E> extends Asyncc.IAsyncCallback<Map.Entry<String,T>,E>  {  //
     void done(E e);
-    
+
     void done(E e, UserMap.Entry<String, T> m);
-    
+
     void done(E e, String k, T v);
+
+    /**
+     * Shorthand for {@code done(null, k, v)} — name the value going into the next Waterfall
+     * stage. The conventional way to fire a successful Waterfall continuation in v0.2.5+.
+     *
+     * @since 0.2.5
+     */
+    default void success(final String k, final T v) {
+      done(null, k, v);
+    }
+
+    /**
+     * Shorthand for {@code done(e)} — fail the Waterfall with the given error. Overrides the
+     * inherited {@link Asyncc.IAsyncCallback#fail(Object)} so {@code c.fail(err)} routes through
+     * the 1-arg Waterfall-specific {@code done(E)} path instead of {@code done(E, value)} with
+     * a {@code null} value (which has different downstream semantics).
+     *
+     * @since 0.2.5
+     */
+    @Override
+    default void fail(final E e) {
+      done(e);
+    }
   }
   
   public static interface ICallbacks<T, E> {

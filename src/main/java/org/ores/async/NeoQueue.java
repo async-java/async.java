@@ -59,6 +59,31 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
  * </pre>
  *
+ * <h3>Lifecycle events</h3>
+ *
+ * <p>Three lifecycle hooks ({@code onSaturated}, {@code onUnsaturated}, {@code onDrain}). The
+ * semantics, pinned by {@code NeoQueueLifecycleTest} as of v0.2.5:
+ *
+ * <ul>
+ *   <li><strong>{@code onSaturated}</strong> &mdash; fires when an {@code incrementStarted}
+ *       causes in-flight to reach the concurrency cap. Gated by an internal flag so it fires
+ *       <em>once per saturation event</em>, not on every dispatch while at cap.</li>
+ *   <li><strong>{@code onUnsaturated}</strong> &mdash; fires at task-completion time when
+ *       <em>the pending queue is empty</em> AND we were saturated. Pairs with {@code onSaturated}
+ *       to bracket "the queue is backlogged" intervals: it does <em>not</em> fire every time
+ *       in-flight drops below the cap if there is still work pending. Use it as a "no longer
+ *       backlogged" signal, not as a "below cap right now" signal.</li>
+ *   <li><strong>{@code onDrain}</strong> &mdash; fires at task-completion time when there is no
+ *       pending work AND all started tasks have finished. Gated so it fires exactly once per
+ *       drain transition. A subsequent {@code push} resets the gate.</li>
+ * </ul>
+ *
+ * <h3>Concurrency cap invariant</h3>
+ *
+ * <p>If the queue is constructed with {@code concurrency = N}, no more than N task handlers
+ * will be in flight at any instant. Pinned by {@code NeoQueueConcurrencyTest} across burst
+ * push (200 tasks), trickle push (1 ms apart), and repeated runs.
+ *
  * @param <T> task input type
  * @param <V> task result type
  */
@@ -125,8 +150,29 @@ public class NeoQueue<T, V> {
   final static Logger log = LoggerFactory.getLogger(NeoQueue.class);
   
   
+  /**
+   * Error-first continuation used by {@link ITaskHandler}. Like
+   * {@link Asyncc.IAsyncCallback} but with {@code Object} as the error type because the
+   * pre-existing public API of {@code NeoQueue} pre-dates the typed-error parameter.
+   *
+   * <p>The conventional parameter name in user code is {@code c}, short for <em>continuation</em>.
+   *
+   * @since 0.2.4 ({@code success} / {@code fail} defaults added)
+   */
   public interface IAsyncErrFirstCb<T> {
+
+    /** Canonical error-first call: pass {@code (null, value)} on success or {@code (err, null)} on failure. */
     void done(Object e, T v);
+
+    /** Shorthand for {@code done(null, v)}. */
+    default void success(T v) {
+      done(null, v);
+    }
+
+    /** Shorthand for {@code done(e, null)}. */
+    default void fail(Object e) {
+      done(e, null);
+    }
   }
   
   public interface ITaskHandler<T, V> {

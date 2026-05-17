@@ -139,36 +139,50 @@ class NeoParallel {
     }
     
     public void run() {
-      
+
       final int val;
       final Asyncc.AsyncTask<T, E> t;
-      
+
+      // The isBelowCapacity check MUST be performed under the same monitor that guards the
+      // incrementStarted call. Pre-v0.2.5 the check happened outside this block (at the end of
+      // a sibling completion callback) and two completions racing through the gate could each
+      // pass the check before either landed an increment, dispatching `limit + 1` tasks. Moving
+      // the check inside makes check-and-act atomic against other dispatchers.
+      //
+      // Pinned by ParallelLimitInvariantTest (limit=4, 64 tasks, 100 back-to-back iterations).
       synchronized (iterator) {
-        
+
         if (!iterator.hasNext()) {
           return;
         }
-        
+
+        if (!c.isBelowCapacity()) {
+          return;
+        }
+
         val = c.getStartedCount();
         c.incrementStarted();
         t = iterator.next();
       }
-      
-      this.results.add(null);
-      
+
+      // results was pre-filled to `size` at the ParallelLimit entry point (see the entry method
+      // below). Per-task `results.add(null)` here would race with concurrent `results.set(j, v)`
+      // calls from sibling completion callbacks — same ArrayList-resize-vs-concurrent-set bug
+      // the v0.2.4 Parallel(List, callback) fix addressed. Pre-filling once eliminates the race.
+
       final var taskRunner = new AsyncTaskRunner<T, E>(this, val, this);
-      
+
       try {
         t.run(taskRunner);
       } catch (Exception e) {
         NeoUtils.fireFinalCallback(s, e, results, f);
         return;
       }
-      
+
       if (!iterator.hasNext()) {
         return;
       }
-      
+
       if (c.isBelowCapacity()) {
         this.run();
       }
@@ -283,22 +297,31 @@ class NeoParallel {
     final int limit,
     final List<Asyncc.AsyncTask<T, E>> tasks,
     final Asyncc.IAsyncCallback<List<T>, E> f) {
-    
-    final List<T> results = new ArrayList<T>();
-    
-    if (tasks.size() < 1) {
+
+    final int size = tasks.size();
+
+    // Pre-allocate AND pre-fill the result list to `size` before dispatching any task. See the
+    // analogous comment in Parallel(List, callback) for the resize-race rationale: without this,
+    // a concurrent results.set(j, v) from a fast-completing sibling task can write to the old
+    // backing array while the main thread is replacing it with a larger one, silently losing
+    // the slot write.
+    final List<T> results = new ArrayList<T>(size);
+    for (int i = 0; i < size; i++) {
+      results.add(null);
+    }
+
+    if (size < 1) {
       f.done(null, results);
       return;
     }
-    
+
     final ShortCircuit s = new ShortCircuit();
     final CounterLimit c = new CounterLimit(limit);
     final Iterator<Asyncc.AsyncTask<T, E>> iterator = tasks.iterator();
 
-//    RunTasksLimit(iterator, results, c, s, f);
     new RunTasksLimit<T, E>(iterator, c, s, null, results, f).run();
     NeoUtils.handleSameTickCall(s);
-    
+
   }
   
   @SuppressWarnings("Duplicates")
