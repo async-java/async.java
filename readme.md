@@ -65,6 +65,66 @@ The Java port of `async` is useful when:
 - Plain `ExecutorService` — install your own executor with
   `NeoQueue.setExecutor(...)` and async.java's continuations run on it.
 
+### vs virtual threads (JDK 21+)
+
+[Virtual threads](https://openjdk.org/jeps/444) (GA in JDK 21, Sep 2023)
+genuinely change the calculus for a lot of what this library was built for.
+You should be honest with yourself about whether you actually need async.java
+or whether the JDK has already solved your problem:
+
+```java
+try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+    List<Future<User>> futures = userIds.stream()
+        .map(id -> exec.submit(() -> blockingFetchUser(id)))   // each runs on a virtual thread
+        .toList();
+    for (var f : futures) processUser(f.get());                // blocks cheaply, no callback gymnastics
+}
+```
+
+**If you can rewrite your blocking code as direct, straight-line Java on
+JDK 21+, virtual threads are the simpler answer.** No callbacks, no
+combinators, no `cb.done(...)` discipline. async.java doesn't compete with
+that — it's a port of a 2014 Node.js library, and Loom is closer in spirit
+to what the JVM "should have shipped with" all along.
+
+async.java is still useful when one of these is true:
+
+1. **You're bridging callback-style APIs you don't control.** Vert.x
+   `Handler<AsyncResult<T>>`, Netty `ChannelFuture`, AWS SDK v2's
+   `xxxAsync(...).whenComplete(...)`, Akka `Patterns.ask`, JDBC reactive
+   drivers — they hand you `(err, result)` and you can't make them
+   blocking from a virtual thread without pinning the carrier thread on
+   internal locks. Composing them straight-line is exactly what async.java
+   was written for.
+2. **You're inside a Vert.x event loop.** Vert.x's event-loop threads
+   must never block, even on a virtual carrier — Vert.x explicitly does
+   not (yet) ship a virtual-thread-based event loop, and `Future` chains /
+   callbacks remain the idiomatic way to compose work on the loop.
+3. **You're stuck on JDK 11 / 17 LTS.** Virtual threads don't exist
+   pre-21 and aren't getting backported. A lot of production JVM
+   deployment is still on 17 (current default in `eclipse-temurin:latest`)
+   and will be for years.
+4. **You want bounded fan-out with backpressure.** `Semaphore` + VTs
+   gets you most of the way, but `NeoQueue` packages the
+   saturated / unsaturated / drain lifecycle, FIFO task ordering, and
+   pause / resume, none of which Loom replaces.
+5. **You want a callback-style async mutex.** `NeoLock` decouples
+   the thread that acquires from the thread that releases. A VT-backed
+   `ReentrantLock` is thread-affine — release must come from the
+   acquiring (virtual) thread.
+
+If you're on JDK 21 and *do* still want async.java's combinator surface,
+plug a virtual-thread executor straight into `NeoQueue`:
+
+```java
+NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+```
+
+Every queue continuation then runs on its own virtual thread, so the
+default single-daemon-thread bottleneck disappears entirely while you
+keep the saturated / drain / FIFO semantics described in the
+[Queue](#queue) section.
+
 ## Requirements
 
 - **JDK 11+** (tested on 11, 17, 21).
@@ -477,9 +537,30 @@ time. Unlike `synchronized`, the calling thread is never blocked.
   `unlock.releaseLock()` for the next waiter — typically your own worker
   thread.
 
-For Vert.x apps, wire `NeoQueue.setExecutor(vertx.nettyEventLoopGroup())` (or
-a dedicated worker pool) at startup so all callbacks land on the Vert.x
-context.
+### Choosing an executor
+
+Three sensible defaults, depending on your runtime:
+
+```java
+// (a) Built-in: one daemon thread, single-threaded continuation. The default.
+// Good for short-lived processes and unit tests; pinpoints accidental long-running
+// callbacks because they queue up behind each other.
+
+// (b) Virtual threads (JDK 21+). Best when you don't care about callback ordering
+// and want unbounded continuation parallelism without the overhead of platform threads.
+NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
+
+// (c) A bounded platform-thread pool. Best when callbacks do CPU-bound work and you
+// want a hard ceiling on concurrent CPU consumption.
+NeoQueue.setExecutor(Executors.newFixedThreadPool(
+    Runtime.getRuntime().availableProcessors(),
+    Thread.ofPlatform().daemon(true).name("neoqueue-cpu-", 0).factory()));
+```
+
+For Vert.x apps, leave the default in place and let your combinator callbacks
+run on whichever Vert.x context invoked them (event loop / worker / virtual
+thread, depending on how you deployed the verticle) — there's no benefit to
+routing them off-context.
 
 ---
 
