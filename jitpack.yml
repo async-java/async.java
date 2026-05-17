@@ -21,8 +21,9 @@
 jdk:
   - openjdk17
 
-# JitPack runs `./mvnw install` by default. We don't ship a wrapper; tell it to
-# use plain `mvn`, skip GPG (we don't have a key on jitpack's builders), and
-# skip tests (jitpack should match a published release that already ran them).
+# JitPack ships Maven 3.5.x by default, which is too old for several modern Maven
+# plugins this project depends on (maven-jar-plugin 3.4.x, maven-dependency-plugin
+# 3.6.x, etc. all require Maven 3.6.3+). Download a modern Maven into the build
+# workspace so the plugin set in pom.xml stays current.
 install:
-  - mvn -B -Dgpg.skip=true -DskipTests -Dmaven.javadoc.skip=true install
+  - curl -fsSL https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz -o /tmp/mvn.tar.gz && tar -xzf /tmp/mvn.tar.gz -C /tmp && /tmp/apache-maven-3.9.9/bin/mvn -B -Dgpg.skip=true -DskipTests -Dmaven.javadoc.skip=true install
