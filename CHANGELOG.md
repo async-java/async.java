@@ -6,11 +6,42 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.2.0] - TBD
+## [0.2.0] - 2026-05-17
 
 First release under the new `io.github.async-java:async-java` coordinate. The
 legacy `com.oresoftware:async.0.1:0.1.1012` artifact remains on Maven Central
 indefinitely for existing consumers.
+
+### Fixed (concurrent-load correctness)
+
+Two long-latent races in `NeoParallel` / `CounterLimit` that hung or
+double-fired `Asyncc.Parallel` under sustained concurrent load. Both
+were invisible to the legacy single-threaded test suite; they surfaced
+when a downstream consumer drove `Asyncc.Parallel` rapid-fire against a
+virtual-thread executor and watched ~5 % of WebSocket responses go
+missing.
+
+- **#9** — `CounterLimit.{started, finished}` were plain `Integer`
+  fields incremented via non-atomic `this.field++` from per-task
+  callbacks. Two parallel-task callbacks finishing nearly
+  simultaneously could lose one increment, after which
+  `finished < started` forever and the final callback never fired.
+  Switched both fields to `AtomicInteger`. Symptom pre-fix: 100
+  sequential `Asyncc.Parallel` calls timed out by iteration ~40 on
+  JDK 21.
+- **#10** — `NeoParallel.Parallel(List, callback)` called `f.done(...)`
+  directly on both the error and the "last task finished" success paths,
+  bypassing the shared `NeoUtils.fireFinalCallback` dedup guard that
+  every other combinator routes through. Two task runners finishing
+  nearly simultaneously could each observe `finishedCount == size` and
+  each invoke the user's final callback. Routed both paths through
+  `fireFinalCallback`. Symptom pre-fix: 50 concurrent producers × 200
+  `Asyncc.Parallel` iterations produced 621 duplicate final-callback
+  fires out of 10 000 invocations (~6 % double-fire rate).
+
+Both reproducers ship as JUnit tests
+(`CounterLimitRaceTest` and `ConcurrentParallelDropTest`); they require
+JDK 21 for virtual threads and `Assume`-skip on JDK 11 / 17.
 
 ### Added
 
