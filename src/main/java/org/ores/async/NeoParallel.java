@@ -421,14 +421,22 @@ class NeoParallel {
             }
           }
           
+          // Both the error path and the success-when-last-task-finishes path used to call
+          // `f.done(...)` directly, with no deduplication. Under sustained concurrent load
+          // (>= 20 parallel callers each running Asyncc.Parallel(twoTasks) repeatedly) two
+          // task runners can both observe `c.getFinishedCount() == size` after their own
+          // increment lands (the read is *outside* the per-runner cbLock so they race on
+          // CounterLimit but each sees count == size). Routing both paths through
+          // NeoUtils.fireFinalCallback gives them the shared isFinalCallbackFired guard so
+          // exactly one of them runs the user's final callback. Reproducer:
+          // src/test/java/general/ConcurrentParallelDropTest.java.
           if (e != null) {
-            s.setShortCircuited(true);
-            f.done(e, results);
+            fireFinalCallback(s, e, results, f);
             return;
           }
           
           if (c.getFinishedCount() == size) {
-            f.done(null, results);
+            fireFinalCallback(s, null, results, f);
           }
         }
       };
