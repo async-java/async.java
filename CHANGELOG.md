@@ -29,15 +29,17 @@ indefinitely for existing consumers.
   via JitPack.
 - `RELEASING.md` end-to-end maintainer runbook (namespace verification,
   GPG, secrets, tag-driven release, manual fallback, yank policy).
-- Documentation: dedicated `Working with virtual threads (JDK 21+)`
-  section in the readme. Virtual threads remove the *thread-cost*
-  argument for callbacks but leave the *coordination* problem untouched
-  (Java has no async/await; `StructuredTaskScope` is preview-only and
-  covers two shapes). The section explains where async.java still adds
-  value in a VT world — orchestration patterns the JDK doesn't ship
-  (Waterfall, GroupBy, Reduce, FilterMap, NeoQueue backpressure, NeoLock)
-  and bridging callback-shaped APIs — and shows the recommended pairing:
-  `NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor())`.
+- Documentation: dedicated `Project Loom and async.java` section in the
+  readme covering the concrete co-design points between Loom (JDK 21+
+  virtual threads + `StructuredTaskScope` preview) and this library —
+  the bounded-fan-out × cheap-blocking pairing
+  (`NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor())`),
+  carrier-thread pinning behaviour of `NeoLock` vs `synchronized` vs
+  `ReentrantLock` (and the JEP 491 unpin in JDK 24), the divide of
+  responsibilities between `StructuredTaskScope` and this library's
+  combinator surface, `ThreadLocal` -> `ScopedValue` guidance for
+  cross-thread callback state, and Vert.x's
+  `ThreadingModel.VIRTUAL_THREAD` deployment option.
 
 ### Changed
 
