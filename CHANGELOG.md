@@ -6,6 +6,70 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-05-17
+
+Adds {@code NeoRwLock} — an async reader/writer lock alongside the
+existing {@link NeoLock} mutex. Same callback-shape API; same {@link Unlock}
+release token; FIFO-with-reader-burst fairness so writers don't starve
+under bursty reads and readers don't starve under steady writes.
+
+### Added
+
+- **`org.ores.async.NeoRwLock`** — new sibling primitive to `NeoLock`.
+
+  API surface:
+  - `acquireRead(IAsyncCallback)` / `acquireWrite(IAsyncCallback)` —
+    happy-path async acquire.
+  - `tryAcquireRead()` / `tryAcquireWrite()` → `Optional<Unlock>` —
+    non-blocking attempt. Returns empty if waiters are queued (preserves
+    FIFO).
+  - `acquireRead(long timeoutMs, IAsyncCallback)` /
+    `acquireWrite(long timeoutMs, IAsyncCallback)` — bounded wait;
+    cleanly removes the waiter from the queue on timeout; handles the
+    grant-arrives-just-after-timeout race by releasing the late-arrival
+    lock so it's not stranded.
+  - `withRead(Runnable)` / `withWrite(Runnable)` — sync critical-section
+    helpers. Auto-release even when the body throws (eliminates the
+    try/finally/unlock.releaseLock boilerplate).
+  - `readerCount()` / `isWriteHeld()` / `queueDepth()` — diagnostics.
+  - No-arg constructor and `NeoRwLock(String namespace)` constructor.
+
+  Fairness policy: **FIFO with reader-burst**. Waiters dispatch in
+  arrival order. When the lock becomes free and the queue head is a
+  reader, *all adjacent queued readers wake up concurrently*. When the
+  head is a writer, exactly one writer is dispatched (and must complete
+  before the next batch). Adjacent queued readers behind a writer wait
+  for the writer to release, then burst together.
+
+  Not supported in v0.2.6 (documented in Javadoc): reader-to-writer
+  upgrade, writer-to-reader downgrade, reentrance. Use
+  `tryAcquireRead()` / `tryAcquireWrite()` for defensive checks.
+
+  Pinned by **`NeoRwLockTest` (14 tests)** covering:
+  - Mutual exclusion under 500-task mixed load on a 16-thread pool: no
+    reader concurrent with a writer, no two writers concurrent.
+  - Reader-burst stress: 50 readers queued behind a write — when the
+    write releases, all 50 hold the lock concurrently (maxConcurrent ==
+    50).
+  - Mixed-mode FIFO: queue `[R1,R2,R3,W4,R5,R6]` dispatches as
+    `(R1+R2+R3 burst) → W4 alone → (R5+R6 burst)`.
+  - Writers dispatch one-at-a-time in arrival order behind a holder.
+  - Timeouts cleanly remove the waiter; subsequent release doesn't
+    strand it.
+  - withRead/withWrite release the lock even when the body throws.
+  - All introspection counters (readerCount, isWriteHeld, queueDepth)
+    snapshot consistently.
+
+### Not yet (deferred to v0.2.7+)
+
+- **Reader-to-writer upgrade** — design avoids the classic two-readers-
+  both-upgrade deadlock; needs a coordination protocol (per-thread
+  "upgrading" state + abort-the-other policy).
+- **Cancellable wait** — the new `tryAcquireRead/Write` and
+  `acquireRead/Write(timeoutMs, ...)` cover most use cases; a generic
+  cancel-from-outside-the-callback API would need a returned
+  cancellation token.
+
 ## [0.2.5] - 2026-05-17
 
 Hardening release. One real concurrency fix in `Asyncc.ParallelLimit`, the
