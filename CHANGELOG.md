@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.2] - TBD
+
 ## [0.2.1] - 2026-05-17
 
 Hardening release. No new features; covers the long tail of "misbehaving
