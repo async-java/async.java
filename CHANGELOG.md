@@ -6,7 +6,47 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.2.1] - TBD
+## [0.2.1] - 2026-05-17
+
+Hardening release. No new features; covers the long tail of "misbehaving
+user code" edge cases discovered while writing
+[dd-akka-ws-server](https://github.com/ORESoftware/k8s-cluster/tree/dev/remote/akka-ws-server)
+and
+[dd-spark-pipeline-server](https://github.com/ORESoftware/k8s-cluster/tree/dev/remote/spark-pipeline-server)
+against 0.2.0.
+
+### Fixed
+
+- `NeoReduce`: the per-step done callback used to call `f.done(...)`
+  directly without the shared `NeoUtils.fireFinalCallback` guard, so if a
+  user's reducer fired its callback more than once for the same step
+  (mostly likely a bug in the user's code, but real in the wild) the
+  library would also fire the final callback more than once. Routed
+  through `fireFinalCallback` for parity with `NeoEach`, `NeoMap`,
+  `NeoSeries`, `NeoFilterMap`, `NeoGroupBy`, and `NeoParallel`. In
+  steady-state Reduce is sequential so the race could not manifest in
+  well-behaved code — but the at-most-once contract now holds for
+  misbehaving code too.
+
+### Added
+
+- `MisuseTest` — twelve adversarial / "user does something weird" tests
+  that pin the at-most-once contract for every combinator:
+  1. Double `cb.done(...)` inside one parallel task.
+  2. Synchronous throw inside a parallel task body.
+  3. Empty input list (Parallel).
+  4. Cross-thread `cb.done` at 1 000-fan-out parallel.
+  5. First-task-errors short-circuit with late-completing siblings.
+  6. `Parallel` nested inside `Waterfall`.
+  7. `Map` task that throws mid-list.
+  8. `Reduce` reducer that fires its callback twice for the same step.
+  9. `Series` aborts on first error without running subsequent tasks.
+  10. `ParallelLimit` actually respects the concurrency cap.
+  11. `Race` fires the final callback exactly once even with late completers.
+  12. User code that throws from inside the user's own final callback.
+
+All 12 are platform-independent (no virtual-thread requirement, so they
+run on JDK 11+).
 
 ## [0.2.0] - 2026-05-17
 

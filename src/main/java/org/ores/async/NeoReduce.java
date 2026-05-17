@@ -2,6 +2,8 @@ package org.ores.async;
 
 import java.util.*;
 
+import static org.ores.async.NeoUtils.fireFinalCallback;
+
 class NeoReduce {
   
   @SuppressWarnings("Duplicates")
@@ -115,34 +117,43 @@ class NeoReduce {
       
       @Override
       public void done(E e, V v) {
-        
+
         synchronized (this.cbLock) {
-          
+
           if (this.isFinished()) {
-            new Error("Warning: Callback fired more than once.").printStackTrace();
+            // Misbehaving user code: reducer fired its callback more than once for the same
+            // step. Drop the duplicate rather than firing the final callback twice.
+            new IllegalStateException(
+                "NeoReduce: reducer callback fired more than once for this step.")
+                .printStackTrace(System.err);
             return;
           }
-          
+
           this.setFinished(true);
-          
+
           if (s.isShortCircuited()) {
             return;
           }
         }
-        
+
+        // Route both terminal paths through NeoUtils.fireFinalCallback so the
+        // isFinalCallbackFired latch in ShortCircuit dedups in the unlikely case that a
+        // misbehaving reducer (e.g. fires its callback from two threads) races with itself.
+        // For well-behaved reducers this is identical to a bare f.done(...). For the
+        // misbehaving case it preserves the at-most-once contract every other combinator
+        // exposes to the user.
         if (e != null) {
-          s.setShortCircuited(true);
-          f.done(e, null);
+          fireFinalCallback(s, e, null, f);
           return;
         }
-        
+
         if (!iterator.hasNext()) {
-          f.done(null, v);
+          fireFinalCallback(s, null, v, f);
           return;
         }
-        
+
         RunReduce(v, s, iterator, m, f);
-        
+
       }
       
     });
