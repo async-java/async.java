@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.1] - TBD
+
 ## [0.2.0] - 2026-05-17
 
 First release under the new `io.github.async-java:async-java` coordinate. The
