@@ -13,8 +13,67 @@
 https://async-java.github.io/org/ores/async/Asyncc.html#method.summary
 
 
-### Installation with Maven
+## Installation
 
+### Maven Central (recommended)
+
+```xml
+<dependency>
+  <groupId>io.github.async-java</groupId>
+  <artifactId>async-java</artifactId>
+  <version>0.2.0</version>
+</dependency>
+```
+
+> The legacy `com.oresoftware:async.0.1:0.1.1012` artifact remains on Central
+> for backwards compatibility but is frozen at the 2019 source. New code
+> should use `io.github.async-java:async-java`.
+
+### Gradle
+
+```kotlin
+implementation("io.github.async-java:async-java:0.2.0")
+```
+
+### Snapshot builds
+
+Snapshot versions (`0.x.y-SNAPSHOT`) are published to the Sonatype Central
+snapshot endpoint:
+
+```xml
+<repositories>
+  <repository>
+    <id>central-snapshots</id>
+    <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+    <snapshots><enabled>true</enabled></snapshots>
+    <releases><enabled>false</enabled></releases>
+  </repository>
+</repositories>
+```
+
+### Arbitrary git refs (JitPack)
+
+Any git tag, branch, or commit SHA is buildable on demand by
+[JitPack](https://jitpack.io):
+
+```xml
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+  </repository>
+</repositories>
+
+<dependency>
+  <groupId>com.github.async-java</groupId>
+  <artifactId>async.java</artifactId>
+  <version>v0.2.0</version>  <!-- or a branch name, or a 10-char commit SHA -->
+</dependency>
+```
+
+### Maintainers
+
+See [RELEASING.md](RELEASING.md) for the steps to cut a new release.
 
 
 ### Simple example:

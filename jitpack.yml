@@ -1,0 +1,28 @@
+# JitPack build config (https://jitpack.io)
+#
+# Consumers can pull arbitrary git tags / branches / commits from this repo without
+# us ever publishing to Maven Central, by adding:
+#
+#   <repositories>
+#     <repository>
+#       <id>jitpack.io</id>
+#       <url>https://jitpack.io</url>
+#     </repository>
+#   </repositories>
+#
+#   <dependency>
+#     <groupId>com.github.async-java</groupId>
+#     <artifactId>async.java</artifactId>
+#     <version>v0.2.0</version>   <!-- any git tag, branch, or commit SHA -->
+#   </dependency>
+#
+# JitPack defaults to OpenJDK 8 which won't compile this project. We need 17+ so
+# the modern central-publishing plugin etc. all resolve.
+jdk:
+  - openjdk17
+
+# JitPack runs `./mvnw install` by default. We don't ship a wrapper; tell it to
+# use plain `mvn`, skip GPG (we don't have a key on jitpack's builders), and
+# skip tests (jitpack should match a published release that already ran them).
+install:
+  - mvn -B -Dgpg.skip=true -DskipTests -Dmaven.javadoc.skip=true install

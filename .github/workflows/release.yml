@@ -1,0 +1,84 @@
+name: release
+
+# Triggered by pushing a `v*` tag (e.g. `v0.2.0`). The tag must match the
+# `<version>` in pom.xml (minus the leading `v`). Maintainers cut a release like
+# this:
+#
+#   1. Bump `<version>` in pom.xml from `0.2.0-SNAPSHOT` to `0.2.0`, commit.
+#   2. `git tag v0.2.0 && git push --tags`
+#   3. (Optional) Bump pom.xml back to `0.2.1-SNAPSHOT` and commit.
+#
+# The workflow then:
+#   - imports a GPG private key (held in repo secret MAVEN_GPG_PRIVATE_KEY)
+#   - signs all artifacts
+#   - uploads to the Sonatype Central Portal using a User Token
+#     (secrets CENTRAL_USERNAME / CENTRAL_PASSWORD)
+#   - publishes a GitHub Release with the jar attached
+#
+# Required repo secrets (add at Settings → Secrets and variables → Actions):
+#   MAVEN_GPG_PRIVATE_KEY   ASCII-armored private key, full block including
+#                           BEGIN/END markers. Generate via `gpg --armor --export-secret-keys KEYID`.
+#   MAVEN_GPG_PASSPHRASE    passphrase that unlocks the above key.
+#   CENTRAL_USERNAME        User Token *username* from central.sonatype.com/account.
+#   CENTRAL_PASSWORD        User Token *password* (token), NOT your portal password.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # for creating the GitHub Release at the end
+
+jobs:
+  publish:
+    name: publish to maven central
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17 + Maven cache + Central credentials
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          # actions/setup-java will materialise ~/.m2/settings.xml with a <server>
+          # entry whose id matches `server-id` and whose username/password are the
+          # values of `server-username`/`server-password` env vars below.
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Verify tag matches pom.xml version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          pom_version=$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)
+          echo "git tag (stripped):  $tag"
+          echo "pom <version>:       $pom_version"
+          if [ "$tag" != "$pom_version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match pom version $pom_version" >&2
+            exit 1
+          fi
+
+      - name: Run tests
+        run: mvn -B test
+
+      - name: Deploy to Sonatype Central Portal
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: mvn -B -P release -DskipTests deploy
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            target/async-java-*.jar
+            target/async-java-*-sources.jar
+            target/async-java-*-javadoc.jar
