@@ -3,17 +3,6 @@ package org.ores.async;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
-abstract class Unlock {
-  boolean isImmediate = false;
-  boolean callable = true;
-
-  public abstract void releaseLock();
-
-  public Unlock(boolean isImmediate) {
-    this.isImmediate = isImmediate;
-  }
-}
-
 /**
  * An async (non-blocking) mutex.
  *

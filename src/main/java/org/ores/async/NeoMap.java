@@ -100,35 +100,39 @@ class NeoMap {
             return;
           }
           
-          c.incrementFinished();
+          // ORDER MATTERS: put the result BEFORE the counter increment so any sibling
+          // observing finishedCount==startedCount through the AtomicInteger's
+          // happens-before sees the slot already populated. Swapped order surfaces as
+          // a `null` at the last-finishing index in the final callback's results map.
           results.put(key, v);
+          c.incrementFinished();
         }
-        
+
         if (e != null) {
           s.setShortCircuited(true);
           NeoUtils.fireFinalCallback(s, e, results, f);
           return;
         }
-        
+
         final boolean isDone, isBelowCapacity;
-        
+
         synchronized (c) {
           isDone = !entries.hasNext() && (c.getFinishedCount() == c.getStartedCount());
           isBelowCapacity = c.isBelowCapacity();
         }
-        
+
         if (isDone) {
           NeoUtils.fireFinalCallback(s, null, results, f);
           return;
         }
-        
+
         if (isBelowCapacity) {
           RunMapWithMap(entries, m, results, c, s, f);
         }
       }
-      
+
     };
-    
+
     try {
       m.map(value, taskRunner);
     } catch (Exception e) {
@@ -190,8 +194,11 @@ class NeoMap {
             return;
           }
           
-          c.incrementFinished();
+          // ORDER MATTERS: see RunMapWithMap above. Slot write before counter increment so
+          // sibling threads see the populated slot once they read finishedCount==size via
+          // the AtomicInteger happens-before.
           results.set(val, v);
+          c.incrementFinished();
         }
         
         if (e != null) {

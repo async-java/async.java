@@ -412,10 +412,19 @@ class NeoParallel {
             }
             
             this.setFinished(true);
-            
-            c.incrementFinished();
+
+            // ORDER MATTERS: write the slot BEFORE incrementing the counter. The counter is
+            // an AtomicInteger (since PR #9), so threads reading `c.getFinishedCount()` see
+            // every prior write that happened-before our incrementAndGet. Swapping the order
+            // would mean a sibling runner observing `finishedCount == size` could fire the
+            // final callback while our `results.set(index, v)` hasn't landed yet, leaving
+            // `null` at this index. Surfaced at scale by
+            // MisuseTest#parallelCrossThreadCallbackThousandFanOut: with 1 000 fan-out tasks
+            // on 16 platform threads, the "null at position N" race fires within a single
+            // test run when the writes-then-counter ordering is wrong.
             results.set(index, v);
-            
+            c.incrementFinished();
+
             if (s.isShortCircuited()) {
               return;
             }

@@ -6,7 +6,48 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.2.2] - TBD
+## [0.2.2] - 2026-05-17
+
+Visibility / API-accessibility hardening release. No combinator behaviour
+changes for well-behaved code; two real bugs fixed that bit downstream
+consumers in 0.2.1.
+
+### Fixed
+
+- **`NeoParallel.Parallel(List, callback)` published `null` slots under
+  high fan-out concurrency.** The per-task callback used to call
+  `c.incrementFinished()` *before* `results.set(index, v)`. The counter
+  is an `AtomicInteger` (since #9), so a sibling runner reading
+  `finishedCount == size` saw the increment but not necessarily our slot
+  write — the final callback fired with one or more `null` entries.
+  Surfaced reliably by `MisuseTest#parallelCrossThreadCallbackThousandFanOut`
+  (1 000-task fan-out on 16 platform threads, position N null within a
+  single run). Fixed by swapping the two lines: write slot, then
+  increment counter, so the counter increment "publishes" the prior slot
+  write via the JMM happens-before edge.
+
+- **Same publish-order bug in `NeoMap.RunMapWithList` and
+  `NeoMap.RunMapWithMap`.** Identical fix.
+
+- **`Unlock` was package-private**, which made `NeoLock.acquire(...)`
+  effectively unusable from outside `org.ores.async`: the `Unlock` token
+  type couldn't be named in downstream consumers' lambdas or fields, so
+  even calling `.releaseLock()` on it wouldn't compile. Promoted to
+  `public` and moved to its own file. Pinned by
+  `NeoLockExternalUsageTest`, which imports `Unlock` from package
+  `general` — a build that fails to expose `Unlock` cannot compile the
+  test.
+
+### Known issues
+
+- `Asyncc.ParallelLimit(limit, ...)` occasionally dispatches `limit + 1`
+  tasks concurrently. The `isBelowCapacity` gate that controls dispatch
+  runs *outside* the per-runner `cbLock`, so two task-completion
+  callbacks racing through the gate can each pass the check before either
+  dispatch lands a `started` increment.
+  `MisuseTest#parallelLimitRespectsConcurrencyCap` documents the
+  off-by-one (asserts `<= limit + 1`). Same shape of fix as PR #10's
+  success-path dedup; deferred to a tighter follow-up.
 
 ## [0.2.1] - 2026-05-17
 
