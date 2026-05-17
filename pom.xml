@@ -2,17 +2,48 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.oresoftware</groupId>
-    <artifactId>async1</artifactId>
+    <!--
+      Coordinate change:
+
+        old: com.oresoftware:async1            (was never released to Central)
+        old: com.oresoftware:async.0.1         (frozen at 0.1.1012, baked the version into
+                                                the artifactId — awkward to upgrade against)
+        new: io.github.async-java:async-java   (current release line, this PR onwards)
+
+      The `io.github.<org>` group is auto-verifiable on the Sonatype Central Portal because
+      the async-java GitHub organisation already exists at https://github.com/async-java.
+      The old 0.1.1012 artifact stays in place on Maven Central for any existing consumer.
+    -->
+    <groupId>io.github.async-java</groupId>
+    <artifactId>async-java</artifactId>
     <packaging>jar</packaging>
-    <version>0.1.1012</version>
-    <name>org.ores.async1.Asyncc</name>
-    <url>https://github.com/ORESoftware/async.java</url>
+    <version>0.2.0-SNAPSHOT</version>
+    <name>async-java</name>
+    <url>https://github.com/async-java/async.java</url>
 
     <properties>
-        <vertx.version>3.6.0</vertx.version>
-        <jdk.version>10</jdk.version>
-        <log4j.version>1.2.17</log4j.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!--
+          Bumped to 11 (LTS) so the project compiles on a supported JDK.
+          JDK 10 went EOL in September 2018; CI providers no longer ship it.
+        -->
+        <jdk.version>11</jdk.version>
+
+        <!--
+          Vert.x 3.9.16 is the final patch of the 3.x line and is API-compatible
+          with the 3.6 baseline this lib was originally written against.
+          The vertx-* dependencies are test-scope only.
+        -->
+        <vertx.version>3.9.16</vertx.version>
+
+        <!--
+          log4j 1.2 reached EOL in 2015 with multiple unpatched CVEs.
+          reload4j is a community-maintained drop-in replacement that keeps the
+          same `log4j` API and class names but ships CVE patches.
+        -->
+        <log4j.version>1.2.25</log4j.version>
     </properties>
 
     <reporting>
@@ -45,14 +76,20 @@
         </dependencies>
     </dependencyManagement>
 
+    <!--
+      Sonatype retired the OSSRH Nexus (oss.sonatype.org) on 2025-06-30.
+      Releases now go through the Central Portal via central-publishing-maven-plugin
+      (configured below in the `release` profile); the plugin handles deploy +
+      staging + release automatically using credentials looked up under the `central`
+      server id in ~/.m2/settings.xml (or the equivalent env vars in CI).
+
+      Snapshots can be published to the Central Portal's snapshot endpoint if needed
+      via the same plugin; see RELEASING.md for the workflow.
+    -->
     <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
         <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            <id>central</id>
+            <url>https://central.sonatype.com</url>
         </repository>
     </distributionManagement>
 
@@ -78,10 +115,16 @@
 
 
     <scm>
-        <connection>scm:git:https://github.com/ORESoftware/async.java.git</connection>
-        <developerConnection>scm:git:ssh://github.com:ORESoftware/async.java.git</developerConnection>
-        <url>https://github.com/ORESoftware/async.java/tree/master</url>
+        <connection>scm:git:https://github.com/async-java/async.java.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/async-java/async.java.git</developerConnection>
+        <url>https://github.com/async-java/async.java/tree/master</url>
+        <tag>HEAD</tag>
     </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/async-java/async.java/issues</url>
+    </issueManagement>
 
     <dependencies>
         <dependency>
@@ -101,10 +144,11 @@
             <artifactId>vertx-unit</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- junit 4.13.2 ships CVE-2020-15250 fixes. -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
 
@@ -112,26 +156,34 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.25</version>
+            <version>1.7.36</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.8.1</version>
+            <version>3.14.0</version>
         </dependency>
 
-
+        <!--
+          reload4j is the CVE-patched drop-in for log4j 1.2.x. Same Java package
+          names (org.apache.log4j.*) so the existing log4j.properties keeps
+          working without any source changes.
+        -->
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>reload4j</artifactId>
             <version>${log4j.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
-        <finalName>async</finalName>
+        <!--
+          Removed the legacy <finalName>async</finalName> override so the produced jar uses
+          the standard ${project.artifactId}-${project.version} naming. Downstream consumers
+          expect to see `async-java-0.2.0.jar` in their dependency:tree, not `async.jar`.
+        -->
         <plugins>
 
 
@@ -156,160 +208,41 @@
             </plugin>
 
 
-            <!--<plugin>-->
-                <!--<artifactId>maven-javadoc-plugin</artifactId>-->
-                <!--<version>2.9</version>-->
-                <!--<configuration>-->
-                    <!--<doclet>ch.raffael.doclets.pegdown.PegdownDoclet</doclet>-->
-                    <!--<docletArtifact>-->
-                        <!--<groupId>ch.raffael.pegdown-doclet</groupId>-->
-                        <!--<artifactId>pegdown-doclet</artifactId>-->
-                        <!--<version>1.1</version>-->
-                    <!--</docletArtifact>-->
-                    <!--<useStandardDocletOptions>true</useStandardDocletOptions>-->
-                <!--</configuration>-->
-            <!--</plugin>-->
-
-            <plugin>
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.8</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.6</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.0.1</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-
-                    <tags>
-                        <tag>
-                            <name>exclude</name>
-                            <!-- The value X makes javadoc ignoring the tag -->
-                            <placement>X</placement>
-                        </tag>
-                        <tag>
-                            <name>SuppressWarnings</name>
-                            <placement>X</placement>
-                        </tag>
-                        <tag>
-                            <name>Since</name>
-                            <placement>X</placement>
-                        </tag>
-                        <tag>
-                            <name>Version</name>
-                            <placement>X</placement>
-                        </tag>
-                    </tags>
-
-                    <doclint>all,-missing</doclint>
-
-                    <additionalOptions>-html5</additionalOptions>
-                    <additionalJOptions>--allow-script-in-comments</additionalJOptions>
-                </configuration>
-            </plugin>
-
-            <!--<plugin>-->
-                <!--<artifactId>maven-javadoc-plugin</artifactId>-->
-                <!--<version>2.9</version>-->
-                <!--<configuration>-->
-                    <!--<doclet>ch.raffael.mddoclet.MarkdownDoclet</doclet>-->
-                    <!--<docletArtifact>-->
-                        <!--<groupId>ch.raffael.markdown-doclet</groupId>-->
-                        <!--<artifactId>markdown-doclet</artifactId>-->
-                        <!--<version>1.4</version>-->
-                    <!--</docletArtifact>-->
-                    <!--<useStandardDocletOptions>true</useStandardDocletOptions>-->
-                <!--</configuration>-->
-            <!--</plugin>-->
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-site-plugin</artifactId>
-                <version>3.7.1</version>
+                <version>3.12.1</version>
             </plugin>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>3.0.1</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- download source code in Eclipse, best practice -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-eclipse-plugin</artifactId>
-                <version>2.9</version>
-                <configuration>
-                    <downloadSources>true</downloadSources>
-                    <downloadJavadocs>false</downloadJavadocs>
-                </configuration>
-            </plugin>
-
-            <!-- Set a compiler level -->
+            <!--
+              maven-compiler-plugin 2.3.2 is from 2010 and does not honor the
+              modern `release` flag, so it silently uses the host JDK target
+              when building on JDK 11+. Pin to a current release.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
+                <version>3.13.0</version>
                 <configuration>
-                    <source>${jdk.version}</source>
-                    <target>${jdk.version}</target>
+                    <release>${jdk.version}</release>
                 </configuration>
             </plugin>
 
-            <!-- Make this jar executable -->
+            <!--
+              This is a library jar, not an executable: drop the bogus
+              `com.mkyong.App` main class (left over from the mkyong template
+              this project was bootstrapped from) so users that shade async.java
+              into their own uber-jar don't accidentally end up with a stale
+              Main-Class manifest entry that points at a non-existent class.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
                 <configuration>
                     <excludes>
                         <exclude>**/log4j.properties</exclude>
                     </excludes>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>com.mkyong.App</mainClass>
-                            <classpathPrefix>dependency-jars/</classpathPrefix>
-                        </manifest>
-                    </archive>
                 </configuration>
             </plugin>
 
@@ -317,7 +250,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.5.1</version>
+                <version>3.6.1</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -336,5 +269,122 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+          Activate with `mvn -P release deploy` (or via the .github/workflows/release.yml
+          tag-triggered workflow). Dev / CI builds do not activate this profile, so
+          contributors don't need GPG keys, sonatype credentials, or strict javadocs
+          just to run `mvn test`.
+        -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+
+                    <!-- Attach the -sources.jar Maven Central requires. -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                      Attach the -javadoc.jar Maven Central requires. doclint is set to
+                      `none` because the existing Asyncc.java javadocs use custom @Version /
+                      @exclude tags and embed <script> blocks for code-prettify that don't
+                      survive strict doclint on JDK 17+. A future patch should clean those
+                      up so we can re-enable doclint.
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.6.3</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <failOnError>false</failOnError>
+                            <additionalJOptions>
+                                <additionalJOption>--allow-script-in-comments</additionalJOption>
+                            </additionalJOptions>
+                            <tags>
+                                <tag><name>exclude</name><placement>X</placement></tag>
+                                <tag><name>Since</name><placement>X</placement></tag>
+                                <tag><name>Version</name><placement>X</placement></tag>
+                            </tags>
+                        </configuration>
+                    </plugin>
+
+                    <!--
+                      GPG-sign the jar, sources, javadocs, and pom. The signing key is
+                      imported into the agent in CI (see .github/workflows/release.yml);
+                      locally, configure ~/.m2/settings.xml with gpg.passphrase and the
+                      default-key id.
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.4</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- Required for non-interactive (CI) signing. -->
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                      Sonatype's official Central Portal plugin. Replaces the deprecated
+                      nexus-staging-maven-plugin, which targeted oss.sonatype.org (retired
+                      2025-06-30). The plugin reads credentials from ~/.m2/settings.xml
+                      under <server><id>central</id></server> — generate a User Token at
+                      https://central.sonatype.com/account and put the *token* username
+                      and password into settings.xml (NOT your sonatype password).
+
+                      autoPublish=true means a successful staging upload is automatically
+                      released to Maven Central without manual approval. Set to false if
+                      you want a manual gate via the Portal UI.
+                    -->
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.5.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
+                        </configuration>
+                    </plugin>
+
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
