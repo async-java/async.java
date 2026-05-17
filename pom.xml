@@ -10,9 +10,28 @@
     <url>https://github.com/ORESoftware/async.java</url>
 
     <properties>
-        <vertx.version>3.6.0</vertx.version>
-        <jdk.version>10</jdk.version>
-        <log4j.version>1.2.17</log4j.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!--
+          Bumped to 11 (LTS) so the project compiles on a supported JDK.
+          JDK 10 went EOL in September 2018; CI providers no longer ship it.
+        -->
+        <jdk.version>11</jdk.version>
+
+        <!--
+          Vert.x 3.9.16 is the final patch of the 3.x line and is API-compatible
+          with the 3.6 baseline this lib was originally written against.
+          The vertx-* dependencies are test-scope only.
+        -->
+        <vertx.version>3.9.16</vertx.version>
+
+        <!--
+          log4j 1.2 reached EOL in 2015 with multiple unpatched CVEs.
+          reload4j is a community-maintained drop-in replacement that keeps the
+          same `log4j` API and class names but ships CVE patches.
+        -->
+        <log4j.version>1.2.25</log4j.version>
     </properties>
 
     <reporting>
@@ -101,10 +120,11 @@
             <artifactId>vertx-unit</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- junit 4.13.2 ships CVE-2020-15250 fixes. -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
 
@@ -112,19 +132,23 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.25</version>
+            <version>1.7.36</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.8.1</version>
+            <version>3.14.0</version>
         </dependency>
 
-
+        <!--
+          reload4j is the CVE-patched drop-in for log4j 1.2.x. Same Java package
+          names (org.apache.log4j.*) so the existing log4j.properties keeps
+          working without any source changes.
+        -->
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>reload4j</artifactId>
             <version>${log4j.version}</version>
             <scope>test</scope>
         </dependency>
@@ -284,32 +308,35 @@
                 </configuration>
             </plugin>
 
-            <!-- Set a compiler level -->
+            <!--
+              maven-compiler-plugin 2.3.2 is from 2010 and does not honor the
+              modern `release` flag, so it silently uses the host JDK target
+              when building on JDK 11+. Pin to a current release.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.2</version>
+                <version>3.13.0</version>
                 <configuration>
-                    <source>${jdk.version}</source>
-                    <target>${jdk.version}</target>
+                    <release>${jdk.version}</release>
                 </configuration>
             </plugin>
 
-            <!-- Make this jar executable -->
+            <!--
+              This is a library jar, not an executable: drop the bogus
+              `com.mkyong.App` main class (left over from the mkyong template
+              this project was bootstrapped from) so users that shade async.java
+              into their own uber-jar don't accidentally end up with a stale
+              Main-Class manifest entry that points at a non-existent class.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
                 <configuration>
                     <excludes>
                         <exclude>**/log4j.properties</exclude>
                     </excludes>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>com.mkyong.App</mainClass>
-                            <classpathPrefix>dependency-jars/</classpathPrefix>
-                        </manifest>
-                    </archive>
                 </configuration>
             </plugin>
 
@@ -317,7 +344,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.5.1</version>
+                <version>3.6.1</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
