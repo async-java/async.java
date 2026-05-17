@@ -215,14 +215,16 @@
             </plugin>
 
             <!--
-              maven-compiler-plugin 2.3.2 is from 2010 and does not honor the
-              modern `release` flag, so it silently uses the host JDK target
-              when building on JDK 11+. Pin to a current release.
+              maven-compiler-plugin 2.3.2 was from 2010 and silently ignored the modern
+              `release` flag on JDK 11+. Pin to 3.8.1 — the lowest version that honors
+              `<release>` (added in 3.8.0) and that JitPack's bundled Maven 3.5.x can
+              still load. Newer versions of the plugin (3.10+, 3.13+) require Maven
+              3.6.3 which JitPack does not yet ship.
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.8.1</version>
                 <configuration>
                     <release>${jdk.version}</release>
                 </configuration>
