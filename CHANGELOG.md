@@ -6,6 +6,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-05-18
+
+Promotion of `0.2.8-rc3` to stable. Consolidates the three rc cuts:
+
+* **rc1** — rounded out `AsyncFut` with `Waterfall`, `FilterMap`, `GroupBy`,
+  `Whilst`, `DoWhilst`. 20 new tests.
+* **rc2** — `Asyncc.Task<T>` and `Asyncc.Callback<T>` Throwable-fixed
+  shorthand subinterfaces. Widened `Parallel(List, ...)`,
+  `ParallelLimit(int, List, ...)`, `Series(List, ...)` to
+  `List<? extends AsyncTask<T, E>>` so the new shorthand flows in
+  without casts. 5 new tests.
+* **rc3** — `AsyncFut.ParallelF(List<CompletionStage<T>>)` and
+  `AsyncFut.RaceF(...)` for clean nested composition where inner
+  combinators have already returned their futures. 7 new tests
+  (`CompositionPatternsTest`) showcasing the three composition patterns
+  the library supports.
+
+**Total: 184 tests, 0 failures, 2 JDK21-gated skips.**
+
+See the rc-specific entries below for the full per-release detail.
+
 ## [0.2.8-rc3] - 2026-05-18
 
 **Pre-release.** Adds `AsyncFut.ParallelF` / `RaceF` for clean nested
