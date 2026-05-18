@@ -160,6 +160,58 @@ public final class AsyncFut {
         Asyncc.<T, Throwable>Series(toAsyncTasks(tasks), c));
   }
 
+  // ---------------- ParallelF / RaceF — already-started futures ---------
+
+  /**
+   * Like {@link #Parallel(List) Parallel}, but accepts already-started {@link CompletionStage}s
+   * directly instead of {@link Supplier}s. Use this for clean nested composition where the inner
+   * combinators have already returned their futures:
+   *
+   * <pre>
+   *   // before (one extra `() -&gt;` per task to defer the start):
+   *   CompletableFuture&lt;List&lt;List&lt;X&gt;&gt;&gt; nested = AsyncFut.Parallel(List.of(
+   *       () -&gt; AsyncFut.Series(seriesTasks),
+   *       () -&gt; AsyncFut.Parallel(parallelTasks)
+   *   ));
+   *
+   *   // after (drop the supplier wrappers):
+   *   CompletableFuture&lt;List&lt;List&lt;X&gt;&gt;&gt; nested = AsyncFut.ParallelF(List.of(
+   *       AsyncFut.Series(seriesTasks),
+   *       AsyncFut.Parallel(parallelTasks)
+   *   ));
+   * </pre>
+   *
+   * <p>Semantic difference vs {@link #Parallel(List) Parallel}: this variant doesn't control
+   * when the tasks start &mdash; they're already in flight by the time the list is built. For
+   * top-level fan-out that's exactly what you want; for {@code Series}-style ordering it'd
+   * defeat the purpose (use the {@link Supplier}-taking {@link #Series(List) Series} for that).
+   *
+   * @since 0.2.8
+   */
+  public static <T> CompletableFuture<List<T>> ParallelF(
+      final List<? extends CompletionStage<T>> futures) {
+    final List<Supplier<? extends CompletionStage<T>>> wrapped = new ArrayList<>(futures.size());
+    for (final CompletionStage<T> stage : futures) {
+      wrapped.add(() -> stage);
+    }
+    return Parallel(wrapped);
+  }
+
+  /**
+   * Like {@link #Race(List) Race}, but accepts already-started {@link CompletionStage}s. See
+   * {@link #ParallelF(List)} for the rationale.
+   *
+   * @since 0.2.8
+   */
+  public static <T> CompletableFuture<T> RaceF(
+      final List<? extends CompletionStage<T>> futures) {
+    final List<Supplier<? extends CompletionStage<T>>> wrapped = new ArrayList<>(futures.size());
+    for (final CompletionStage<T> stage : futures) {
+      wrapped.add(() -> stage);
+    }
+    return Race(wrapped);
+  }
+
   // ---------------- Race -------------------------------------------------
 
   /**

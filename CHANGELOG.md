@@ -6,6 +6,56 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.8-rc3] - 2026-05-18
+
+**Pre-release.** Adds `AsyncFut.ParallelF` / `RaceF` for clean nested
+promise composition (no `() ->` supplier wrappers around already-started
+futures). Layered on top of rc2.
+
+### Added
+
+- **`AsyncFut.ParallelF(List<? extends CompletionStage<T>>) -> CompletableFuture<List<T>>`**
+  &mdash; accepts already-started {@code CompletionStage}s directly.
+  Internally wraps each as a 1-line {@code () -> stage} supplier and
+  delegates to {@link AsyncFut#Parallel(List)}. Same short-circuit
+  semantics; same ordering guarantee.
+
+- **`AsyncFut.RaceF(List<? extends CompletionStage<T>>) -> CompletableFuture<T>`**
+  &mdash; same pattern for {@code Race}.
+
+### Use case: clean nested composition
+
+```java
+// before (supplier form):
+CompletableFuture<List<List<X>>> nested = AsyncFut.Parallel(List.of(
+    () -> AsyncFut.Series(seriesTasks),
+    () -> AsyncFut.Parallel(parallelTasks)
+));
+
+// after (rc3 ParallelF):
+CompletableFuture<List<List<X>>> nested = AsyncFut.ParallelF(List.of(
+    AsyncFut.Series(seriesTasks),
+    AsyncFut.Parallel(parallelTasks)
+));
+```
+
+When inner combinators return their futures eagerly anyway,
+`ParallelF`/`RaceF` lets you drop the `() ->` boilerplate. Use the
+supplier-taking forms (`Parallel`/`Race`/`Series`) when the inner work
+should be deferred until the outer combinator decides to start it.
+
+### Tests
+
+- `CompositionPatternsTest` (7 tests) demonstrating the three composition
+  patterns the library supports:
+  1. Callback-style nesting: `Asyncc.Series(List.of(c -> Asyncc.Parallel(..., c), ...))` &mdash; the outer per-task callback passes through as the inner combinator's final callback. Type-safe via `Asyncc.Task<List<X>>`.
+  2. Promise-style with suppliers: `AsyncFut.Parallel(List.of(() -> AsyncFut.Series(...), () -> AsyncFut.Parallel(...)))`.
+  3. Promise-style with already-started futures: `AsyncFut.ParallelF(List.of(AsyncFut.Series(...), AsyncFut.Parallel(...)))`.
+  Plus a `ParallelF` / `Series` / `ParallelF` 3-level-deep stress test
+  and fail-fast verification.
+
+**Total: 184 tests, 0 failures, 2 JDK21-gated skips.**
+
 ## [0.2.8-rc2] - 2026-05-18
 
 **Pre-release.** Adds Throwable-fixed shorthand interfaces so explicitly-typed
