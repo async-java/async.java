@@ -6,6 +6,101 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-05-18
+
+Promise / `CompletableFuture` interop. Two additions, no behaviour changes
+to existing combinators:
+
+### Added
+
+- **`org.ores.async.WrapFuture`** — bidirectional adapters between
+  async.java's error-first callback shape and the JDK's promise primitive
+  (`CompletableFuture` / `CompletionStage`):
+
+  - `toFuture(Consumer<IAsyncCallback<V, Throwable>>) -> CompletableFuture<V>`
+    — adapt a combinator invocation into a promise at the boundary. Pass
+    the supplied callback directly as the final callback of any
+    combinator and the future mirrors the outcome.
+  - `toFutureAny(Consumer<IAsyncCallback<V, E>>) -> CompletableFuture<V>`
+    — variant for non-`Throwable` error types; wraps in
+    `RuntimeException` for the future's exceptional completion.
+  - `fromStage(CompletionStage<V>) -> Asyncc.AsyncTask<V, Throwable>` —
+    adapt a third-party promise (JDBC async driver, HTTP client) as an
+    async.java task that can drop into any combinator's task position.
+  - `fromCallable(Executor, Callable<V>) -> Asyncc.AsyncTask<V, Throwable>`
+    — wrap synchronous (possibly blocking) work and dispatch onto the
+    provided executor.
+
+  8 tests in `WrapFutureTest` covering success, throwable-passthrough,
+  non-throwable wrapping, sync-failure in setup, end-to-end with
+  `Asyncc.Parallel`, `fromStage` interop, `fromCallable` success and
+  exception paths.
+
+- **`org.ores.async.AsyncFut`** — promise-returning sibling to `Asyncc`.
+  Every combinator returns a `CompletableFuture` instead of taking a
+  final callback:
+
+  - `AsyncFut.Parallel(List<Supplier<CompletionStage<T>>>) -> CompletableFuture<List<T>>`
+  - `AsyncFut.ParallelLimit(int, ...) -> CompletableFuture<List<T>>` (concurrency-capped)
+  - `AsyncFut.Series(...) -> CompletableFuture<List<T>>` (sequential)
+  - `AsyncFut.Race(...) -> CompletableFuture<T>` (first-to-finish wins)
+  - `AsyncFut.Map(Iterable<T>, Function<T, CompletionStage<V>>) -> CompletableFuture<List<V>>`
+  - `AsyncFut.Reduce(Iterable<T>, V identity, BiFunction<V, T, CompletionStage<V>>) -> CompletableFuture<V>`
+  - `AsyncFut.Times(int n, IntFunction<CompletionStage<T>>) -> CompletableFuture<List<T>>`
+  - `AsyncFut.Each(int limit, Iterable<T>, Function<T, CompletionStage<Void>>) -> CompletableFuture<Void>`
+
+  Implemented in terms of `Asyncc` (via `WrapFuture`), so every combinator
+  inherits the v0.2.x concurrency hardening: at-most-once final callback,
+  slot-write-before-counter-increment ordering, no `ArrayList` resize
+  race, `ParallelLimit` strict `<= limit`-in-flight invariant. The
+  wrapper layer adds one `CompletableFuture` allocation per call (~5 µs).
+
+  14 tests in `AsyncFutTest` covering: ordered Parallel collection, fail-
+  fast short-circuit, ParallelLimit cap enforcement, sequential Series
+  execution, fastest-wins Race, ordered Map, sequential Reduce, indexed
+  Times, fire-and-forget Each, composition with `thenApply`/`thenCompose`,
+  empty-input edge case, supplier-throws-synchronously surfacing.
+
+### Use cases
+
+Most common: return a `CompletableFuture` to a framework boundary
+(Spring WebFlux, Akka HTTP, gRPC stub) while using async.java's
+combinators internally:
+
+```java
+CompletableFuture<String> handle(Request req) {
+    return WrapFuture.toFuture(c ->
+        Asyncc.<String, Throwable>Parallel(List.of(
+            cb -> exec.submit(() -> cb.success(fetchA(req))),
+            cb -> exec.submit(() -> cb.success(fetchB(req)))
+        ), c)
+    ).thenApply(parts -> combine(parts.get(0), parts.get(1)));
+}
+```
+
+Or equivalently, using `AsyncFut`:
+
+```java
+CompletableFuture<String> handle(Request req) {
+    return AsyncFut.Parallel(List.of(
+        () -> CompletableFuture.supplyAsync(() -> fetchA(req), exec),
+        () -> CompletableFuture.supplyAsync(() -> fetchB(req), exec)
+    )).thenApply(parts -> combine(parts.get(0), parts.get(1)));
+}
+```
+
+Or consuming `CompletionStage`-returning third-party APIs inside an
+async.java combinator:
+
+```java
+Asyncc.Parallel(List.of(
+    WrapFuture.fromStage(db.queryAsync("SELECT ...")),
+    WrapFuture.fromStage(redis.getAsync(key))
+), (err, results) -> { /* ... */ });
+```
+
+Total: 152 tests, 0 failures, 2 JDK21-gated skips.
+
 ## [0.2.6] - 2026-05-17
 
 Adds {@code NeoRwLock} — an async reader/writer lock alongside the

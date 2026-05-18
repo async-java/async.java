@@ -1,0 +1,342 @@
+package org.ores.async;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.Supplier;
+
+/**
+ * Promise-returning sibling to {@link Asyncc}. Each combinator returns a
+ * {@link CompletableFuture} instead of taking an error-first final callback &mdash; the same
+ * vocabulary, the JDK's promise shape.
+ *
+ * <p>{@code AsyncFut} is implemented in terms of {@link Asyncc} (via {@link WrapFuture}), so
+ * every combinator inherits the v0.2.x concurrency hardening: at-most-once final callback,
+ * lost-update-free counters, slot-write-before-counter-increment ordering, no
+ * {@code ArrayList} resize race, the {@code ParallelLimit} {@code &lt;= limit}-in-flight
+ * invariant, etc. The wrapper layer adds one {@code CompletableFuture} allocation per call;
+ * use {@link Asyncc} directly if you need to shave that ~5 µs.
+ *
+ * <h3>Task shape</h3>
+ *
+ * <p>Most combinators take a list (or function) of {@link Supplier}s that produce a
+ * {@link CompletionStage}. The supplier is invoked when the combinator chooses to start that
+ * task &mdash; this is crucial for {@code Series}, {@code ParallelLimit}, and {@code Race},
+ * where eagerly-started futures would defeat the point. If you already have an in-flight
+ * future, wrap it as {@code () -&gt; theFuture}.
+ *
+ * <h3>Quick examples</h3>
+ *
+ * <pre>
+ *   // Parallel: fan out N tasks, collect their results
+ *   CompletableFuture&lt;List&lt;String&gt;&gt; both = AsyncFut.Parallel(List.of(
+ *       () -&gt; CompletableFuture.supplyAsync(this::fetchA, exec),
+ *       () -&gt; CompletableFuture.supplyAsync(this::fetchB, exec)
+ *   ));
+ *   both.thenAccept(results -&gt; reply.send(combine(results.get(0), results.get(1))));
+ *
+ *   // ParallelLimit: same but with a concurrency cap
+ *   CompletableFuture&lt;List&lt;Path&gt;&gt; downloaded = AsyncFut.ParallelLimit(8, downloads);
+ *
+ *   // Series: sequential, collect each result
+ *   CompletableFuture&lt;List&lt;Step&gt;&gt; chain = AsyncFut.Series(List.of(
+ *       () -&gt; validate(req), () -&gt; persist(req), () -&gt; notify(req)
+ *   ));
+ *
+ *   // Race: first completer wins
+ *   CompletableFuture&lt;String&gt; winner = AsyncFut.Race(List.of(
+ *       () -&gt; fromPrimary(), () -&gt; fromReplica()
+ *   ));
+ *
+ *   // Map: async transform preserving input order
+ *   CompletableFuture&lt;List&lt;Profile&gt;&gt; profiles =
+ *       AsyncFut.Map(userIds, id -&gt; fetchProfileAsync(id));
+ *
+ *   // Reduce: sequential fold with an async reducer
+ *   CompletableFuture&lt;BigDecimal&gt; total =
+ *       AsyncFut.Reduce(transactions, BigDecimal.ZERO,
+ *           (acc, txn) -&gt; computeAsync(acc, txn));
+ *
+ *   // Times: run the same task N times
+ *   CompletableFuture&lt;List&lt;Sample&gt;&gt; samples =
+ *       AsyncFut.Times(8, i -&gt; generateSampleAsync(i));
+ *
+ *   // Each: fire-and-forget per element, complete with Void when all done
+ *   CompletableFuture&lt;Void&gt; sent =
+ *       AsyncFut.Each(users, u -&gt; sendEmailAsync(u));
+ * </pre>
+ *
+ * <h3>Error semantics</h3>
+ *
+ * <p>Each combinator's returned future completes exceptionally with the first error any task
+ * produces (just like {@link Asyncc}'s short-circuit). Subsequent task completions are
+ * absorbed by the at-most-once guard.
+ *
+ * <h3>Interop</h3>
+ *
+ * <p>You can mix {@link Asyncc} and {@code AsyncFut} freely via {@link WrapFuture}:
+ *
+ * <pre>
+ *   // AsyncFut.Parallel inside an Asyncc.Waterfall step:
+ *   Asyncc.Waterfall(List.of(
+ *       c -&gt; c.success(parseRequest(raw)),
+ *       (req, c) -&gt; WrapFuture.fromStage(
+ *               AsyncFut.Parallel(List.of(
+ *                   () -&gt; lookupA(req), () -&gt; lookupB(req)
+ *               ))
+ *           ).run(c)
+ *   ), wrap(finalValue -&gt; reply.send(finalValue)));
+ * </pre>
+ *
+ * @see Asyncc
+ * @see WrapFuture
+ * @since 0.2.7
+ */
+public final class AsyncFut {
+
+  private AsyncFut() {}
+
+  // WrapFuture.toFuture already fixes the error type to Throwable, which is what AsyncFut wants
+  // throughout. We alias it locally just to keep the source readable.
+  private static <V> CompletableFuture<V> futOf(
+      final java.util.function.Consumer<Asyncc.IAsyncCallback<V, Throwable>> setup) {
+    return WrapFuture.toFuture(setup);
+  }
+
+  // ---------------- Parallel ---------------------------------------------
+
+  /**
+   * Run all tasks concurrently; return a future of their results in the same order as the
+   * input list. Short-circuits on the first failure.
+   */
+  public static <T> CompletableFuture<List<T>> Parallel(
+      final List<Supplier<? extends CompletionStage<T>>> tasks) {
+    return futOf(c ->
+        Asyncc.<T, Throwable>Parallel(toAsyncTasks(tasks), c));
+  }
+
+  /** Two-task convenience. */
+  public static <T> CompletableFuture<List<T>> Parallel(
+      final Supplier<? extends CompletionStage<T>> a,
+      final Supplier<? extends CompletionStage<T>> b) {
+    return Parallel(List.of(a, b));
+  }
+
+  /** Three-task convenience. */
+  public static <T> CompletableFuture<List<T>> Parallel(
+      final Supplier<? extends CompletionStage<T>> a,
+      final Supplier<? extends CompletionStage<T>> b,
+      final Supplier<? extends CompletionStage<T>> c) {
+    return Parallel(List.of(a, b, c));
+  }
+
+  // ---------------- ParallelLimit ----------------------------------------
+
+  /** Like {@link #Parallel} but with at most {@code limit} tasks in flight at any time. */
+  public static <T> CompletableFuture<List<T>> ParallelLimit(
+      final int limit,
+      final List<Supplier<? extends CompletionStage<T>>> tasks) {
+    return futOf(c ->
+        Asyncc.<T, Throwable>ParallelLimit(limit, toAsyncTasks(tasks), c));
+  }
+
+  // ---------------- Series -----------------------------------------------
+
+  /**
+   * Run tasks one after another. The returned future completes with a list of each task's
+   * value in input order. Short-circuits on the first failure.
+   */
+  public static <T> CompletableFuture<List<T>> Series(
+      final List<Supplier<? extends CompletionStage<T>>> tasks) {
+    return futOf(c ->
+        Asyncc.<T, Throwable>Series(toAsyncTasks(tasks), c));
+  }
+
+  // ---------------- Race -------------------------------------------------
+
+  /**
+   * Run all tasks concurrently; complete with the value of whichever finishes first. Errors
+   * from non-winning tasks are absorbed by the at-most-once guard.
+   */
+  public static <T> CompletableFuture<T> Race(
+      final List<Supplier<? extends CompletionStage<T>>> tasks) {
+    return AsyncFut.<T>futOf(c -> {
+      // Race uses its own task interface (RaceCallback rather than IAsyncCallback). Bridge each
+      // supplier into the Race-specific shape.
+      final List<NeoRaceIfc.AsyncTask<T, Throwable>> raceTasks = new ArrayList<>(tasks.size());
+      for (final Supplier<? extends CompletionStage<T>> s : tasks) {
+        raceTasks.add(rcb -> {
+          try {
+            s.get().whenComplete((v, err) -> {
+              if (err != null) rcb.done(err, null);
+              else rcb.done(null, v);
+            });
+          } catch (Throwable t) {
+            rcb.done(t, null);
+          }
+        });
+      }
+      Asyncc.<T, T, Throwable>Race(raceTasks, c);
+    });
+  }
+
+  // ---------------- Map --------------------------------------------------
+
+  /**
+   * Run {@code mapper(element)} concurrently for each element of {@code input}; return a
+   * future of the per-element values in input order.
+   */
+  public static <T, V> CompletableFuture<List<V>> Map(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<V>> mapper) {
+
+    return AsyncFut.<List<V>>futOf(c -> {
+      // Materialise into a list to preserve order without rescanning the iterable.
+      final List<T> items = toList(input);
+      Asyncc.<V, T, Throwable>Map(items, (item, inner) -> {
+        try {
+          mapper.apply(item).whenComplete((v, err) -> {
+            if (err != null) inner.fail(err);
+            else inner.success(v);
+          });
+        } catch (Throwable t) {
+          inner.fail(t);
+        }
+      }, c);
+    });
+  }
+
+  // ---------------- Reduce -----------------------------------------------
+
+  /**
+   * Sequential fold with an async reducer. {@code reducer(acc, element)} is invoked once per
+   * element, in input order, with the running accumulator. The returned future completes with
+   * the final accumulator value.
+   */
+  public static <T, V> CompletableFuture<V> Reduce(
+      final Iterable<T> input,
+      final V identity,
+      final BiFunction<V, ? super T, ? extends CompletionStage<V>> reducer) {
+
+    return AsyncFut.<V>futOf(c -> {
+      final List<T> items = toList(input);
+      Asyncc.<V, T, V, Throwable>Reduce(identity, items, (acc, item, inner) -> {
+        try {
+          reducer.apply(acc, item).whenComplete((v, err) -> {
+            if (err != null) inner.fail(err);
+            else inner.success(v);
+          });
+        } catch (Throwable t) {
+          inner.fail(t);
+        }
+      }, c);
+    });
+  }
+
+  // ---------------- Times ------------------------------------------------
+
+  /**
+   * Run {@code task(i)} for {@code i} in {@code [0, n)} concurrently; return a future of the
+   * per-iteration results in {@code i} order.
+   */
+  public static <T> CompletableFuture<List<T>> Times(
+      final int n,
+      final IntFunction<? extends CompletionStage<T>> task) {
+
+    return AsyncFut.<List<T>>futOf(c -> {
+      // The Times final-callback type is NeoTimesI.ITimesCallback<List<T>, E>, which extends
+      // Asyncc.IAsyncCallback<List<T>, E> with the same single method. Wrap explicitly so
+      // type inference is happy.
+      final NeoTimesI.ITimesCallback<List<T>, Throwable> finalCb = c::done;
+
+      Asyncc.<T, Throwable>Times(n,
+          (NeoTimesI.ITimesr<T, Throwable>) (i, inner) -> {
+            try {
+              task.apply(i).whenComplete((v, err) -> {
+                if (err != null) inner.done(err, null);
+                else inner.done(null, v);
+              });
+            } catch (Throwable t) {
+              inner.done(t, null);
+            }
+          },
+          finalCb);
+    });
+  }
+
+  // ---------------- Each -------------------------------------------------
+
+  /**
+   * Fire-and-forget per element with a concurrency cap. {@code task(element)} runs for each
+   * element concurrently up to {@code limit} in-flight; the returned future completes with
+   * {@code null} when all tasks finish, or exceptionally on the first failure. No per-element
+   * value is collected.
+   */
+  public static <T> CompletableFuture<Void> Each(
+      final int limit,
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<Void>> task) {
+
+    return AsyncFut.<Void>futOf(c -> {
+      // Use the package-private NeoEach.Each(int, ...) since Asyncc exposes only the
+      // unlimited variant publicly.
+      NeoEach.<T, Throwable>Each(limit, input,
+          (NeoEachI.IEacher<T, Throwable>) (item, inner) -> {
+            try {
+              task.apply(item).whenComplete((v, err) -> {
+                if (err != null) inner.done(err);
+                else inner.done(null);
+              });
+            } catch (Throwable t) {
+              inner.done(t);
+            }
+          },
+          (NeoEachI.IEachCallback<Throwable>) err -> {
+            if (err != null) c.fail(err);
+            else c.success(null);
+          });
+    });
+  }
+
+  /** Unlimited-concurrency convenience for {@link #Each(int, Iterable, Function)}. */
+  public static <T> CompletableFuture<Void> Each(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<Void>> task) {
+    return Each(Integer.MAX_VALUE, input, task);
+  }
+
+  // ---------------- internals --------------------------------------------
+
+  private static <T> List<Asyncc.AsyncTask<T, Throwable>> toAsyncTasks(
+      final List<Supplier<? extends CompletionStage<T>>> tasks) {
+    final List<Asyncc.AsyncTask<T, Throwable>> out = new ArrayList<>(tasks.size());
+    for (final Supplier<? extends CompletionStage<T>> s : tasks) {
+      out.add(c -> {
+        try {
+          s.get().whenComplete((v, err) -> {
+            if (err != null) c.fail(err);
+            else c.success(v);
+          });
+        } catch (Throwable t) {
+          c.fail(t);
+        }
+      });
+    }
+    return out;
+  }
+
+  private static <T> List<T> toList(final Iterable<T> input) {
+    if (input instanceof List<T> list) {
+      return list;
+    }
+    final List<T> out = new ArrayList<>();
+    final Iterator<T> it = input.iterator();
+    while (it.hasNext()) out.add(it.next());
+    return out;
+  }
+}
