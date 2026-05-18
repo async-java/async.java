@@ -1,10 +1,13 @@
 package org.ores.async;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -309,6 +312,221 @@ public final class AsyncFut {
       final Function<? super T, ? extends CompletionStage<Void>> task) {
     return Each(Integer.MAX_VALUE, input, task);
   }
+
+  // ---------------- Waterfall (named accumulator) ------------------------
+
+  /**
+   * Sequential pipeline with a named accumulator. Each step receives a snapshot of the
+   * accumulated map so far and returns a {@link CompletionStage} producing a single
+   * {@code (key, value)} entry to add to the accumulator. The returned future completes with
+   * the final accumulator map.
+   *
+   * <p>This mirrors {@link Asyncc#Waterfall(List, Asyncc.IAsyncCallback)}'s named-accumulator
+   * shape (the {@code HashMap<String, Object>} you get back from the callback form), adapted
+   * for {@code CompletionStage}-returning steps.
+   *
+   * <p>If a step's stage emits {@code null} as the entry, that step is skipped (no entry is
+   * added) but the pipeline continues. If a step's stage completes exceptionally, the
+   * pipeline short-circuits and the returned future completes exceptionally.
+   *
+   * <pre>
+   *   CompletableFuture&lt;Map&lt;String, Object&gt;&gt; fut = AsyncFut.Waterfall(List.of(
+   *       acc -&gt; fetchConfigAsync().thenApply(cfg  -&gt; Map.entry("config",  cfg)),
+   *       acc -&gt; fetchShardsAsync().thenApply(shs  -&gt; Map.entry("shards",  shs)),
+   *       acc -&gt; enrichAsync(acc).thenApply(enr   -&gt; Map.entry("enriched", enr))
+   *   ));
+   *   fut.thenAccept(acc -&gt; reply.send(buildManifest(acc)));
+   * </pre>
+   */
+  public static CompletableFuture<Map<String, Object>> Waterfall(
+      final List<Function<Map<String, Object>, ? extends CompletionStage<Map.Entry<String, Object>>>> steps) {
+
+    return AsyncFut.<Map<String, Object>>futOf(c -> {
+      // Maintain our own accumulator outside Asyncc.Waterfall's internal one, so each step's
+      // Function<Map, ...> can see prior values without Asyncc exposing its internal map to us.
+      final Map<String, Object> accumulator = new ConcurrentHashMap<>();
+
+      final List<NeoWaterfallI.AsyncTask<Object, Throwable>> bridge = new ArrayList<>(steps.size());
+      for (final Function<Map<String, Object>, ? extends CompletionStage<Map.Entry<String, Object>>> step : steps) {
+        bridge.add((NeoWaterfallI.AsyncTask<Object, Throwable>) taskCb -> {
+          // Snapshot the accumulator to hand to the step (defensive copy).
+          final Map<String, Object> snapshot = new HashMap<>(accumulator);
+          try {
+            step.apply(snapshot).whenComplete((entry, err) -> {
+              if (err != null) {
+                taskCb.done(err);
+                return;
+              }
+              if (entry == null || entry.getKey() == null) {
+                // skip — no entry to add
+                taskCb.done(null);
+                return;
+              }
+              accumulator.put(entry.getKey(), entry.getValue());
+              taskCb.done(null, entry.getKey(), entry.getValue());
+            });
+          } catch (Throwable t) {
+            taskCb.done(t);
+          }
+        });
+      }
+
+      // Asyncc.Waterfall's final callback gives us a HashMap. Wrap once for the future.
+      Asyncc.<Object, Throwable>Waterfall(bridge, (err, finalMap) -> {
+        if (err != null) c.fail(err);
+        else c.success(finalMap == null ? Map.of() : finalMap);
+      });
+    });
+  }
+
+  // ---------------- FilterMap --------------------------------------------
+
+  /**
+   * Async map + filter. The {@code mapper} is applied to each element; if the returned stage
+   * completes with {@code null}, the element is dropped from the result. Order is preserved
+   * across the surviving elements.
+   *
+   * <pre>
+   *   CompletableFuture&lt;List&lt;Profile&gt;&gt; active = AsyncFut.FilterMap(candidateIds,
+   *       id -&gt; fetchProfileAsync(id)
+   *           .thenApply(p -&gt; p.isActive() ? p : null));
+   * </pre>
+   */
+  public static <T, V> CompletableFuture<List<V>> FilterMap(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<V>> mapper) {
+
+    return AsyncFut.<List<V>>futOf(c -> {
+      final List<T> items = toList(input);
+      Asyncc.<V, T, Throwable>FilterMap(items,
+          (NeoFilterMapI.IMapper<T, V, Throwable>) (item, inner) -> {
+            try {
+              mapper.apply(item).whenComplete((v, err) -> {
+                if (err != null) {
+                  inner.done(err, (V) null);
+                  return;
+                }
+                if (v == null) {
+                  // Signal drop: must explicitly mark this slot for discard. Calling
+                  // done(null, null) directly would store a null in the result list.
+                  inner.discard();
+                  inner.done(null, (V) null);
+                } else {
+                  inner.done(null, v);
+                }
+              });
+            } catch (Throwable t) {
+              inner.done(t, (V) null);
+            }
+          }, c);
+    });
+  }
+
+  // ---------------- GroupBy ----------------------------------------------
+
+  /**
+   * Bucket each element by an async-computed string key. The returned future completes with a
+   * {@code Map<String, List<T>>} where each entry is the list of elements that produced that
+   * key, in input order within the bucket.
+   *
+   * <pre>
+   *   CompletableFuture&lt;Map&lt;String, List&lt;User&gt;&gt;&gt; byRegion =
+   *       AsyncFut.GroupBy(users, u -&gt; resolveRegionAsync(u));
+   * </pre>
+   */
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  public static <T> CompletableFuture<Map<String, List<T>>> GroupBy(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<String>> keyer) {
+
+    return AsyncFut.<Map<String, List<T>>>futOf(c -> {
+      final List<T> items = toList(input);
+      // Asyncc.GroupBy's final callback takes Map<String, List<V>>; here V == T.
+      final Asyncc.IAsyncCallback<Map<String, List<T>>, Throwable> sink = c;
+      Asyncc.<T, T, Throwable>GroupBy(items,
+          (NeoGroupByI.IMapper<T, Throwable>) (item, inner) -> {
+            try {
+              keyer.apply(item).whenComplete((key, err) -> {
+                if (err != null) inner.fail(err);
+                else inner.success(key);
+              });
+            } catch (Throwable t) {
+              inner.fail(t);
+            }
+          },
+          (Asyncc.IAsyncCallback) sink);
+    });
+  }
+
+  // ---------------- Whilst / DoWhilst ------------------------------------
+
+  /**
+   * Async while-loop. {@code test} is invoked synchronously before each iteration; if true,
+   * {@code body} is invoked and its result added to the collected list. Loop terminates the
+   * first time {@code test} returns false, or as soon as {@code body} fails. The returned
+   * future completes with the list of all per-iteration values.
+   *
+   * <pre>
+   *   AtomicInteger counter = new AtomicInteger();
+   *   CompletableFuture&lt;List&lt;Page&gt;&gt; pages = AsyncFut.Whilst(
+   *       () -&gt; counter.get() &lt; pageCount,
+   *       () -&gt; fetchPageAsync(counter.getAndIncrement()));
+   * </pre>
+   */
+  public static <T> CompletableFuture<List<T>> Whilst(
+      final java.util.function.BooleanSupplier test,
+      final Supplier<? extends CompletionStage<T>> body) {
+
+    return AsyncFut.<List<T>>futOf(c -> {
+      Asyncc.<T, Throwable>Whilst(
+          (NeoWhilstI.SyncTruthTest) test::getAsBoolean,
+          (NeoWhilstI.AsyncTask<T, Throwable>) taskCb -> {
+            try {
+              body.get().whenComplete((v, err) -> {
+                if (err != null) taskCb.fail(err);
+                else taskCb.success(v);
+              });
+            } catch (Throwable t) {
+              taskCb.fail(t);
+            }
+          },
+          c);
+    });
+  }
+
+  /**
+   * Like {@link #Whilst} but runs {@code body} at least once before consulting {@code test}.
+   */
+  public static <T> CompletableFuture<List<T>> DoWhilst(
+      final java.util.function.BooleanSupplier test,
+      final Supplier<? extends CompletionStage<T>> body) {
+
+    return AsyncFut.<List<T>>futOf(c -> {
+      Asyncc.<T, Throwable>DoWhilst(
+          (NeoWhilstI.SyncTruthTest) test::getAsBoolean,
+          (NeoWhilstI.AsyncTask<T, Throwable>) taskCb -> {
+            try {
+              body.get().whenComplete((v, err) -> {
+                if (err != null) taskCb.fail(err);
+                else taskCb.success(v);
+              });
+            } catch (Throwable t) {
+              taskCb.fail(t);
+            }
+          },
+          c);
+    });
+  }
+
+  // ---------------- Note on Inject ---------------------------------------
+
+  /*
+   * Asyncc.Inject (DAG of named tasks with dependency resolution) intentionally does NOT have
+   * an AsyncFut sibling in v0.2.8. The promise model doesn't gracefully express the
+   * "task X depends on the result of tasks A and B" semantics that NeoInject.Task provides
+   * via its constructor's dependency-name list. Callers who need Inject should use
+   * Asyncc.Inject directly and bridge the boundary via WrapFuture.toFuture.
+   */
 
   // ---------------- internals --------------------------------------------
 

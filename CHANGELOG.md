@@ -6,6 +6,91 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.8-rc1] - 2026-05-18
+
+**Pre-release.** Rounds out `AsyncFut` with the remaining combinators
+that have natural promise-shape equivalents. Promoted to a stable
+`v0.2.8` after consumer validation in the k8s-cluster monorepo.
+
+### Added (in `AsyncFut`)
+
+- **`Waterfall(List<Function<Map<String, Object>, CompletionStage<Map.Entry<String, Object>>>>)
+  -> CompletableFuture<Map<String, Object>>`** — sequential pipeline
+  with a named accumulator. Each step receives a snapshot of the
+  accumulated map and returns a `(key, value)` entry to add. Mirrors
+  `Asyncc.Waterfall`'s named-accumulator shape; returning a `null`
+  entry skips that step's contribution without halting the pipeline.
+
+- **`FilterMap(Iterable<T>, Function<T, CompletionStage<V>>)
+  -> CompletableFuture<List<V>>`** — async map + filter in one pass.
+  A mapper stage that completes with `null` drops the element from the
+  result (using `discard()` under the hood so the slot is removed
+  cleanly rather than left as `null`).
+
+- **`GroupBy(Iterable<T>, Function<T, CompletionStage<String>>)
+  -> CompletableFuture<Map<String, List<T>>>`** — bucket elements by an
+  async-computed string key. Preserves input order within each bucket.
+
+- **`Whilst(BooleanSupplier test, Supplier<CompletionStage<T>> body)
+  -> CompletableFuture<List<T>>`** — async while-loop. The body's
+  per-iteration values are collected into the result list. Short-
+  circuits on body failure.
+
+- **`DoWhilst(BooleanSupplier test, Supplier<CompletionStage<T>> body)
+  -> CompletableFuture<List<T>>`** — like `Whilst` but runs body at
+  least once before consulting the test.
+
+### Documented limitation
+
+- **`Asyncc.Inject`** (DAG of named tasks with dependency resolution)
+  intentionally does NOT get an `AsyncFut` sibling. The promise model
+  doesn't gracefully express the "task X depends on the results of A
+  and B" dependency-list semantics that `NeoInject.Task`'s constructor
+  provides. Callers needing Inject should use `Asyncc.Inject` directly
+  and bridge via `WrapFuture.toFuture`. Documented in the AsyncFut
+  source as a note.
+
+### Tests
+
+- `AsyncFutExtendedTest` (20 tests) covers all five new combinators:
+  - Waterfall: named-accumulator build-up, step-sees-prior-accumulator,
+    fail-fast short-circuit, null-entry-skip-but-continue, empty list,
+    synchronous-throw-surfaces-as-failed-future.
+  - FilterMap: null drops preserve order, fail-fast, empty input,
+    genuine concurrent execution under a thread pool.
+  - GroupBy: bucketing by async key, empty input, keyer-failure short-
+    circuit.
+  - Whilst: collects per-iteration values, returns empty when test
+    initially false, short-circuits on body failure (with race-tolerant
+    counter assertion since NeoWhilst's post-`m.run` test can race one
+    extra body call on async failure).
+  - DoWhilst: runs body at least once even when test is initially
+    false, loops while test true.
+  - Cross-cutting: FilterMap then GroupBy composition, Waterfall +
+    thenCompose chaining.
+
+**Total: 172 tests, 0 failures, 2 JDK 21-gated skips.**
+
+### Known issue surfaced
+
+- `NeoWhilst.RunMap` runs the test in two places: after the body's
+  completion callback fires AND immediately after `m.run` returns. If
+  the body completes asynchronously with a failure, the post-`m.run`
+  test can pass before the failure callback propagates, leading to one
+  extra body invocation. Documented; reproducer in
+  `AsyncFutExtendedTest#whilst_short_circuits_on_body_failure` with a
+  race-tolerant assertion. Fix candidate for v0.2.9: serialise the
+  test+body+next-test sequence through the body's completion callback
+  only.
+
+### Why a pre-release
+
+This release introduces five new `AsyncFut` combinators with non-trivial
+semantics (especially Waterfall's named-accumulator bridge). Cutting an
+`-rc1` lets downstream consumers in the k8s-cluster monorepo
+(`dd-spark-pipeline-server`, `dd-akka-ws-server`) validate the new
+surface in the running cluster before we promote to a stable `v0.2.8`.
+
 ## [0.2.7] - 2026-05-18
 
 Promise / `CompletableFuture` interop. Two additions, no behaviour changes
