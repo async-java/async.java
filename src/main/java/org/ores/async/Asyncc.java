@@ -151,12 +151,54 @@ import java.util.*;
 public class Asyncc {
   
   public final static Object sync = new Object();
-  
-  
+
+
   public enum Overloader {
     GENERIC
   }
-  
+
+  /**
+   * Throwable-fixed shorthand for {@link AsyncTask AsyncTask}{@code <T, Throwable>}.
+   *
+   * <p>Java doesn't support default generic parameters, but the error type in this library is
+   * almost always {@code Throwable}. This shorthand lets you drop the redundant
+   * {@code , Throwable} from explicitly-typed task references:
+   *
+   * <pre>
+   *   // before:
+   *   final var classifyTasks = items.stream()
+   *       .&lt;Asyncc.AsyncTask&lt;Result, Throwable&gt;&gt;map(it -&gt; c -&gt; { ... })
+   *       .toList();
+   *
+   *   // after (v0.2.8+):
+   *   final var classifyTasks = items.stream()
+   *       .&lt;Asyncc.Task&lt;Result&gt;&gt;map(it -&gt; c -&gt; { ... })
+   *       .toList();
+   * </pre>
+   *
+   * <p>{@code Task<T>} is a strict subtype of {@code AsyncTask<T, Throwable>}, so anywhere the
+   * latter is expected, the former is accepted &mdash; including the {@code List}-taking
+   * {@link #Parallel(List, IAsyncCallback) Parallel},
+   * {@link #ParallelLimit(int, List, IAsyncCallback) ParallelLimit}, and
+   * {@link #Series(List, IAsyncCallback) Series} combinators, whose List parameters were
+   * widened to {@code List<? extends AsyncTask<T, E>>} in v0.2.8 to make
+   * {@code List<Task<T>>} flow in cleanly.
+   *
+   * @since 0.2.8
+   */
+  public interface Task<T> extends AsyncTask<T, Throwable> {
+  }
+
+  /**
+   * Throwable-fixed shorthand for {@link IAsyncCallback IAsyncCallback}{@code <T, Throwable>}.
+   * Same rationale as {@link Task}: drop the redundant {@code , Throwable} from explicitly-typed
+   * callback references.
+   *
+   * @since 0.2.8
+   */
+  public interface Callback<T> extends IAsyncCallback<T, Throwable> {
+  }
+
   public interface IAcceptRunnable {
     void accept(Runnable r);
   }
@@ -762,10 +804,17 @@ public class Asyncc {
     NeoSeries.Series(tasks, f);
   }
   
+  /**
+   * Run tasks sequentially. List parameter widened to {@code List<? extends AsyncTask<T, E>>}
+   * in v0.2.8 so a {@code List<Task<T>>} (Throwable-fixed shorthand) flows in cleanly.
+   */
   public static <T, E> void Series(
-    List<AsyncTask<T, E>> tasks,
+    List<? extends AsyncTask<T, E>> tasks,
     IAsyncCallback<List<T>, E> cb) {
-    NeoSeries.<T, E>Series(tasks, cb);
+    // The internal NeoSeries impl expects invariant List<AsyncTask<T, E>>. Copy once at the
+    // public boundary so the variance bound stops here. Cost: one ArrayList allocation per call
+    // (negligible — task lists are typically tens of elements, not millions).
+    NeoSeries.<T, E>Series(new java.util.ArrayList<>(tasks), cb);
   }
   
   public static <T, E> NeoGeneric<T, Void, E> Series(AsyncValueTask<T, E> z, AsyncTask<T, E>... args) {
@@ -1136,8 +1185,13 @@ public class Asyncc {
   
   // end waterfall
   
-  public static <T, E> void Parallel(List<AsyncTask<T, E>> tasks, IAsyncCallback<List<T>, E> cb) {
-    NeoParallel.Parallel(tasks, cb);
+  /**
+   * Fan out tasks; final callback fires once with results in submission order (or with the
+   * first error). List parameter widened to {@code List<? extends AsyncTask<T, E>>} in v0.2.8
+   * so a {@code List<Task<T>>} (Throwable-fixed shorthand) flows in cleanly.
+   */
+  public static <T, E> void Parallel(List<? extends AsyncTask<T, E>> tasks, IAsyncCallback<List<T>, E> cb) {
+    NeoParallel.Parallel(new java.util.ArrayList<>(tasks), cb);
   }
   
   /**
@@ -1155,11 +1209,10 @@ public class Asyncc {
    */
   public static <T, E> void ParallelLimit(
     final int limit,
-    final List<AsyncTask<T, E>> tasks,
+    final List<? extends AsyncTask<T, E>> tasks,
     final IAsyncCallback<List<T>, E> cb) {
-    /////
     NeoUtils.validateLimit(limit);
-    NeoParallel.ParallelLimit(limit, tasks, cb);
+    NeoParallel.ParallelLimit(limit, new java.util.ArrayList<>(tasks), cb);
   }
   
   @SuppressWarnings("Duplicates")

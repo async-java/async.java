@@ -6,6 +6,78 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.8-rc2] - 2026-05-18
+
+**Pre-release.** Adds Throwable-fixed shorthand interfaces so explicitly-typed
+stream pipelines can drop the redundant `, Throwable` from task references.
+Layered on top of rc1.
+
+### Added
+
+- **`Asyncc.Task<T> extends AsyncTask<T, Throwable>`** — shorthand for the
+  overwhelming-default case where the error type is `Throwable`.
+- **`Asyncc.Callback<T> extends IAsyncCallback<T, Throwable>`** — same
+  rationale for the callback interface.
+
+Both are pure name aliases (no new methods); they're functional interfaces
+inheriting their parent's abstract method, so a `c -> { ... }` lambda
+typed as `Asyncc.Task<T>` works exactly like one typed as
+`Asyncc.AsyncTask<T, Throwable>`.
+
+### Changed
+
+- **`Asyncc.Parallel(List, IAsyncCallback)`**,
+  **`Asyncc.ParallelLimit(int, List, IAsyncCallback)`**, and
+  **`Asyncc.Series(List, IAsyncCallback)`** widened their `List` parameter
+  from `List<AsyncTask<T, E>>` to `List<? extends AsyncTask<T, E>>`. This
+  is what lets a `List<Asyncc.Task<T>>` (the new shorthand) flow into
+  them without an explicit cast.
+
+  Source-compatible (existing callers passing `List<AsyncTask<T, E>>`
+  still type-check) and binary-compatible (erasure is `List` in both
+  cases). One `new ArrayList<>(tasks)` copy per call to convert at the
+  internal boundary; cost is negligible.
+
+  The other List-taking combinators (Concat / ConcatSeries / ConcatLimit
+  / ConcatDeep / ConcatDeepSeries / ConcatDeepLimit) keep their existing
+  signatures for v0.2.8 to keep the rc2 diff small; they'll get the
+  same `? extends` treatment in v0.2.9.
+
+### Tests
+
+- `TaskShorthandTest` (5 tests): end-to-end usage of `Asyncc.Task<T>`
+  flowing into `Parallel`, `ParallelLimit`, `Series`, mixed-style
+  (`Task<T>` + `AsyncTask<T, Throwable>` in the same call), and confirms
+  the inherited `c.success()` / `c.fail()` default methods are visible
+  on `Task`'s callback parameter.
+
+**Total: 177 tests, 0 failures, 2 JDK21-gated skips.**
+
+### Example
+
+The motivating use case in `dd-spark-pipeline-server`'s
+`CompositionDemoPipeline`:
+
+```java
+// before (v0.2.7 and earlier):
+final var classifyTasks = kept.stream()
+    .<Asyncc.AsyncTask<ClassifiedItem, Throwable>>map(it ->
+        c2 -> { /* ... */ })
+    .toList();
+Asyncc.<ClassifiedItem, Throwable>ParallelLimit(8, classifyTasks, ...);
+
+// after (v0.2.8-rc2):
+final var classifyTasks = kept.stream()
+    .<Asyncc.Task<ClassifiedItem>>map(it ->
+        c2 -> { /* ... */ })
+    .toList();
+Asyncc.<ClassifiedItem, Throwable>ParallelLimit(8, classifyTasks, ...);
+```
+
+The final-callback type parameters on `ParallelLimit` itself (`<T, E>`)
+still need to be specified when Java can't infer them from context, but
+the per-task-list type annotation is now one parameter shorter.
+
 ## [0.2.8-rc1] - 2026-05-18
 
 **Pre-release.** Rounds out `AsyncFut` with the remaining combinators
