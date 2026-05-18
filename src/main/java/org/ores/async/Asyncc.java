@@ -811,10 +811,7 @@ public class Asyncc {
   public static <T, E> void Series(
     List<? extends AsyncTask<T, E>> tasks,
     IAsyncCallback<List<T>, E> cb) {
-    // The internal NeoSeries impl expects invariant List<AsyncTask<T, E>>. Copy once at the
-    // public boundary so the variance bound stops here. Cost: one ArrayList allocation per call
-    // (negligible — task lists are typically tens of elements, not millions).
-    NeoSeries.<T, E>Series(new java.util.ArrayList<>(tasks), cb);
+    NeoSeries.<T, E>Series(tasks, cb);
   }
   
   public static <T, E> NeoGeneric<T, Void, E> Series(AsyncValueTask<T, E> z, AsyncTask<T, E>... args) {
@@ -1191,7 +1188,7 @@ public class Asyncc {
    * so a {@code List<Task<T>>} (Throwable-fixed shorthand) flows in cleanly.
    */
   public static <T, E> void Parallel(List<? extends AsyncTask<T, E>> tasks, IAsyncCallback<List<T>, E> cb) {
-    NeoParallel.Parallel(new java.util.ArrayList<>(tasks), cb);
+    NeoParallel.Parallel(tasks, cb);
   }
   
   /**
@@ -1212,7 +1209,7 @@ public class Asyncc {
     final List<? extends AsyncTask<T, E>> tasks,
     final IAsyncCallback<List<T>, E> cb) {
     NeoUtils.validateLimit(limit);
-    NeoParallel.ParallelLimit(limit, new java.util.ArrayList<>(tasks), cb);
+    NeoParallel.ParallelLimit(limit, tasks, cb);
   }
   
   @SuppressWarnings("Duplicates")
@@ -1336,21 +1333,21 @@ public class Asyncc {
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void Concat(List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void Concat(List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     NeoParallel.Parallel(tasks, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void ConcatSeries(List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void ConcatSeries(List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     NeoSeries.Series(tasks, (err, results) -> {
       f.done(err, NeoConcat.concatenate(results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void ConcatLimit(int lim, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void ConcatLimit(int lim, List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     
     NeoUtils.validateLimit(lim);
     NeoParallel.ParallelLimit(lim, tasks, (err, results) -> {
@@ -1359,21 +1356,21 @@ public class Asyncc {
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void Concat(int depth, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void Concat(int depth, List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     NeoParallel.Parallel(tasks, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void ConcatSeries(int depth, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void ConcatSeries(int depth, List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     NeoSeries.Series(tasks, (err, results) -> {
       f.done(err, NeoConcat.flatten(depth, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void ConcatLimit(int depth, int lim, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void ConcatLimit(int depth, int lim, List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     
     NeoUtils.validateLimit(lim);
     NeoParallel.ParallelLimit(lim, tasks, (err, results) -> {
@@ -1382,21 +1379,21 @@ public class Asyncc {
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void ConcatDeep(List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void ConcatDeep(List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     NeoParallel.Parallel(tasks, (err, results) -> {
       f.done(err, NeoConcat.flatten(Integer.MAX_VALUE, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void ConcatDeepSeries(List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void ConcatDeepSeries(List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     NeoSeries.Series(tasks, (err, results) -> {
       f.done(err, NeoConcat.flatten(Integer.MAX_VALUE, 0, results));
     });
   }
   
   @SuppressWarnings("Duplicates")
-  public static <T, E> void ConcatDeepLimit(int lim, List<Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
+  public static <T, E> void ConcatDeepLimit(int lim, List<? extends Asyncc.AsyncTask<T, E>> tasks, Asyncc.IAsyncCallback<List<T>, E> f) {
     
     NeoUtils.validateLimit(lim);
     NeoParallel.ParallelLimit(lim, tasks, (err, results) -> {

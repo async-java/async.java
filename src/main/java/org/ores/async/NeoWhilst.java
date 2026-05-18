@@ -159,6 +159,21 @@ public class NeoWhilst {
       return;
     }
     
+    // If the task completed synchronously (taskRunner.done fired inside m.run), the done
+    // callback above has already run the truth test and dispatched the next iteration as
+    // needed; do not double-fire here.
+    //
+    // Without this guard, sync-completing bodies (e.g. AsyncFut.Whilst with already-completed
+    // futures, common in tests and in pipelines that hit a cache) would race the post-m.run
+    // test with the in-done test, producing one extra body invocation past short-circuit.
+    //
+    // The post-m.run block below is only needed for the async-body fan-out case with
+    // limit > 1: m.run returns before done has fired, so we re-test to decide whether to
+    // dispatch additional concurrent body invocations up to the configured limit.
+    if (s.isShortCircuited() || taskRunner.isFinished()) {
+      return;
+    }
+    
     final var o = new Object() {
       boolean isBelowCapacity;
     };
@@ -176,6 +191,12 @@ public class NeoWhilst {
       if (err != null) {
         s.setShortCircuited(true);
         NeoUtils.fireFinalCallback(s, err, results, f);
+        return;
+      }
+      
+      // Re-check short-circuit after the test, in case the body's async done fired while the
+      // test was running.
+      if (s.isShortCircuited()) {
         return;
       }
       

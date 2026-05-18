@@ -79,7 +79,7 @@ class NeoParallel {
   
   private static class ParallelRunner<T, E> extends AbstractParallelRunner<T, E> {
     
-    protected final Iterator<Asyncc.AsyncTask<T, E>> iterator;
+    protected final Iterator<? extends Asyncc.AsyncTask<T, E>> iterator;
     protected final CounterLimit c;
     protected final Asyncc.IAsyncCallback<List<T>, E> f;
     protected final List<T> results;
@@ -87,7 +87,7 @@ class NeoParallel {
     protected final ShortCircuit s;
     
     private ParallelRunner(
-      final Iterator<Asyncc.AsyncTask<T, E>> iterator,
+      final Iterator<? extends Asyncc.AsyncTask<T, E>> iterator,
       final CounterLimit c,
       final ShortCircuit s,
       final Integer size,
@@ -128,7 +128,7 @@ class NeoParallel {
   private static class RunTasksLimit<T, E> extends ParallelRunner<T, E> implements Runnable {
     
     private RunTasksLimit(
-      final Iterator<Asyncc.AsyncTask<T, E>> iterator,
+      final Iterator<? extends Asyncc.AsyncTask<T, E>> iterator,
       final CounterLimit c,
       final ShortCircuit s,
       final Integer size,
@@ -295,7 +295,7 @@ class NeoParallel {
   @SuppressWarnings("Duplicates")
   static <T, E> void ParallelLimit(
     final int limit,
-    final List<Asyncc.AsyncTask<T, E>> tasks,
+    final List<? extends Asyncc.AsyncTask<T, E>> tasks,
     final Asyncc.IAsyncCallback<List<T>, E> f) {
 
     final int size = tasks.size();
@@ -317,7 +317,7 @@ class NeoParallel {
 
     final ShortCircuit s = new ShortCircuit();
     final CounterLimit c = new CounterLimit(limit);
-    final Iterator<Asyncc.AsyncTask<T, E>> iterator = tasks.iterator();
+    final Iterator<? extends Asyncc.AsyncTask<T, E>> iterator = tasks.iterator();
 
     new RunTasksLimit<T, E>(iterator, c, s, null, results, f).run();
     NeoUtils.handleSameTickCall(s);
@@ -402,7 +402,7 @@ class NeoParallel {
   
   @SuppressWarnings("Duplicates")
   static <T, E> void Parallel(
-    final List<Asyncc.AsyncTask<T, E>> tasks,
+    final List<? extends Asyncc.AsyncTask<T, E>> tasks,
     final Asyncc.IAsyncCallback<List<T>, E> f) {
 
     final int size = tasks.size();

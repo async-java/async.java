@@ -6,6 +6,57 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-05-18
+
+### Fixed
+
+* **`NeoWhilst.RunMap` race: extra body invocation past short-circuit.**
+  When the body completed synchronously (e.g. `AsyncFut.Whilst` with an
+  already-completed `CompletableFuture`, common in tests and cache-hit
+  paths), the truth-test was running in two places: inside the per-task
+  `done` callback (which already recursed if the loop should continue),
+  AND in the post-`m.run` block (intended for async-body fan-out with
+  `limit > 1`). For sync-completing bodies the second test would re-fire
+  after the chain already settled, dispatching one extra body call past
+  the short-circuit point.
+  
+  Fix: gate the post-`m.run` block on `s.isShortCircuited() ||
+  taskRunner.isFinished()`. If `done` already fired (sync body), the
+  recursion has already been handled and we exit. Async-body fan-out for
+  `limit > 1` is unchanged: the body's `done` fires AFTER `m.run`
+  returns, so `taskRunner.isFinished()` is `false` and the second block
+  still runs.
+
+  Regression coverage: `AsyncFutExtendedTest#whilst_short_circuits_on_body_failure`
+  now strictly asserts `counter == 4` (was relaxed to `4 || 5` in v0.2.8-rc3
+  to accommodate the race).
+
+### Changed
+
+* **`Concat`/`ConcatSeries`/`ConcatLimit`/`ConcatDeep`/`ConcatDeepSeries`/
+  `ConcatDeepLimit` task-list variants widened to
+  `List<? extends Asyncc.AsyncTask<T, E>>`.** Same `? extends` treatment
+  applied to `Parallel`/`Series`/`ParallelLimit` in v0.2.8-rc2. A
+  `List<Asyncc.Task<T>>` (the Throwable-fixed shorthand) now flows into
+  all nine Concat overloads without an explicit cast or
+  `new ArrayList<AsyncTask<...>>(list)` copy.
+
+* **Internal `NeoParallel.Parallel`/`NeoParallel.ParallelLimit`/
+  `NeoSeries.Series` package-private methods widened to
+  `List<? extends Asyncc.AsyncTask<T, E>>`** (and matching iterator
+  types). This lets the public-API copies be elided at the
+  `Asyncc.Parallel`/`Asyncc.Series`/`Asyncc.ParallelLimit` call sites —
+  one fewer `ArrayList` allocation per call. Internal methods don't
+  mutate the input list, so the variance widening is safe.
+
+### Added
+
+* **`ConcatWideningTest`**: 8 tests pinning that all nine Concat
+  variants accept the `Asyncc.Task<T>` shorthand list and produce
+  correctly-flattened results.
+
+**Total: 192 tests, 0 failures, 2 JDK21-gated skips.**
+
 ## [0.2.8] - 2026-05-18
 
 Promotion of `0.2.8-rc3` to stable. Consolidates the three rc cuts:

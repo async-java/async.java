@@ -241,14 +241,11 @@ public class AsyncFutExtendedTest {
     } catch (Exception e) {
       assertTrue(e.getCause().getMessage().contains("whilst-boom"));
     }
-    // NeoWhilst's recursion strategy can race one extra body call: when m.run() returns
-    // before the body's async failure has propagated, NeoWhilst checks the test again and
-    // may recurse once more. Counter ends at 4 or 5 depending on timing. The important
-    // invariant is that the loop short-circuits well short of the 10-iteration ceiling.
-    assertTrue("counter " + counter.get() + " should be 4 or 5 (short-circuit)",
-        counter.get() == 4 || counter.get() == 5);
-    assertTrue("counter " + counter.get() + " must be well short of 10",
-        counter.get() < 10);
+    // Strict: failure at iteration 3 (the 4th body call) must short-circuit BEFORE iteration
+    // 4 starts. v0.2.9 closed the NeoWhilst.RunMap race where the post-m.run truth-test
+    // could double-dispatch one extra body call past short-circuit.
+    assertEquals("counter must short-circuit at exactly 4 invocations (0,1,2,3)",
+        4, counter.get());
   }
 
   // ====================== DoWhilst =======================================

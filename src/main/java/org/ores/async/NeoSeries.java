@@ -35,7 +35,7 @@ class NeoSeries {
   }
   
   static <T, E> void Series(
-    final List<Asyncc.AsyncTask<T, E>> tasks,
+    final List<? extends Asyncc.AsyncTask<T, E>> tasks,
     final Asyncc.IAsyncCallback<List<T>, E> f) {
     
     final int size = tasks.size();
@@ -48,7 +48,7 @@ class NeoSeries {
     
     final CounterLimit c = new CounterLimit(1);
     final ShortCircuit s = new ShortCircuit();
-    final Iterator<Asyncc.AsyncTask<T, E>> iterator = tasks.iterator();
+    final Iterator<? extends Asyncc.AsyncTask<T, E>> iterator = tasks.iterator();
     
     RunTasksSerially(iterator, size, results, s, c, f);
     
@@ -144,7 +144,7 @@ class NeoSeries {
   
   @SuppressWarnings("Duplicates")
   private static <T, E> void RunTasksSerially(
-    final Iterator<Asyncc.AsyncTask<T, E>> iterator,
+    final Iterator<? extends Asyncc.AsyncTask<T, E>> iterator,
     final int size,
     final List<T> results,
     final ShortCircuit s,
