@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -247,6 +248,9 @@ public final class AsyncFut {
    * that still needs to run the underlying work. For many blocking waits, use
    * {@link AsyncLoom#newVirtualThreadPerTaskExecutor()} on JDK 21+.
    *
+   * <p>Cancelling the returned future cancels the child bridge futures, which in turn propagate
+   * cancellation to the underlying plain {@code Future}s.
+   *
    * @param <T> value type produced by each future
    * @param waitExecutor executor used for blocking {@code Future#get()} waits
    * @param futures already-started plain JDK futures
@@ -257,16 +261,16 @@ public final class AsyncFut {
       final Executor waitExecutor,
       final List<? extends Future<? extends T>> futures) {
 
-    final List<CompletionStage<T>> stages = new ArrayList<>(futures.size());
-    for (final Future<? extends T> future : futures) {
-      stages.add(WrapFuture.toCompletableFuture(waitExecutor, future));
-    }
-    return ParallelF(stages);
+    final List<CompletableFuture<T>> stages = toCompletableFutures(waitExecutor, futures);
+    return mirrorWithCancellation(ParallelF(stages), stages, false);
   }
 
   /**
    * Like {@link #RaceF(List)}, but accepts plain JDK {@link Future Futures}. The library calls
    * {@link Future#get()} internally on {@code waitExecutor}; the first completed wait wins.
+   *
+   * <p>When the race settles, incomplete child bridge futures are cancelled so losing plain
+   * {@code Future}s are interrupted when their implementation supports cancellation.
    *
    * @param <T> value type produced by each future
    * @param waitExecutor executor used for blocking {@code Future#get()} waits
@@ -278,11 +282,8 @@ public final class AsyncFut {
       final Executor waitExecutor,
       final List<? extends Future<? extends T>> futures) {
 
-    final List<CompletionStage<T>> stages = new ArrayList<>(futures.size());
-    for (final Future<? extends T> future : futures) {
-      stages.add(WrapFuture.toCompletableFuture(waitExecutor, future));
-    }
-    return RaceF(stages);
+    final List<CompletableFuture<T>> stages = toCompletableFutures(waitExecutor, futures);
+    return mirrorWithCancellation(RaceF(stages), stages, true);
   }
 
   // ---------------- Race -------------------------------------------------
@@ -759,6 +760,63 @@ public final class AsyncFut {
       final CompletionStage<? extends Collection<? extends V>> stage) {
 
     return stage.thenApply((Collection<? extends V> chunk) -> chunk);
+  }
+
+  private static <T> List<CompletableFuture<T>> toCompletableFutures(
+      final Executor waitExecutor,
+      final List<? extends Future<? extends T>> futures) {
+
+    final List<CompletableFuture<T>> stages = new ArrayList<>(futures.size());
+    for (final Future<? extends T> future : futures) {
+      stages.add(WrapFuture.toCompletableFuture(waitExecutor, future));
+    }
+    return stages;
+  }
+
+  private static <V> CompletableFuture<V> mirrorWithCancellation(
+      final CompletableFuture<V> delegate,
+      final List<? extends CompletableFuture<?>> children,
+      final boolean cancelChildrenWhenDelegateCompletes) {
+
+    final CompletableFuture<V> out = new CompletableFuture<>() {
+      @Override
+      public boolean cancel(final boolean mayInterruptIfRunning) {
+        final boolean cancelled = super.cancel(mayInterruptIfRunning);
+        if (cancelled) {
+          cancelIncomplete(children, mayInterruptIfRunning);
+          delegate.cancel(mayInterruptIfRunning);
+        }
+        return cancelled;
+      }
+    };
+
+    delegate.whenComplete((value, err) -> {
+      if (cancelChildrenWhenDelegateCompletes) {
+        cancelIncomplete(children, true);
+      }
+      if (err != null) {
+        if (err instanceof CancellationException) {
+          out.cancel(false);
+        } else {
+          out.completeExceptionally(err);
+        }
+      } else {
+        out.complete(value);
+      }
+    });
+
+    return out;
+  }
+
+  private static void cancelIncomplete(
+      final List<? extends CompletableFuture<?>> futures,
+      final boolean mayInterruptIfRunning) {
+
+    for (final CompletableFuture<?> future : futures) {
+      if (!future.isDone()) {
+        future.cancel(mayInterruptIfRunning);
+      }
+    }
   }
 
   private static <T> List<T> toList(final Iterable<T> input) {

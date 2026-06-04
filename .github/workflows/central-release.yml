@@ -6,7 +6,7 @@ on:
       ref:
         description: Git tag or branch to publish to Maven Central
         required: true
-        default: v0.2.10
+        default: v0.2.11
 
 permissions:
   contents: read
@@ -70,3 +70,20 @@ jobs:
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
         run: mvn -B -P publish-artifacts,release -DskipTests deploy
+
+      - name: Verify Maven Central published artifacts
+        run: |
+          set -euo pipefail
+          version="$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)"
+          group_id="$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.groupId)"
+          artifact_id="$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.artifactId)"
+          group_path="${group_id//./\/}"
+          base="https://repo.maven.apache.org/maven2/$group_path/$artifact_id/$version"
+          for file in \
+            "$artifact_id-$version.pom" \
+            "$artifact_id-$version.jar" \
+            "$artifact_id-$version-sources.jar" \
+            "$artifact_id-$version-javadoc.jar"; do
+            curl --fail --silent --show-error --location --retry 12 --retry-delay 10 \
+              --output /dev/null "$base/$file"
+          done
