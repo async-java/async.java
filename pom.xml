@@ -37,7 +37,7 @@
           with the 3.6 baseline this lib was originally written against.
           The vertx-* dependencies are test-scope only.
         -->
-        <vertx.version>3.9.16</vertx.version>
+        <vertx.version>4.5.22</vertx.version>
         <jacoco.version>0.8.14</jacoco.version>
         <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
         <maven.dependency.plugin.version>3.9.0</maven.dependency.plugin.version>
