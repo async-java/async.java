@@ -1,0 +1,45 @@
+name: github packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git tag or branch to publish
+        required: true
+        default: v0.2.10
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: publish tag to github packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up JDK 17 + Maven cache + GitHub Packages credentials
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Verify checked-out ref
+        run: |
+          set -euo pipefail
+          echo "requested ref: ${{ inputs.ref }}"
+          echo "checked out:   $(git rev-parse HEAD)"
+          mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version
+
+      - name: Deploy to GitHub Packages
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -B -P publish-artifacts,github-packages -DskipTests -Dgpg.skip=true deploy
