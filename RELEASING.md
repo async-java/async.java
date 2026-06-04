@@ -29,6 +29,9 @@ You need three things to publish to Maven Central:
   * confirm the automatically provisioned GitHub namespace for
     [ORESoftware](https://github.com/ORESoftware), or
   * add a DNS TXT record.
+  If the Portal shows a verification key instead, create a temporary public
+  GitHub repository under [ORESoftware](https://github.com/ORESoftware) whose
+  name is exactly that key, then click **Verify** in the Portal.
 * Once verified, generate a **User Token** at
   <https://central.sonatype.com/account>. You'll get a *username* string and a
   *password* string. These are *not* your Portal login.
@@ -53,7 +56,7 @@ You need three things to publish to Maven Central:
   not into git):
 
   ```bash
-  gpg --armor --export-secret-keys <KEY_ID> > /tmp/maven-gpg-private-key.asc
+  scripts/export-release-gpg-key.sh <KEY_ID>
   ```
 
 ### 3. Repo secrets for the release workflow
@@ -70,6 +73,8 @@ In <https://github.com/async-java/async.java/settings/secrets/actions> add:
 Or set them from a checked-out repo with:
 
 ```bash
+gh auth login -h github.com -p ssh --skip-ssh-key -w -s repo,workflow
+
 export CENTRAL_USERNAME='...'
 export CENTRAL_PASSWORD='...'
 export MAVEN_GPG_PRIVATE_KEY="$(cat /tmp/maven-gpg-private-key.asc)"
