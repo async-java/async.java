@@ -1,0 +1,75 @@
+name: github release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag to create or refresh as a GitHub Release
+        required: true
+        default: v0.2.11
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/github-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    name: create github release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-}"
+          if [ -z "$tag" ]; then
+            version="$(sed -n 's:.*<version>\([^<]*\)</version>.*:\1:p' pom.xml | head -n 1)"
+            tag="v$version"
+          else
+            version="${tag#v}"
+          fi
+          if [ -z "$version" ] || [ "$version" = "$tag" ]; then
+            echo "::error::could not resolve version from tag $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Download published Maven Central artifacts
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          base="https://repo.maven.apache.org/maven2/io/github/oresoftware/async-java/$VERSION"
+          mkdir -p dist
+          for file in \
+            "async-java-$VERSION.jar" \
+            "async-java-$VERSION-sources.jar" \
+            "async-java-$VERSION-javadoc.jar"; do
+            curl --fail --silent --show-error --location --retry 12 --retry-delay 10 \
+              --output "dist/$file" "$base/$file"
+          done
+
+      - name: Create or refresh GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" \
+              --generate-notes \
+              --verify-tag
+          fi

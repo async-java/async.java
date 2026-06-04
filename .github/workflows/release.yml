@@ -126,11 +126,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn -B -P publish-artifacts,github-packages -DskipTests -Dgpg.skip=true deploy
 
+      - name: Collect GitHub Release assets
+        run: |
+          set -euo pipefail
+          version="$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)"
+          mkdir -p dist
+          cp "target/async-java-$version.jar" dist/
+          cp "target/async-java-$version-sources.jar" dist/
+          cp "target/async-java-$version-javadoc.jar" dist/
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
-          files: |
-            target/async-java-*.jar
-            target/async-java-*-sources.jar
-            target/async-java-*-javadoc.jar
+          files: dist/*
