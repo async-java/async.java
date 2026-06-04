@@ -112,6 +112,63 @@ public class FutureAndLoomInteropTest {
   }
 
   @Test(timeout = 10_000)
+  public void fromStage_supplier_is_lazy_until_callback_task_runs() throws Exception {
+    final AtomicInteger starts = new AtomicInteger();
+
+    final Asyncc.AsyncTask<String, Throwable> task = WrapFuture.fromStage(() -> {
+      starts.incrementAndGet();
+      return CompletableFuture.completedFuture("lazy");
+    });
+
+    assertEquals(0, starts.get());
+
+    final CompletableFuture<String> result = new CompletableFuture<>();
+    task.run((err, value) -> {
+      if (err != null) {
+        result.completeExceptionally(err);
+      } else {
+        result.complete(value);
+      }
+    });
+
+    assertEquals("lazy", result.get(2, TimeUnit.SECONDS));
+    assertEquals(1, starts.get());
+  }
+
+  @Test(timeout = 10_000)
+  public void fromStage_supplier_preserves_series_ordering() throws Exception {
+    final AtomicInteger order = new AtomicInteger();
+
+    final CompletableFuture<List<String>> cf = WrapFuture.toFuture(c ->
+        Asyncc.<String, Throwable>Series(List.of(
+            WrapFuture.fromStage(() -> {
+              assertEquals(0, order.getAndIncrement());
+              return CompletableFuture.completedFuture("validate");
+            }),
+            WrapFuture.fromStage(() -> {
+              assertEquals(1, order.getAndIncrement());
+              return CompletableFuture.completedFuture("persist");
+            })
+        ), c));
+
+    assertEquals(List.of("validate", "persist"), cf.get(2, TimeUnit.SECONDS));
+    assertEquals(2, order.get());
+  }
+
+  @Test(timeout = 10_000)
+  public void fromStage_supplier_reports_synchronous_throw() throws Exception {
+    final IllegalArgumentException boom = new IllegalArgumentException("stage supplier failed");
+    final Asyncc.AsyncTask<String, Throwable> task = WrapFuture.fromStage(() -> {
+      throw boom;
+    });
+
+    final CompletableFuture<Throwable> error = new CompletableFuture<>();
+    task.run((err, value) -> error.complete(err));
+
+    assertSame(boom, error.get(2, TimeUnit.SECONDS));
+  }
+
+  @Test(timeout = 10_000)
   public void parallelFutures_collects_plain_future_results_in_order() throws Exception {
     final ExecutorService workExec = Executors.newFixedThreadPool(3);
     final ExecutorService waitExec = Executors.newCachedThreadPool();

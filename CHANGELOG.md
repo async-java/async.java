@@ -23,6 +23,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   APIs into the promise-shaped combinators without per-call-site `get()`
   loops.
 
+* **Lazy `CompletionStage` callback tasks.**
+  `WrapFuture.fromStage(Supplier<? extends CompletionStage<V>>)` creates the
+  stage only when an async.java combinator starts that task, preserving
+  `Series`, `ParallelLimit`, and other bounded scheduling semantics.
+
+* **Promise-returning concat helpers.**
+  `AsyncFut.Concat`, `AsyncFut.ConcatSeries`, and `AsyncFut.ConcatLimit` add
+  async map + one-level flatten to the `CompletableFuture` API, matching the
+  callback `Asyncc.Concat*` and virtual-thread `AsyncLoom.Concat*Blocking`
+  families.
+
 * **`AsyncLoom`: Java 21 virtual-thread helpers with a Java 17 bytecode
   baseline.**
   The new class detects virtual-thread support reflectively, creates
@@ -822,7 +833,7 @@ run on JDK 11+).
 
 ## [0.2.0] - 2026-05-17
 
-First release under the new `io.github.async-java:async-java` coordinate. The
+First release under the new `io.github.oresoftware:async-java` coordinate. The
 legacy `com.oresoftware:async.0.1:0.1.1012` artifact remains on Maven Central
 indefinitely for existing consumers.
 
@@ -888,10 +899,10 @@ JDK 21 for virtual threads and `Assume`-skip on JDK 11 / 17.
 
 ### Changed
 
-- **Coordinate**: published to `io.github.async-java:async-java` going
-  forward. The `io.github.async-java` namespace is auto-verifiable on the
-  Sonatype Central Portal because the `async-java` GitHub organisation
-  exists at <https://github.com/async-java>.
+- **Coordinate**: published to `io.github.oresoftware:async-java` going
+  forward. The `io.github.oresoftware` namespace is verifiable on the
+  Sonatype Central Portal through the maintainer GitHub account, while the
+  source repository remains at <https://github.com/async-java/async.java>.
 - **Build target**: JDK 10 -> JDK 11 (LTS). The 2.3.2 (2010)
   maven-compiler-plugin upgraded to 3.13.0 with `<release>` so the
   bytecode target is actually honoured on modern JDKs.
@@ -961,7 +972,7 @@ JDK 21 for virtual threads and `Assume`-skip on JDK 11 / 17.
 
 Initial public release on Maven Central under the
 `com.oresoftware:async.0.1:0.1.1012` coordinate. Frozen — see the new
-`io.github.async-java:async-java` line for active development.
+`io.github.oresoftware:async-java` line for active development.
 
 [Unreleased]: https://github.com/async-java/async.java/compare/v0.2.10...HEAD
 [0.2.10]: https://github.com/async-java/async.java/releases/tag/v0.2.10

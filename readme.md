@@ -7,7 +7,7 @@
 > RxJava/Reactor.
 
 [![ci](https://github.com/async-java/async.java/actions/workflows/ci.yml/badge.svg)](https://github.com/async-java/async.java/actions/workflows/ci.yml)
-[![maven central](https://img.shields.io/maven-central/v/io.github.async-java/async-java)](https://central.sonatype.com/artifact/io.github.async-java/async-java)
+[![maven central](https://img.shields.io/maven-central/v/io.github.oresoftware/async-java)](https://central.sonatype.com/artifact/io.github.oresoftware/async-java)
 [![jdk](https://img.shields.io/badge/JDK-17%2B-blue)](#requirements)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -89,7 +89,7 @@ library solves orchestration."
 
 ```xml
 <dependency>
-  <groupId>io.github.async-java</groupId>
+  <groupId>io.github.oresoftware</groupId>
   <artifactId>async-java</artifactId>
   <version>0.2.10</version>
 </dependency>
@@ -98,7 +98,7 @@ library solves orchestration."
 ### Gradle
 
 ```kotlin
-implementation("io.github.async-java:async-java:0.2.10")
+implementation("io.github.oresoftware:async-java:0.2.10")
 ```
 
 ### Snapshots
@@ -203,6 +203,22 @@ Asyncc.Parallel(List.of(
 });
 ```
 
+### CompletionStage: eager or lazy
+
+Use `WrapFuture.fromStage(stage)` when the `CompletionStage` is already in
+flight. Use `WrapFuture.fromStage(() -> stage)` when async.java should create
+the stage only when the combinator starts that task:
+
+```java
+Asyncc.Series(List.of(
+    WrapFuture.fromStage(() -> client.validateAsync(req)),
+    WrapFuture.fromStage(() -> client.persistAsync(req))
+), (err, results) -> {
+    if (err != null) { reply.fail(err); return; }
+    reply.ok(results);
+});
+```
+
 ### Blocking work on virtual threads
 
 On JDK 21+, `AsyncLoom` runs blocking `Callable` work on virtual threads and
@@ -227,6 +243,15 @@ CompletableFuture<Integer> total = AsyncLoom.ReduceBlocking(
 CompletableFuture<List<Path>> paths = AsyncLoom.ConcatBlocking(
     tenants,
     tenant -> listTenantFilesBlocking(tenant));
+```
+
+Promise-returning code has the same flattening shape without blocking:
+
+```java
+CompletableFuture<List<Order>> orders = AsyncFut.ConcatLimit(
+    8,
+    userIds,
+    userId -> orderClient.ordersForUserAsync(userId));
 ```
 
 The same feature is available in callback form:
@@ -902,7 +927,7 @@ consumers don't break:
 
 <!-- new -->
 <dependency>
-  <groupId>io.github.async-java</groupId>
+  <groupId>io.github.oresoftware</groupId>
   <artifactId>async-java</artifactId>
   <version>0.2.10</version>
 </dependency>

@@ -8,13 +8,14 @@
         old: com.oresoftware:async1            (was never released to Central)
         old: com.oresoftware:async.0.1         (frozen at 0.1.1012, baked the version into
                                                 the artifactId — awkward to upgrade against)
-        new: io.github.async-java:async-java   (current release line, this PR onwards)
+        new: io.github.oresoftware:async-java   (current release line, this PR onwards)
 
-      The `io.github.<org>` group is auto-verifiable on the Sonatype Central Portal because
-      the async-java GitHub organisation already exists at https://github.com/async-java.
+      The `io.github.oresoftware` namespace matches the maintainer GitHub account used for
+      Central Portal verification. The source repository remains under
+      https://github.com/async-java/async.java.
       The old 0.1.1012 artifact stays in place on Maven Central for any existing consumer.
     -->
-    <groupId>io.github.async-java</groupId>
+    <groupId>io.github.oresoftware</groupId>
     <artifactId>async-java</artifactId>
     <packaging>jar</packaging>
     <version>0.2.10</version>

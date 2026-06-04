@@ -7,8 +7,8 @@ the snippet in [README](readme.md#installation).
 
 | Coordinate                                         | What it is                                | Notes                                       |
 | -------------------------------------------------- | ----------------------------------------- | ------------------------------------------- |
-| `io.github.async-java:async-java:<version>`        | This release line, on **Maven Central**.  | Current `<version>` lives in `pom.xml`.     |
-| `io.github.async-java:async-java:<version>`        | Same artifact on **GitHub Packages**.     | Published by the release workflow with `GITHUB_TOKEN`. |
+| `io.github.oresoftware:async-java:<version>`        | This release line, on **Maven Central**.  | Current `<version>` lives in `pom.xml`.     |
+| `io.github.oresoftware:async-java:<version>`        | Same artifact on **GitHub Packages**.     | Published by the release workflow with `GITHUB_TOKEN`. |
 | `com.oresoftware:async.0.1:0.1.1012`               | The legacy artifact published in 2019.    | Frozen — kept on Central for compatibility. |
 | `com.github.async-java:async.java:<git-tag>`       | Same source, served by **JitPack**.       | Built on-demand from any git ref.           |
 
@@ -21,14 +21,17 @@ Sonatype path.
 
 You need three things to publish to Maven Central:
 
-### 1. A Sonatype Central Portal account + the `io.github.async-java` namespace
+### 1. A Sonatype Central Portal account + the `io.github.oresoftware` namespace
 
 * Sign up at <https://central.sonatype.com>.
-* Verify the `io.github.async-java` namespace. The Portal will tell you to
+* Verify the `io.github.oresoftware` namespace. The Portal will tell you to
   either:
-  * create a temporary public repo named `OSSRH-XXXXX` under the
-    [async-java](https://github.com/async-java) GitHub org (easiest), or
+  * confirm the automatically provisioned GitHub namespace for
+    [ORESoftware](https://github.com/ORESoftware), or
   * add a DNS TXT record.
+  If the Portal shows a verification key instead, create a temporary public
+  GitHub repository under [ORESoftware](https://github.com/ORESoftware) whose
+  name is exactly that key, then click **Verify** in the Portal.
 * Once verified, generate a **User Token** at
   <https://central.sonatype.com/account>. You'll get a *username* string and a
   *password* string. These are *not* your Portal login.
@@ -53,7 +56,7 @@ You need three things to publish to Maven Central:
   not into git):
 
   ```bash
-  gpg --armor --export-secret-keys <KEY_ID> > /tmp/maven-gpg-private-key.asc
+  scripts/export-release-gpg-key.sh <KEY_ID>
   ```
 
 ### 3. Repo secrets for the release workflow
@@ -67,6 +70,26 @@ In <https://github.com/async-java/async.java/settings/secrets/actions> add:
 | `MAVEN_GPG_PRIVATE_KEY`    | Full contents of `/tmp/maven-gpg-private-key.asc`.           |
 | `MAVEN_GPG_PASSPHRASE`     | Passphrase that unlocks the GPG key.                         |
 
+Or set them from a checked-out repo with:
+
+```bash
+gh auth login -h github.com -p ssh --skip-ssh-key -w -s repo,workflow
+
+export CENTRAL_USERNAME='...'
+export CENTRAL_PASSWORD='...'
+export MAVEN_GPG_PRIVATE_KEY="$(cat /tmp/maven-gpg-private-key.asc)"
+export MAVEN_GPG_PASSPHRASE='...'
+
+scripts/set-release-secrets.sh
+scripts/check-release-readiness.sh --pre-tag
+```
+
+Use `check-release-readiness.sh --pre-tag` before tagging to catch missing
+GitHub auth, missing repo secrets, and missing local GPG setup. Use
+`check-release-readiness.sh` after the release workflow runs; the post-tag
+check fails until the remote tag exists and Maven Central metadata shows the
+release.
+
 ## Cutting a release (automated path)
 
 ```bash
@@ -74,11 +97,14 @@ In <https://github.com/async-java/async.java/settings/secrets/actions> add:
 #    Edit pom.xml: <version>0.2.10-SNAPSHOT</version> -> <version>0.2.10</version>
 git commit -am "Release 0.2.10"
 
-# 2. Tag the commit. The release workflow only fires on `v*` tags.
+# 2. Confirm release prerequisites before tagging.
+scripts/check-release-readiness.sh --pre-tag
+
+# 3. Tag the commit. The release workflow only fires on `v*` tags.
 git tag v0.2.10
 git push origin master --tags
 
-# 3. (Optional) Open development on the next version.
+# 4. (Optional) Open development on the next version.
 #    Edit pom.xml: <version>0.2.10</version> -> <version>0.2.11-SNAPSHOT</version>
 git commit -am "Begin 0.2.11 development"
 git push
