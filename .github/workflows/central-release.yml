@@ -1,0 +1,72 @@
+name: central release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git tag or branch to publish to Maven Central
+        required: true
+        default: v0.2.10
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish tag to maven central
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Check required Central release secrets
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          missing=0
+          for name in CENTRAL_USERNAME CENTRAL_PASSWORD MAVEN_GPG_PRIVATE_KEY MAVEN_GPG_PASSPHRASE; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::$name repository secret is not configured"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Set up JDK 17 + Maven cache + Central credentials
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Verify checked-out ref matches pom.xml version
+        run: |
+          set -euo pipefail
+          version=$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)
+          echo "requested ref: ${{ inputs.ref }}"
+          echo "checked out:   $(git rev-parse HEAD)"
+          echo "pom version:   $version"
+          if [[ "${{ inputs.ref }}" == v* ]] && [ "${{ inputs.ref }}" != "v$version" ]; then
+            echo "::error::input ref ${{ inputs.ref }} does not match pom version $version" >&2
+            exit 1
+          fi
+
+      - name: Run tests
+        run: mvn -B test
+
+      - name: Deploy to Sonatype Central Portal
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: mvn -B -P publish-artifacts,release -DskipTests deploy
