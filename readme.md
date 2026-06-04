@@ -245,6 +245,15 @@ CompletableFuture<List<Path>> paths = AsyncLoom.ConcatBlocking(
     tenant -> listTenantFilesBlocking(tenant));
 ```
 
+Promise-returning code has the same flattening shape without blocking:
+
+```java
+CompletableFuture<List<Order>> orders = AsyncFut.ConcatLimit(
+    8,
+    userIds,
+    userId -> orderClient.ordersForUserAsync(userId));
+```
+
 The same feature is available in callback form:
 
 ```java

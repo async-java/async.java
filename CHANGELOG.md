@@ -23,6 +23,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   APIs into the promise-shaped combinators without per-call-site `get()`
   loops.
 
+* **Lazy `CompletionStage` callback tasks.**
+  `WrapFuture.fromStage(Supplier<? extends CompletionStage<V>>)` creates the
+  stage only when an async.java combinator starts that task, preserving
+  `Series`, `ParallelLimit`, and other bounded scheduling semantics.
+
+* **Promise-returning concat helpers.**
+  `AsyncFut.Concat`, `AsyncFut.ConcatSeries`, and `AsyncFut.ConcatLimit` add
+  async map + one-level flatten to the `CompletableFuture` API, matching the
+  callback `Asyncc.Concat*` and virtual-thread `AsyncLoom.Concat*Blocking`
+  families.
+
 * **`AsyncLoom`: Java 21 virtual-thread helpers with a Java 17 bytecode
   baseline.**
   The new class detects virtual-thread support reflectively, creates

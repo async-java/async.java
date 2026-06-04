@@ -125,7 +125,9 @@
  * For promise-returning APIs, use {@link org.ores.async.WrapFuture#fromStage(java.util.concurrent.CompletionStage)}
  * for already-started work and {@link org.ores.async.WrapFuture#fromStage(java.util.function.Supplier)}
  * when {@code Series}, {@code ParallelLimit}, or another bounded combinator should decide when
- * the stage is created.
+ * the stage is created. Promise-returning collection helpers such as
+ * {@link org.ores.async.AsyncFut#ConcatLimit(int, java.lang.Iterable, java.util.function.Function)}
+ * preserve async.java's bounded fan-out while returning {@link java.util.concurrent.CompletableFuture}.
  *
  * <h3>Concurrency contract</h3>
  *

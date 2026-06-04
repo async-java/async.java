@@ -1,6 +1,7 @@
 package org.ores.async;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -61,6 +62,10 @@ import java.util.function.Supplier;
  *   // Map: async transform preserving input order
  *   CompletableFuture&lt;List&lt;Profile&gt;&gt; profiles =
  *       AsyncFut.Map(userIds, id -&gt; fetchProfileAsync(id));
+ *
+ *   // Concat: async map, then flatten one level
+ *   CompletableFuture&lt;List&lt;Order&gt;&gt; orders =
+ *       AsyncFut.Concat(userIds, id -&gt; fetchOrdersAsync(id));
  *
  *   // Reduce: sequential fold with an async reducer
  *   CompletableFuture&lt;BigDecimal&gt; total =
@@ -332,6 +337,76 @@ public final class AsyncFut {
         }
       }, c);
     });
+  }
+
+  // ---------------- Concat -----------------------------------------------
+
+  /**
+   * Async map + one-level flatten. {@code mapper(element)} runs for each element concurrently
+   * and returns a collection of zero or more output values; the returned future completes with
+   * all mapper results concatenated in input order.
+   *
+   * <pre>
+   *   CompletableFuture&lt;List&lt;Order&gt;&gt; orders =
+   *       AsyncFut.Concat(userIds, id -&gt; orderClient.ordersForUserAsync(id));
+   * </pre>
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param input values to map
+   * @param mapper async mapper producing zero or more output values
+   * @return flattened result future
+   * @since 0.2.10
+   */
+  public static <T, V> CompletableFuture<List<V>> Concat(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<? extends Collection<? extends V>>> mapper) {
+
+    return ConcatLimit(Integer.MAX_VALUE, input, mapper);
+  }
+
+  /**
+   * Sequential version of {@link #Concat(Iterable, Function)}.
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param input values to map
+   * @param mapper async mapper producing zero or more output values
+   * @return flattened result future
+   * @since 0.2.10
+   */
+  public static <T, V> CompletableFuture<List<V>> ConcatSeries(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<? extends Collection<? extends V>>> mapper) {
+
+    return ConcatLimit(1, input, mapper);
+  }
+
+  /**
+   * Bounded-concurrency version of {@link #Concat(Iterable, Function)}.
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param limit max in-flight mapper calls
+   * @param input values to map
+   * @param mapper async mapper producing zero or more output values
+   * @return flattened result future
+   * @since 0.2.10
+   */
+  public static <T, V> CompletableFuture<List<V>> ConcatLimit(
+      final int limit,
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<? extends Collection<? extends V>>> mapper) {
+
+    final List<T> items = toList(input);
+    final List<Supplier<? extends CompletionStage<Collection<? extends V>>>> suppliers =
+        new ArrayList<>(items.size());
+
+    for (final T item : items) {
+      suppliers.add(() -> widenCollectionStage(mapper.apply(item)));
+    }
+
+    return AsyncFut.ParallelLimit(limit, suppliers).thenApply(AsyncFut::flattenOne);
   }
 
   // ---------------- Reduce -----------------------------------------------
@@ -666,6 +741,24 @@ public final class AsyncFut {
       });
     }
     return out;
+  }
+
+  private static <V> List<V> flattenOne(
+      final List<? extends Collection<? extends V>> chunks) {
+
+    final List<V> out = new ArrayList<>();
+    for (final Collection<? extends V> chunk : chunks) {
+      if (chunk != null) {
+        out.addAll(chunk);
+      }
+    }
+    return out;
+  }
+
+  private static <V> CompletionStage<Collection<? extends V>> widenCollectionStage(
+      final CompletionStage<? extends Collection<? extends V>> stage) {
+
+    return stage.thenApply((Collection<? extends V> chunk) -> chunk);
   }
 
   private static <T> List<T> toList(final Iterable<T> input) {
