@@ -26,8 +26,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   CI now runs the publish-artifacts package build so `-sources.jar` and
   `-javadoc.jar` generation is exercised before release; release workflows
   also verify the public Maven Central POM, jar, sources jar, and javadoc jar
-  URLs after Central publish. CI also runs on `codex/**` hardening branches so
-  these PR-prep branches get the same JDK 17/21 coverage before review.
+  URLs after Central publish.
 
 * **Dependency surface reduced and test dependencies refreshed.**
   Removed the unused direct runtime dependency on `commons-lang3`, updated the
