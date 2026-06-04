@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo="${1:-async-java/async.java}"
+mode="post-tag"
+if [ "${1:-}" = "--pre-tag" ]; then
+  mode="pre-tag"
+  repo="${2:-async-java/async.java}"
+fi
+
+if command -v mvn >/dev/null 2>&1; then
+  version="$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)"
+else
+  version="$(awk -F'[<>]' '/<version>/ { print $3; exit }' pom.xml)"
+fi
+tag="v$version"
+branch="$(git branch --show-current)"
+required=(
+  CENTRAL_USERNAME
+  CENTRAL_PASSWORD
+  MAVEN_GPG_PRIVATE_KEY
+  MAVEN_GPG_PASSPHRASE
+)
+
+fail=0
+
+say() {
+  printf '%s\n' "$*"
+}
+
+check() {
+  local label="$1"
+  shift
+  if "$@"; then
+    say "ok: $label"
+  else
+    say "missing: $label"
+    fail=1
+  fi
+}
+
+check "gh authentication" gh auth status
+
+if gh auth status >/dev/null 2>&1; then
+  secret_names="$(gh secret list --repo "$repo" 2>/dev/null | awk '{print $1}')"
+  for name in "${required[@]}"; do
+    if printf '%s\n' "$secret_names" | grep -qx "$name"; then
+      say "ok: repo secret $name"
+    else
+      say "missing: repo secret $name"
+      fail=1
+    fi
+  done
+fi
+
+check "local GPG secret key" sh -c 'gpg --list-secret-keys >/dev/null 2>&1 && [ -n "$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '\''$1 == "sec" { print; exit }'\'')" ]'
+check "current branch is pushed ($branch)" git ls-remote --exit-code origin "refs/heads/$branch"
+
+if git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
+  say "present: remote tag $tag"
+elif [ "$mode" = "pre-tag" ]; then
+  say "pending: remote tag $tag"
+else
+  say "missing: remote tag $tag"
+  fail=1
+fi
+
+metadata_url="https://repo.maven.apache.org/maven2/io/github/async-java/async-java/maven-metadata.xml"
+if curl -fsSL "$metadata_url" >/tmp/async-java-release-metadata.xml 2>/dev/null; then
+  if grep -q "<version>$version</version>" /tmp/async-java-release-metadata.xml; then
+    say "present: Maven Central version $version"
+  else
+    say "missing: Maven Central version $version"
+    fail=1
+  fi
+elif [ "$mode" = "pre-tag" ]; then
+  say "pending: Maven Central metadata at $metadata_url"
+else
+  say "missing: Maven Central metadata at $metadata_url"
+  fail=1
+fi
+
+exit "$fail"

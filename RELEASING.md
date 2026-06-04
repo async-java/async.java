@@ -67,6 +67,24 @@ In <https://github.com/async-java/async.java/settings/secrets/actions> add:
 | `MAVEN_GPG_PRIVATE_KEY`    | Full contents of `/tmp/maven-gpg-private-key.asc`.           |
 | `MAVEN_GPG_PASSPHRASE`     | Passphrase that unlocks the GPG key.                         |
 
+Or set them from a checked-out repo with:
+
+```bash
+export CENTRAL_USERNAME='...'
+export CENTRAL_PASSWORD='...'
+export MAVEN_GPG_PRIVATE_KEY="$(cat /tmp/maven-gpg-private-key.asc)"
+export MAVEN_GPG_PASSPHRASE='...'
+
+scripts/set-release-secrets.sh
+scripts/check-release-readiness.sh --pre-tag
+```
+
+Use `check-release-readiness.sh --pre-tag` before tagging to catch missing
+GitHub auth, missing repo secrets, and missing local GPG setup. Use
+`check-release-readiness.sh` after the release workflow runs; the post-tag
+check fails until the remote tag exists and Maven Central metadata shows the
+release.
+
 ## Cutting a release (automated path)
 
 ```bash
@@ -74,11 +92,14 @@ In <https://github.com/async-java/async.java/settings/secrets/actions> add:
 #    Edit pom.xml: <version>0.2.10-SNAPSHOT</version> -> <version>0.2.10</version>
 git commit -am "Release 0.2.10"
 
-# 2. Tag the commit. The release workflow only fires on `v*` tags.
+# 2. Confirm release prerequisites before tagging.
+scripts/check-release-readiness.sh --pre-tag
+
+# 3. Tag the commit. The release workflow only fires on `v*` tags.
 git tag v0.2.10
 git push origin master --tags
 
-# 3. (Optional) Open development on the next version.
+# 4. (Optional) Open development on the next version.
 #    Edit pom.xml: <version>0.2.10</version> -> <version>0.2.11-SNAPSHOT</version>
 git commit -am "Begin 0.2.11 development"
 git push
