@@ -8,11 +8,25 @@ if [ "${1:-}" = "--pre-tag" ]; then
   repo="${2:-async-java/async.java}"
 fi
 
+pom_value() {
+  local expression="$1"
+  local fallback_tag="$2"
+  if command -v mvn >/dev/null 2>&1; then
+    mvn -B -q -DforceStdout help:evaluate -Dexpression="$expression"
+  else
+    awk -F'[<>]' -v tag="$fallback_tag" '$2 == tag { print $3; exit }' pom.xml
+  fi
+}
+
 if command -v mvn >/dev/null 2>&1; then
   version="$(mvn -B -q -DforceStdout help:evaluate -Dexpression=project.version)"
 else
   version="$(awk -F'[<>]' '/<version>/ { print $3; exit }' pom.xml)"
 fi
+group_id="$(pom_value project.groupId groupId)"
+artifact_id="$(pom_value project.artifactId artifactId)"
+group_path="$(printf '%s' "$group_id" | tr . /)"
+metadata_path="$group_path/$artifact_id/maven-metadata.xml"
 tag="v$version"
 branch="$(git branch --show-current)"
 required=(
@@ -65,7 +79,7 @@ else
   fail=1
 fi
 
-metadata_url="https://repo.maven.apache.org/maven2/io/github/async-java/async-java/maven-metadata.xml"
+metadata_url="https://repo.maven.apache.org/maven2/$metadata_path"
 if curl -fsSL "$metadata_url" >/tmp/async-java-release-metadata.xml 2>/dev/null; then
   if grep -q "<version>$version</version>" /tmp/async-java-release-metadata.xml; then
     say "present: Maven Central version $version"

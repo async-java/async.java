@@ -36,7 +36,7 @@ fi
 gh auth status >/dev/null
 
 for name in "${required[@]}"; do
-  printf '%s' "${!name}" | gh secret set "$name" --repo "$repo" --body-file -
+  printf '%s' "${!name}" | gh secret set "$name" --repo "$repo"
 done
 
 echo "release secrets configured for $repo"
