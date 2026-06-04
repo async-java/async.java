@@ -1,10 +1,15 @@
 package org.ores.async;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Bridge between async.java's error-first callback shape and the JDK's promise primitive
@@ -19,8 +24,13 @@ import java.util.function.Consumer;
  *   <li>{@link #fromStage(CompletionStage)} — {@code CompletionStage} → async.java
  *       {@link Asyncc.AsyncTask}. Useful when consuming a third-party promise-returning API
  *       (a JDBC async driver, an HTTP client) inside an async.java combinator.</li>
+ *   <li>{@link #fromStage(Supplier)} — lazy {@code CompletionStage} supplier → async.java
+ *       task. Use this with {@code Series} / {@code ParallelLimit} when the stage should not be
+ *       created until the combinator actually starts that task.</li>
  *   <li>{@link #fromCallable(Executor, Callable)} — wrap a sync, possibly-blocking
  *       {@link Callable} as an async.java task, dispatching it onto the provided executor.</li>
+ *   <li>{@link #fromFuture(Executor, Future)} — wrap a plain JDK {@link Future} as an async.java
+ *       task, waiting on the provided executor so the caller thread is never blocked.</li>
  * </ul>
  *
  * <h3>The {@code toFuture} idiom</h3>
@@ -170,7 +180,177 @@ public final class WrapFuture {
   public static <V> Asyncc.AsyncTask<V, Throwable> fromStage(
       final CompletionStage<V> stage) {
 
+    Objects.requireNonNull(stage, "stage");
+
     return c -> stage.whenComplete((value, err) -> {
+      if (err != null) {
+        c.fail(err);
+      } else {
+        c.success(value);
+      }
+    });
+  }
+
+  /**
+   * Adapt a lazy {@link CompletionStage} supplier to an async.java {@link Asyncc.AsyncTask}.
+   *
+   * <p>This is the supplier-shaped sibling of {@link #fromStage(CompletionStage)}. The supplier
+   * is invoked only when the combinator starts this task, which preserves async.java scheduling
+   * semantics for {@code Series}, {@code ParallelLimit}, {@code RaceLimit}, and other bounded or
+   * sequential combinators.
+   *
+   * <pre>
+   *   Asyncc.Series(List.of(
+   *       WrapFuture.fromStage(() -&gt; client.validateAsync(req)),
+   *       WrapFuture.fromStage(() -&gt; client.persistAsync(req))
+   *   ), finalCallback);
+   * </pre>
+   *
+   * <p>If the supplier throws before returning a stage, the task fails the callback with that
+   * throwable. If it returns {@code null}, the task fails with {@link NullPointerException}.
+   *
+   * @param <V> value type produced by the stage
+   * @param stageSupplier supplier invoked when the async.java task starts
+   * @return an async.java task suitable for callback combinators
+   * @since 0.2.10
+   */
+  public static <V> Asyncc.AsyncTask<V, Throwable> fromStage(
+      final Supplier<? extends CompletionStage<V>> stageSupplier) {
+
+    Objects.requireNonNull(stageSupplier, "stageSupplier");
+
+    return c -> {
+      final CompletionStage<V> stage;
+      try {
+        stage = Objects.requireNonNull(stageSupplier.get(), "stageSupplier.get()");
+      } catch (Throwable t) {
+        c.fail(t);
+        return;
+      }
+
+      stage.whenComplete((value, err) -> {
+        if (err != null) {
+          c.fail(err);
+        } else {
+          c.success(value);
+        }
+      });
+    };
+  }
+
+  /**
+   * Adapt a plain JDK {@link Future} to a {@link CompletableFuture}.
+   *
+   * <p>{@code Future#get()} is blocking, so this method waits on the supplied {@code executor}
+   * instead of blocking the caller. For large numbers of blocking futures, a virtual-thread
+   * executor is a natural fit:
+   *
+   * <pre>
+   *   try (var vt = AsyncLoom.newVirtualThreadPerTaskExecutor()) {
+   *       CompletableFuture&lt;Response&gt; cf = WrapFuture.toCompletableFuture(vt, legacyFuture);
+   *   }
+   * </pre>
+   *
+   * <p>If the returned {@code CompletableFuture} is cancelled, cancellation is propagated to the
+   * underlying {@code Future}. If {@code future.get()} throws {@link ExecutionException}, the
+   * original cause is used for exceptional completion.
+   *
+   * @param <V> value type produced by the future
+   * @param exec executor used for the blocking {@code Future#get()} wait
+   * @param future legacy/plain JDK future to adapt
+   * @return a {@code CompletableFuture} mirroring the supplied future
+   * @since 0.2.10
+   */
+  public static <V> CompletableFuture<V> toCompletableFuture(
+      final Executor exec,
+      final Future<? extends V> future) {
+
+    Objects.requireNonNull(exec, "exec");
+    Objects.requireNonNull(future, "future");
+
+    final CompletableFuture<V> cf = new CompletableFuture<>() {
+      @Override
+      public boolean cancel(final boolean mayInterruptIfRunning) {
+        future.cancel(mayInterruptIfRunning);
+        return super.cancel(mayInterruptIfRunning);
+      }
+    };
+
+    try {
+      exec.execute(() -> {
+        try {
+          cf.complete(future.get());
+        } catch (CancellationException e) {
+          cf.cancel(false);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          cf.completeExceptionally(e);
+        } catch (ExecutionException e) {
+          cf.completeExceptionally(e.getCause() == null ? e : e.getCause());
+        } catch (Throwable t) {
+          cf.completeExceptionally(t);
+        }
+      });
+    } catch (Throwable t) {
+      cf.completeExceptionally(t);
+    }
+
+    return cf;
+  }
+
+  /**
+   * Dispatch a checked {@link Callable} onto an executor and expose its result as a
+   * {@link CompletableFuture}. Unlike {@link CompletableFuture#supplyAsync}, checked exceptions
+   * from {@code callable.call()} are preserved directly as the exceptional completion cause.
+   *
+   * @param <V> value type produced by the callable
+   * @param exec executor to run the callable on
+   * @param callable synchronous work to perform
+   * @return a {@code CompletableFuture} for the callable result
+   * @since 0.2.10
+   */
+  public static <V> CompletableFuture<V> toCompletableFuture(
+      final Executor exec,
+      final Callable<V> callable) {
+
+    Objects.requireNonNull(exec, "exec");
+    Objects.requireNonNull(callable, "callable");
+
+    final CompletableFuture<V> cf = new CompletableFuture<>();
+
+    try {
+      exec.execute(() -> {
+        try {
+          cf.complete(callable.call());
+        } catch (Throwable t) {
+          cf.completeExceptionally(t);
+        }
+      });
+    } catch (Throwable t) {
+      cf.completeExceptionally(t);
+    }
+
+    return cf;
+  }
+
+  /**
+   * Adapt a plain JDK {@link Future} to an async.java {@link Asyncc.AsyncTask}.
+   *
+   * <p>The blocking wait happens on {@code exec}. This makes the adapter safe to use at an
+   * async.java boundary without pinning the caller thread; for highly concurrent blocking waits,
+   * prefer a virtual-thread executor from {@link AsyncLoom#newVirtualThreadPerTaskExecutor()}.
+   *
+   * @param <V> value type produced by the future
+   * @param exec executor used for the blocking {@code Future#get()} wait
+   * @param future legacy/plain JDK future to adapt
+   * @return an async.java task suitable for callback combinators
+   * @since 0.2.10
+   */
+  public static <V> Asyncc.AsyncTask<V, Throwable> fromFuture(
+      final Executor exec,
+      final Future<? extends V> future) {
+
+    return c -> toCompletableFuture(exec, future).whenComplete((value, err) -> {
       if (err != null) {
         c.fail(err);
       } else {
@@ -195,11 +375,11 @@ public final class WrapFuture {
       final Executor exec,
       final Callable<V> callable) {
 
-    return c -> exec.execute(() -> {
-      try {
-        c.success(callable.call());
-      } catch (Throwable t) {
-        c.fail(t);
+    return c -> toCompletableFuture(exec, callable).whenComplete((value, err) -> {
+      if (err != null) {
+        c.fail(err);
+      } else {
+        c.success(value);
       }
     });
   }

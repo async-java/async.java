@@ -1,6 +1,7 @@
 package org.ores.async;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -8,6 +9,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -60,6 +63,10 @@ import java.util.function.Supplier;
  *   CompletableFuture&lt;List&lt;Profile&gt;&gt; profiles =
  *       AsyncFut.Map(userIds, id -&gt; fetchProfileAsync(id));
  *
+ *   // Concat: async map, then flatten one level
+ *   CompletableFuture&lt;List&lt;Order&gt;&gt; orders =
+ *       AsyncFut.Concat(userIds, id -&gt; fetchOrdersAsync(id));
+ *
  *   // Reduce: sequential fold with an async reducer
  *   CompletableFuture&lt;BigDecimal&gt; total =
  *       AsyncFut.Reduce(transactions, BigDecimal.ZERO,
@@ -94,6 +101,20 @@ import java.util.function.Supplier;
  *               ))
  *           ).run(c)
  *   ), wrap(finalValue -&gt; reply.send(finalValue)));
+ * </pre>
+ *
+ * <p>Plain JDK {@link Future Futures} are also supported. Because {@code Future#get()} blocks,
+ * pass an executor that is dedicated to the wait. A virtual-thread executor from
+ * {@link AsyncLoom#newVirtualThreadPerTaskExecutor()} is ideal for many blocking waits:
+ *
+ * <pre>
+ *   ExecutorService vt = AsyncLoom.newVirtualThreadPerTaskExecutor();
+ *   try {
+ *       CompletableFuture&lt;List&lt;Payload&gt;&gt; all =
+ *           AsyncFut.ParallelFutures(vt, legacyClient.submitAll(requests));
+ *   } finally {
+ *       vt.shutdown();
+ *   }
  * </pre>
  *
  * @see Asyncc
@@ -212,6 +233,58 @@ public final class AsyncFut {
     return Race(wrapped);
   }
 
+  // ---------------- Plain Future interop --------------------------------
+
+  /**
+   * Like {@link #ParallelF(List)}, but accepts plain JDK {@link Future Futures}.
+   *
+   * <p>The library calls {@link Future#get()} internally on {@code waitExecutor}, so callers do
+   * not have to write their own blocking bridge. This is intended for already-started legacy
+   * futures returned by APIs such as {@link java.util.concurrent.ExecutorService#submit}.
+   *
+   * <p>Important: {@code waitExecutor} is the executor used to wait on the futures, not
+   * necessarily the executor that produced them. Avoid using the same saturated fixed-size pool
+   * that still needs to run the underlying work. For many blocking waits, use
+   * {@link AsyncLoom#newVirtualThreadPerTaskExecutor()} on JDK 21+.
+   *
+   * @param <T> value type produced by each future
+   * @param waitExecutor executor used for blocking {@code Future#get()} waits
+   * @param futures already-started plain JDK futures
+   * @return a future of all results in input order
+   * @since 0.2.10
+   */
+  public static <T> CompletableFuture<List<T>> ParallelFutures(
+      final Executor waitExecutor,
+      final List<? extends Future<? extends T>> futures) {
+
+    final List<CompletionStage<T>> stages = new ArrayList<>(futures.size());
+    for (final Future<? extends T> future : futures) {
+      stages.add(WrapFuture.toCompletableFuture(waitExecutor, future));
+    }
+    return ParallelF(stages);
+  }
+
+  /**
+   * Like {@link #RaceF(List)}, but accepts plain JDK {@link Future Futures}. The library calls
+   * {@link Future#get()} internally on {@code waitExecutor}; the first completed wait wins.
+   *
+   * @param <T> value type produced by each future
+   * @param waitExecutor executor used for blocking {@code Future#get()} waits
+   * @param futures already-started plain JDK futures
+   * @return a future completed with the first future result
+   * @since 0.2.10
+   */
+  public static <T> CompletableFuture<T> RaceFutures(
+      final Executor waitExecutor,
+      final List<? extends Future<? extends T>> futures) {
+
+    final List<CompletionStage<T>> stages = new ArrayList<>(futures.size());
+    for (final Future<? extends T> future : futures) {
+      stages.add(WrapFuture.toCompletableFuture(waitExecutor, future));
+    }
+    return RaceF(stages);
+  }
+
   // ---------------- Race -------------------------------------------------
 
   /**
@@ -264,6 +337,76 @@ public final class AsyncFut {
         }
       }, c);
     });
+  }
+
+  // ---------------- Concat -----------------------------------------------
+
+  /**
+   * Async map + one-level flatten. {@code mapper(element)} runs for each element concurrently
+   * and returns a collection of zero or more output values; the returned future completes with
+   * all mapper results concatenated in input order.
+   *
+   * <pre>
+   *   CompletableFuture&lt;List&lt;Order&gt;&gt; orders =
+   *       AsyncFut.Concat(userIds, id -&gt; orderClient.ordersForUserAsync(id));
+   * </pre>
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param input values to map
+   * @param mapper async mapper producing zero or more output values
+   * @return flattened result future
+   * @since 0.2.10
+   */
+  public static <T, V> CompletableFuture<List<V>> Concat(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<? extends Collection<? extends V>>> mapper) {
+
+    return ConcatLimit(Integer.MAX_VALUE, input, mapper);
+  }
+
+  /**
+   * Sequential version of {@link #Concat(Iterable, Function)}.
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param input values to map
+   * @param mapper async mapper producing zero or more output values
+   * @return flattened result future
+   * @since 0.2.10
+   */
+  public static <T, V> CompletableFuture<List<V>> ConcatSeries(
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<? extends Collection<? extends V>>> mapper) {
+
+    return ConcatLimit(1, input, mapper);
+  }
+
+  /**
+   * Bounded-concurrency version of {@link #Concat(Iterable, Function)}.
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param limit max in-flight mapper calls
+   * @param input values to map
+   * @param mapper async mapper producing zero or more output values
+   * @return flattened result future
+   * @since 0.2.10
+   */
+  public static <T, V> CompletableFuture<List<V>> ConcatLimit(
+      final int limit,
+      final Iterable<T> input,
+      final Function<? super T, ? extends CompletionStage<? extends Collection<? extends V>>> mapper) {
+
+    final List<T> items = toList(input);
+    final List<Supplier<? extends CompletionStage<Collection<? extends V>>>> suppliers =
+        new ArrayList<>(items.size());
+
+    for (final T item : items) {
+      suppliers.add(() -> widenCollectionStage(mapper.apply(item)));
+    }
+
+    return AsyncFut.ParallelLimit(limit, suppliers).thenApply(AsyncFut::flattenOne);
   }
 
   // ---------------- Reduce -----------------------------------------------
@@ -598,6 +741,24 @@ public final class AsyncFut {
       });
     }
     return out;
+  }
+
+  private static <V> List<V> flattenOne(
+      final List<? extends Collection<? extends V>> chunks) {
+
+    final List<V> out = new ArrayList<>();
+    for (final Collection<? extends V> chunk : chunks) {
+      if (chunk != null) {
+        out.addAll(chunk);
+      }
+    }
+    return out;
+  }
+
+  private static <V> CompletionStage<Collection<? extends V>> widenCollectionStage(
+      final CompletionStage<? extends Collection<? extends V>> stage) {
+
+    return stage.thenApply((Collection<? extends V> chunk) -> chunk);
   }
 
   private static <T> List<T> toList(final Iterable<T> input) {

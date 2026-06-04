@@ -156,6 +156,86 @@ public class AsyncFutTest {
     }
   }
 
+  // ---------------- Concat -----------------------------------------------
+
+  @Test(timeout = TIMEOUT)
+  public void concat_flattens_mapper_collections_preserving_input_order() throws Exception {
+    final CompletableFuture<List<Integer>> fut = AsyncFut.Concat(
+        List.of(1, 2, 3),
+        n -> CompletableFuture.completedFuture(List.of(n, n * 10)));
+
+    assertEquals(List.of(1, 10, 2, 20, 3, 30), fut.get(2, TimeUnit.SECONDS));
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void concatSeries_runs_mapper_sequentially() throws Exception {
+    final AtomicInteger order = new AtomicInteger();
+
+    final CompletableFuture<List<String>> fut = AsyncFut.ConcatSeries(
+        List.of("validate", "persist", "notify"),
+        step -> {
+          final int expected = switch (step) {
+            case "validate" -> 0;
+            case "persist" -> 1;
+            case "notify" -> 2;
+            default -> throw new AssertionError(step);
+          };
+          assertEquals(expected, order.getAndIncrement());
+          return CompletableFuture.completedFuture(List.of(step));
+        });
+
+    assertEquals(List.of("validate", "persist", "notify"), fut.get(2, TimeUnit.SECONDS));
+    assertEquals(3, order.get());
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void concatLimit_enforces_concurrency_cap() throws Exception {
+    final ExecutorService exec = Executors.newFixedThreadPool(8);
+    try {
+      final AtomicInteger inFlight = new AtomicInteger();
+      final AtomicInteger maxInFlight = new AtomicInteger();
+
+      final CompletableFuture<List<Integer>> fut = AsyncFut.ConcatLimit(
+          2,
+          List.of(1, 2, 3, 4, 5, 6),
+          n -> CompletableFuture.supplyAsync(() -> {
+            final int now = inFlight.incrementAndGet();
+            maxInFlight.accumulateAndGet(now, Math::max);
+            try { Thread.sleep(10); } catch (InterruptedException ie) { /* */ }
+            inFlight.decrementAndGet();
+            return List.of(n, n * 10);
+          }, exec));
+
+      assertEquals(List.of(1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 6, 60),
+          fut.get(5, TimeUnit.SECONDS));
+      assertTrue(
+          "max in-flight (" + maxInFlight.get() + ") must not exceed limit 2",
+          maxInFlight.get() <= 2);
+    } finally {
+      exec.shutdown();
+      exec.awaitTermination(2, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test(timeout = TIMEOUT)
+  public void concat_short_circuits_on_mapper_failure() throws Exception {
+    final CompletableFuture<List<Integer>> fut = AsyncFut.Concat(
+        List.of(1, 2, 3),
+        n -> {
+          if (n == 2) {
+            return CompletableFuture.failedFuture(new IllegalStateException("concat-boom"));
+          }
+          return CompletableFuture.completedFuture(List.of(n));
+        });
+
+    try {
+      fut.get(2, TimeUnit.SECONDS);
+      fail("expected ExecutionException");
+    } catch (ExecutionException ee) {
+      assertTrue(ee.getCause().getMessage().contains("concat-boom"));
+    }
+  }
+
   // ---------------- Reduce -----------------------------------------------
 
   @Test(timeout = TIMEOUT)

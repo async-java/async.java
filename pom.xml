@@ -8,16 +8,17 @@
         old: com.oresoftware:async1            (was never released to Central)
         old: com.oresoftware:async.0.1         (frozen at 0.1.1012, baked the version into
                                                 the artifactId — awkward to upgrade against)
-        new: io.github.async-java:async-java   (current release line, this PR onwards)
+        new: io.github.oresoftware:async-java   (current release line, this PR onwards)
 
-      The `io.github.<org>` group is auto-verifiable on the Sonatype Central Portal because
-      the async-java GitHub organisation already exists at https://github.com/async-java.
+      The `io.github.oresoftware` namespace matches the maintainer GitHub account used for
+      Central Portal verification. The source repository remains under
+      https://github.com/async-java/async.java.
       The old 0.1.1012 artifact stays in place on Maven Central for any existing consumer.
     -->
-    <groupId>io.github.async-java</groupId>
+    <groupId>io.github.oresoftware</groupId>
     <artifactId>async-java</artifactId>
     <packaging>jar</packaging>
-    <version>0.2.9</version>
+    <version>0.2.10</version>
     <name>async-java</name>
     <url>https://github.com/async-java/async.java</url>
 
@@ -26,8 +27,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!--
-          Bumped to 11 (LTS) so the project compiles on a supported JDK.
-          JDK 10 went EOL in September 2018; CI providers no longer ship it.
+          Bumped to 17 (LTS) so the project compiles on a supported baseline
+          while still testing runtime behavior on JDK 21 virtual threads.
         -->
         <jdk.version>17</jdk.version>
 
@@ -37,6 +38,15 @@
           The vertx-* dependencies are test-scope only.
         -->
         <vertx.version>3.9.16</vertx.version>
+        <jacoco.version>0.8.14</jacoco.version>
+        <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
+        <maven.dependency.plugin.version>3.9.0</maven.dependency.plugin.version>
+        <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
+        <maven.jar.plugin.version>3.4.2</maven.jar.plugin.version>
+        <maven.javadoc.plugin.version>3.12.0</maven.javadoc.plugin.version>
+        <maven.source.plugin.version>3.4.0</maven.source.plugin.version>
+        <maven.surefire.plugin.version>3.5.6</maven.surefire.plugin.version>
+        <central.publishing.maven.plugin.version>0.10.0</central.publishing.maven.plugin.version>
 
         <!--
           log4j 1.2 reached EOL in 2015 with multiple unpatched CVEs.
@@ -130,7 +140,7 @@
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-web</artifactId>
-            <version>3.6.2</version>
+            <version>${vertx.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -182,7 +192,7 @@
         <!--
           Removed the legacy <finalName>async</finalName> override so the produced jar uses
           the standard ${project.artifactId}-${project.version} naming. Downstream consumers
-          expect to see `async-java-0.2.0.jar` in their dependency:tree, not `async.jar`.
+          expect to see `async-java-${project.version}.jar` in their dependency:tree, not `async.jar`.
         -->
         <plugins>
 
@@ -190,7 +200,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.3</version>
+                <version>${jacoco.version}</version>
                 <executions>
                     <execution>
                         <goals>
@@ -216,18 +226,22 @@
 
             <!--
               maven-compiler-plugin 2.3.2 was from 2010 and silently ignored the modern
-              `release` flag on JDK 11+. Pin to 3.8.1 — the lowest version that honors
-              `<release>` (added in 3.8.0) and that JitPack's bundled Maven 3.5.x can
-              still load. Newer versions of the plugin (3.10+, 3.13+) require Maven
-              3.6.3 which JitPack does not yet ship.
+              `release` flag on JDK 11+. Keep this on the stable 3.x line so the project
+              remains Maven 3-compatible while still compiling with modern JDKs.
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>${maven.compiler.plugin.version}</version>
                 <configuration>
                     <release>${jdk.version}</release>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
             </plugin>
 
             <!--
@@ -240,7 +254,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.1</version>
+                <version>${maven.jar.plugin.version}</version>
                 <configuration>
                     <excludes>
                         <exclude>**/log4j.properties</exclude>
@@ -252,7 +266,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.6.1</version>
+                <version>${maven.dependency.plugin.version}</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -274,21 +288,19 @@
 
     <profiles>
         <!--
-          Activate with `mvn -P release deploy` (or via the .github/workflows/release.yml
-          tag-triggered workflow). Dev / CI builds do not activate this profile, so
-          contributors don't need GPG keys, sonatype credentials, or strict javadocs
-          just to run `mvn test`.
+          Attach the -sources.jar and -javadoc.jar artifacts expected by package registries.
+          Keep this separate from `release` so GitHub Packages can publish the same artifact
+          set without also activating Sonatype Central upload/signing behavior.
         -->
         <profile>
-            <id>release</id>
+            <id>publish-artifacts</id>
             <build>
                 <plugins>
-
                     <!-- Attach the -sources.jar Maven Central requires. -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
-                        <version>3.3.1</version>
+                        <version>${maven.source.plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>attach-sources</id>
@@ -309,7 +321,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.6.3</version>
+                        <version>${maven.javadoc.plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
@@ -331,7 +343,20 @@
                             </tags>
                         </configuration>
                     </plugin>
+                </plugins>
+            </build>
+        </profile>
 
+        <!--
+          Activate with `mvn -P publish-artifacts,release deploy` (or via the
+          .github/workflows/release.yml tag-triggered workflow). Dev / CI builds do not
+          activate this profile, so contributors don't need GPG keys or Sonatype credentials
+          just to run `mvn test`.
+        -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
                     <!--
                       GPG-sign the jar, sources, javadocs, and pom. The signing key is
                       imported into the agent in CI (see .github/workflows/release.yml);
@@ -341,7 +366,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.4</version>
+                        <version>${maven.gpg.plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -375,7 +400,7 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.5.0</version>
+                        <version>${central.publishing.maven.plugin.version}</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
@@ -386,6 +411,22 @@
 
                 </plugins>
             </build>
+        </profile>
+
+        <!--
+          Activate with `mvn -P publish-artifacts,github-packages deploy` after configuring a `github`
+          server in settings.xml. GitHub Actions can create that settings.xml via
+          actions/setup-java using GITHUB_ACTOR / GITHUB_TOKEN.
+        -->
+        <profile>
+            <id>github-packages</id>
+            <distributionManagement>
+                <repository>
+                    <id>github</id>
+                    <name>GitHub Packages</name>
+                    <url>https://maven.pkg.github.com/async-java/async.java</url>
+                </repository>
+            </distributionManagement>
         </profile>
     </profiles>
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
+if [ $# -ne 1 ]; then
+  echo "usage: $0 <GPG_KEY_ID>" >&2
+  exit 64
+fi
 
-#gpg --keyserver hkp://pool.sks-keyservers.net --recv-keys f1418e089845027e
-#gpg --keyserver hkp://keyserver.ubuntu.com --send-keys f1418e089845027e
+key_id="$1"
 
-
-gpg --keyserver http://pool.sks-keyservers.net --recv-keys f1418e089845027e
-gpg --keyserver http://keyserver.ubuntu.com --send-keys f1418e089845027e
-gpg --keyserver http://pool.sks-keyservers.net --recv-keys f1418e089845027e
-gpg --keyserver http://keyserver.ubuntu.com --send-keys f1418e089845027e
+gpg --keyserver hkps://keys.openpgp.org --send-keys "$key_id"
+gpg --keyserver hkps://keyserver.ubuntu.com --send-keys "$key_id"
