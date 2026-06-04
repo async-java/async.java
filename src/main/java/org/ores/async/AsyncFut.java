@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -94,6 +96,20 @@ import java.util.function.Supplier;
  *               ))
  *           ).run(c)
  *   ), wrap(finalValue -&gt; reply.send(finalValue)));
+ * </pre>
+ *
+ * <p>Plain JDK {@link Future Futures} are also supported. Because {@code Future#get()} blocks,
+ * pass an executor that is dedicated to the wait. A virtual-thread executor from
+ * {@link AsyncLoom#newVirtualThreadPerTaskExecutor()} is ideal for many blocking waits:
+ *
+ * <pre>
+ *   ExecutorService vt = AsyncLoom.newVirtualThreadPerTaskExecutor();
+ *   try {
+ *       CompletableFuture&lt;List&lt;Payload&gt;&gt; all =
+ *           AsyncFut.ParallelFutures(vt, legacyClient.submitAll(requests));
+ *   } finally {
+ *       vt.shutdown();
+ *   }
  * </pre>
  *
  * @see Asyncc
@@ -210,6 +226,58 @@ public final class AsyncFut {
       wrapped.add(() -> stage);
     }
     return Race(wrapped);
+  }
+
+  // ---------------- Plain Future interop --------------------------------
+
+  /**
+   * Like {@link #ParallelF(List)}, but accepts plain JDK {@link Future Futures}.
+   *
+   * <p>The library calls {@link Future#get()} internally on {@code waitExecutor}, so callers do
+   * not have to write their own blocking bridge. This is intended for already-started legacy
+   * futures returned by APIs such as {@link java.util.concurrent.ExecutorService#submit}.
+   *
+   * <p>Important: {@code waitExecutor} is the executor used to wait on the futures, not
+   * necessarily the executor that produced them. Avoid using the same saturated fixed-size pool
+   * that still needs to run the underlying work. For many blocking waits, use
+   * {@link AsyncLoom#newVirtualThreadPerTaskExecutor()} on JDK 21+.
+   *
+   * @param <T> value type produced by each future
+   * @param waitExecutor executor used for blocking {@code Future#get()} waits
+   * @param futures already-started plain JDK futures
+   * @return a future of all results in input order
+   * @since 0.2.10
+   */
+  public static <T> CompletableFuture<List<T>> ParallelFutures(
+      final Executor waitExecutor,
+      final List<? extends Future<? extends T>> futures) {
+
+    final List<CompletionStage<T>> stages = new ArrayList<>(futures.size());
+    for (final Future<? extends T> future : futures) {
+      stages.add(WrapFuture.toCompletableFuture(waitExecutor, future));
+    }
+    return ParallelF(stages);
+  }
+
+  /**
+   * Like {@link #RaceF(List)}, but accepts plain JDK {@link Future Futures}. The library calls
+   * {@link Future#get()} internally on {@code waitExecutor}; the first completed wait wins.
+   *
+   * @param <T> value type produced by each future
+   * @param waitExecutor executor used for blocking {@code Future#get()} waits
+   * @param futures already-started plain JDK futures
+   * @return a future completed with the first future result
+   * @since 0.2.10
+   */
+  public static <T> CompletableFuture<T> RaceFutures(
+      final Executor waitExecutor,
+      final List<? extends Future<? extends T>> futures) {
+
+    final List<CompletionStage<T>> stages = new ArrayList<>(futures.size());
+    for (final Future<? extends T> future : futures) {
+      stages.add(WrapFuture.toCompletableFuture(waitExecutor, future));
+    }
+    return RaceF(stages);
   }
 
   // ---------------- Race -------------------------------------------------

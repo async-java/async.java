@@ -6,6 +6,73 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-06-04
+
+### Added
+
+* **Plain JDK `Future` interop.**
+  `WrapFuture.toCompletableFuture(Executor, Future)` and
+  `WrapFuture.fromFuture(Executor, Future)` call `Future.get()` inside the
+  library on a caller-supplied waiting executor, unwrap `ExecutionException`
+  causes, and propagate cancellation from the returned `CompletableFuture`
+  back to the underlying `Future`.
+
+* **Collection helpers for already-started plain futures.**
+  `AsyncFut.ParallelFutures(waitExecutor, futures)` and
+  `AsyncFut.RaceFutures(waitExecutor, futures)` bridge legacy `Future<T>`
+  APIs into the promise-shaped combinators without per-call-site `get()`
+  loops.
+
+* **`AsyncLoom`: Java 21 virtual-thread helpers with a Java 17 bytecode
+  baseline.**
+  The new class detects virtual-thread support reflectively, creates
+  virtual-thread-per-task executors on JDK 21+, and exposes
+  `supply`, `run`, `task`, `installNeoQueueExecutor`, and the blocking
+  combinator family:
+  `ParallelBlocking`, `ParallelLimitBlocking`, `SeriesBlocking`,
+  `RaceBlocking`, `MapBlocking`, `MapLimitBlocking`, `EachBlocking`,
+  `EachLimitBlocking`, `ReduceBlocking`, `TimesBlocking`, `ConcatBlocking`,
+  `ConcatSeriesBlocking`, and `ConcatLimitBlocking`.
+
+* **Callback-style virtual-thread blocking combinators on `Asyncc`.**
+  Added `Asyncc.*Blocking` wrappers for callback users:
+  `ParallelBlocking`, `ParallelLimitBlocking`, `SeriesBlocking`,
+  `RaceBlocking`, `MapBlocking`, `MapLimitBlocking`, `EachBlocking`,
+  `EachLimitBlocking`, `ReduceBlocking`, `TimesBlocking`, `ConcatBlocking`,
+  `ConcatSeriesBlocking`, and `ConcatLimitBlocking`.
+
+* **Future/Loom interop tests.**
+  `FutureAndLoomInteropTest` pins `Future.get()` bridging, cancellation
+  propagation, ordered collection of future results, race semantics, Java
+  17 unsupported-runtime behavior, and JDK 21 virtual-thread execution.
+
+* **Compile-checked examples.**
+  `src/test/java/examples` now includes Future interop, `AsyncLoom` blocking
+  combinator, and callback-style `Asyncc.*Blocking` examples that Maven
+  compiles with the test sources.
+
+### Changed
+
+* **Release/build tooling refreshed.**
+  Upgraded JaCoCo to `0.8.14` so Java 17/21 test runs no longer emit
+  instrumentation errors, pinned Surefire, updated the compiler/jar/source/
+  javadoc/GPG plugin set, and bumped the Sonatype Central Publishing plugin
+  to `0.10.0`.
+
+* **JitPack now downloads Maven 3.9.16.**
+  This keeps JitPack builds compatible with the modern Maven plugin set.
+
+* **GitHub Packages publishing wired into the release workflow.**
+  Added a `github-packages` Maven profile and a release-workflow deploy step
+  using `GITHUB_TOKEN`, separate from the signed Sonatype/Maven Central path.
+
+* **Release credential hygiene.**
+  Replaced the repo-local OSSRH-era `settings.xml` with a safe Central/GitHub
+  Packages template, refreshed the local deploy/GPG helper scripts, and added
+  an explicit release-workflow check for the required Central/GPG secrets.
+
+**Total: 207 tests, 0 failures, 9 JDK21-gated skips on JDK 17.**
+
 ## [0.2.9] - 2026-05-18
 
 ### Fixed
@@ -896,6 +963,8 @@ Initial public release on Maven Central under the
 `com.oresoftware:async.0.1:0.1.1012` coordinate. Frozen — see the new
 `io.github.async-java:async-java` line for active development.
 
-[Unreleased]: https://github.com/async-java/async.java/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/async-java/async.java/compare/v0.2.10...HEAD
+[0.2.10]: https://github.com/async-java/async.java/releases/tag/v0.2.10
+[0.2.9]: https://github.com/async-java/async.java/releases/tag/v0.2.9
 [0.2.0]: https://github.com/async-java/async.java/releases/tag/v0.2.0
 [0.1.1012]: https://repo1.maven.org/maven2/com/oresoftware/async.0.1/0.1.1012/

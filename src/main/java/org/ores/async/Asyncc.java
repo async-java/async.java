@@ -1,6 +1,9 @@
 package org.ores.async;
 
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Entry point for async.java's combinators.
@@ -344,6 +347,295 @@ public class Asyncc {
   public interface AsyncTask<T, E> {
     //    public void run(AsyncCallback<T, E> cb);
     void run(IAsyncCallback<T, E> cb);
+  }
+
+  /**
+   * Run blocking {@link Callable} tasks concurrently on Java 21+ virtual threads and report
+   * the ordered results through the normal error-first callback.
+   *
+   * <p>This is a callback-style wrapper around {@link AsyncLoom#ParallelBlocking(List)}. On
+   * Java 17, where virtual threads are unavailable, the callback receives an
+   * {@link UnsupportedOperationException}.
+   *
+   * @param <T> result type
+   * @param tasks blocking tasks to run
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T> void ParallelBlocking(
+      final List<? extends Callable<T>> tasks,
+      final IAsyncCallback<List<T>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.ParallelBlocking(tasks), f);
+  }
+
+  /**
+   * Run blocking {@link Callable} tasks on Java 21+ virtual threads with at most {@code limit}
+   * tasks in flight.
+   *
+   * @param <T> result type
+   * @param limit max in-flight tasks
+   * @param tasks blocking tasks to run
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T> void ParallelLimitBlocking(
+      final int limit,
+      final List<? extends Callable<T>> tasks,
+      final IAsyncCallback<List<T>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.ParallelBlocking(limit, tasks), f);
+  }
+
+  /**
+   * Run blocking {@link Callable} tasks sequentially on Java 21+ virtual threads.
+   *
+   * <p>Each step starts only after the previous step has completed, preserving the normal
+   * {@code Series} contract. The blocking work itself runs on a virtual thread so callers do
+   * not have to call {@code get()}, {@code join()}, or blocking I/O directly on their current
+   * thread.
+   *
+   * @param <T> result type
+   * @param tasks blocking tasks to run in order
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T> void SeriesBlocking(
+      final List<? extends Callable<T>> tasks,
+      final IAsyncCallback<List<T>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.SeriesBlocking(tasks), f);
+  }
+
+  /**
+   * Race blocking {@link Callable} tasks on Java 21+ virtual threads and report the first
+   * result.
+   *
+   * @param <T> result type
+   * @param tasks blocking tasks to race
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T> void RaceBlocking(
+      final List<? extends Callable<T>> tasks,
+      final IAsyncCallback<T, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.RaceBlocking(tasks), f);
+  }
+
+  /**
+   * Map values with a blocking mapper on Java 21+ virtual threads.
+   *
+   * @param <T> input value type
+   * @param <V> mapped value type
+   * @param input values to map
+   * @param mapper blocking mapper
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T, V> void MapBlocking(
+      final Iterable<T> input,
+      final AsyncLoom.BlockingFunction<? super T, V> mapper,
+      final IAsyncCallback<List<V>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.MapBlocking(input, mapper), f);
+  }
+
+  /**
+   * Map values with a blocking mapper on Java 21+ virtual threads with at most {@code limit}
+   * mapper calls in flight.
+   *
+   * @param <T> input value type
+   * @param <V> mapped value type
+   * @param limit max in-flight mapper calls
+   * @param input values to map
+   * @param mapper blocking mapper
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T, V> void MapLimitBlocking(
+      final int limit,
+      final Iterable<T> input,
+      final AsyncLoom.BlockingFunction<? super T, V> mapper,
+      final IAsyncCallback<List<V>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.MapLimitBlocking(limit, input, mapper), f);
+  }
+
+  /**
+   * Process each value with a blocking consumer on Java 21+ virtual threads.
+   *
+   * @param <T> input value type
+   * @param input values to process
+   * @param consumer blocking consumer
+   * @param f final error-only callback
+   * @since 0.2.10
+   */
+  public static <T> void EachBlocking(
+      final Iterable<T> input,
+      final AsyncLoom.BlockingConsumer<? super T> consumer,
+      final NeoEachI.IEachCallback<Throwable> f) {
+
+    pipeLoomEach(() -> AsyncLoom.EachBlocking(input, consumer), f);
+  }
+
+  /**
+   * Process each value with a blocking consumer on Java 21+ virtual threads with at most
+   * {@code limit} calls in flight.
+   *
+   * @param <T> input value type
+   * @param limit max in-flight calls
+   * @param input values to process
+   * @param consumer blocking consumer
+   * @param f final error-only callback
+   * @since 0.2.10
+   */
+  public static <T> void EachLimitBlocking(
+      final int limit,
+      final Iterable<T> input,
+      final AsyncLoom.BlockingConsumer<? super T> consumer,
+      final NeoEachI.IEachCallback<Throwable> f) {
+
+    pipeLoomEach(() -> AsyncLoom.EachLimitBlocking(limit, input, consumer), f);
+  }
+
+  /**
+   * Reduce values sequentially with a blocking reducer on Java 21+ virtual threads.
+   *
+   * @param <T> input value type
+   * @param <V> accumulator/result type
+   * @param initialVal initial accumulator
+   * @param input values to reduce
+   * @param reducer blocking reducer
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T, V> void ReduceBlocking(
+      final V initialVal,
+      final Iterable<T> input,
+      final AsyncLoom.BlockingReducer<V, ? super T> reducer,
+      final IAsyncCallback<V, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.ReduceBlocking(input, initialVal, reducer), f);
+  }
+
+  /**
+   * Run a blocking index-aware function {@code count} times on Java 21+ virtual threads.
+   *
+   * @param <T> result type
+   * @param count number of calls
+   * @param task blocking index-aware task
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T> void TimesBlocking(
+      final int count,
+      final AsyncLoom.BlockingIntFunction<T> task,
+      final IAsyncCallback<List<T>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.TimesBlocking(count, task), f);
+  }
+
+  /**
+   * Map each value to a collection on Java 21+ virtual threads, then concatenate one level.
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param input values to map
+   * @param mapper blocking mapper producing zero or more values
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T, V> void ConcatBlocking(
+      final Iterable<T> input,
+      final AsyncLoom.BlockingFunction<? super T, ? extends Collection<? extends V>> mapper,
+      final IAsyncCallback<List<V>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.ConcatBlocking(input, mapper), f);
+  }
+
+  /**
+   * Sequential version of {@link #ConcatBlocking(Iterable, AsyncLoom.BlockingFunction, IAsyncCallback)}.
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param input values to map
+   * @param mapper blocking mapper producing zero or more values
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T, V> void ConcatSeriesBlocking(
+      final Iterable<T> input,
+      final AsyncLoom.BlockingFunction<? super T, ? extends Collection<? extends V>> mapper,
+      final IAsyncCallback<List<V>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.ConcatSeriesBlocking(input, mapper), f);
+  }
+
+  /**
+   * Bounded-concurrency version of
+   * {@link #ConcatBlocking(Iterable, AsyncLoom.BlockingFunction, IAsyncCallback)}.
+   *
+   * @param <T> input value type
+   * @param <V> flattened output value type
+   * @param limit max in-flight mapper calls
+   * @param input values to map
+   * @param mapper blocking mapper producing zero or more values
+   * @param f final callback
+   * @since 0.2.10
+   */
+  public static <T, V> void ConcatLimitBlocking(
+      final int limit,
+      final Iterable<T> input,
+      final AsyncLoom.BlockingFunction<? super T, ? extends Collection<? extends V>> mapper,
+      final IAsyncCallback<List<V>, Throwable> f) {
+
+    pipeLoomFuture(() -> AsyncLoom.ConcatLimitBlocking(limit, input, mapper), f);
+  }
+
+  private interface FutSupplier<T> {
+    CompletableFuture<T> get();
+  }
+
+  private static <T> void pipeLoomFuture(
+      final FutSupplier<T> supplier,
+      final IAsyncCallback<T, Throwable> f) {
+
+    try {
+      supplier.get().whenComplete((value, err) -> {
+        if (err != null) {
+          f.fail(unwrapCompletion(err));
+        } else {
+          f.success(value);
+        }
+      });
+    } catch (Throwable t) {
+      f.fail(unwrapCompletion(t));
+    }
+  }
+
+  private static void pipeLoomEach(
+      final FutSupplier<Void> supplier,
+      final NeoEachI.IEachCallback<Throwable> f) {
+
+    try {
+      supplier.get().whenComplete((value, err) -> {
+        if (err != null) {
+          f.done(unwrapCompletion(err));
+        } else {
+          f.done(null);
+        }
+      });
+    } catch (Throwable t) {
+      f.done(unwrapCompletion(t));
+    }
+  }
+
+  private static Throwable unwrapCompletion(final Throwable err) {
+    if (err instanceof CompletionException && err.getCause() != null) {
+      return err.getCause();
+    }
+    return err;
   }
   
   // begin parallel

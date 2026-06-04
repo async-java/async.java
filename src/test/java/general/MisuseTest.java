@@ -27,7 +27,7 @@ import static org.junit.Assert.fail;
  * production downstream consumers were observed to hit (or could plausibly hit).
  *
  * <p>None of these depend on JDK 21 — they exercise the core combinator contracts using
- * plain threads, so they run on JDK 11+ as well.
+ * plain threads, so they run on the JDK 17 baseline as well.
  */
 public class MisuseTest {
 

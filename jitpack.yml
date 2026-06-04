@@ -13,7 +13,7 @@
 #   <dependency>
 #     <groupId>com.github.async-java</groupId>
 #     <artifactId>async.java</artifactId>
-#     <version>v0.2.0</version>   <!-- any git tag, branch, or commit SHA -->
+#     <version>v0.2.10</version>  <!-- any git tag, branch, or commit SHA -->
 #   </dependency>
 #
 # JitPack defaults to OpenJDK 8 which won't compile this project. We need 17+ so
@@ -26,4 +26,4 @@ jdk:
 # 3.6.x, etc. all require Maven 3.6.3+). Download a modern Maven into the build
 # workspace so the plugin set in pom.xml stays current.
 install:
-  - curl -fsSL https://archive.apache.org/dist/maven/maven-3/3.9.9/binaries/apache-maven-3.9.9-bin.tar.gz -o /tmp/mvn.tar.gz && tar -xzf /tmp/mvn.tar.gz -C /tmp && /tmp/apache-maven-3.9.9/bin/mvn -B -Dgpg.skip=true -DskipTests -Dmaven.javadoc.skip=true install
+  - curl -fsSL https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz -o /tmp/mvn.tar.gz && tar -xzf /tmp/mvn.tar.gz -C /tmp && /tmp/apache-maven-3.9.16/bin/mvn -B -Dgpg.skip=true -DskipTests -Dmaven.javadoc.skip=true install

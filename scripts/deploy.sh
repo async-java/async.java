@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-# https://medium.freecodecamp.org/how-to-upload-an-open-source-java-library-to-maven-central-cac7ce2f57c
+# Local Maven Central release helper.
+#
+# Required env vars:
+#   CENTRAL_USERNAME
+#   CENTRAL_PASSWORD
+#   MAVEN_GPG_PASSPHRASE
+#
+# Required local state:
+#   a GPG secret key available to `gpg`
+#
+# GitHub Actions normally handles releases from tags. Use this only when CI is
+# unavailable and the Central Portal credentials are already configured.
 
-# https://dzone.com/articles/publish-your-artifacts-to-maven-central
+if [ -z "${GPG_TTY:-}" ] && tty >/dev/null 2>&1; then
+  export GPG_TTY
+  GPG_TTY="$(tty)"
+fi
 
-gpg --export -a 437A774CD1F35D00 | pbcopy  # public_key
-
-gpg --export -a 437a774cd1f35d00 | pbcopy
-
-export GPG_TTY=$(tty)
-mvn deploy  -Dmaven.test.skip=true #  -Dmaven.javadoc.skip=true +++ use "mvn clean deploy"
+mvn -s settings.xml -P publish-artifacts,release deploy "$@"

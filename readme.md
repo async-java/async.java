@@ -8,7 +8,7 @@
 
 [![ci](https://github.com/async-java/async.java/actions/workflows/ci.yml/badge.svg)](https://github.com/async-java/async.java/actions/workflows/ci.yml)
 [![maven central](https://img.shields.io/maven-central/v/io.github.async-java/async-java)](https://central.sonatype.com/artifact/io.github.async-java/async-java)
-[![jdk](https://img.shields.io/badge/JDK-11%2B-blue)](#requirements)
+[![jdk](https://img.shields.io/badge/JDK-17%2B-blue)](#requirements)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -19,6 +19,7 @@
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Quickstart](#quickstart)
+- [Future and blocking-task interop](#future-and-blocking-task-interop)
 - [Control flow](#control-flow)
   - [Series](#series) · [Parallel](#parallel) · [Waterfall](#waterfall) ·
     [Race](#race) · [Inject](#inject)
@@ -63,6 +64,9 @@ The Java port of `async` is useful when:
 - [Vert.x](https://vertx.io/) — see [Using with Vert.x](#using-with-vertx).
 - [Akka](https://akka.io/) — the same callback discipline plugs into actor
   `tell` / `ask` flows.
+- Plain `Future` / `CompletableFuture` APIs — bridge callback combinators
+  with `WrapFuture`, `AsyncFut`, and the virtual-thread helpers in
+  `AsyncLoom`.
 - Plain `ExecutorService` — install your own executor with
   `NeoQueue.setExecutor(...)` and async.java's continuations run on it.
 
@@ -75,7 +79,7 @@ library solves orchestration."
 
 ## Requirements
 
-- **JDK 11+** (tested on 11, 17, 21).
+- **JDK 17+** (tested on 17 and 21).
 - SLF4J on the classpath (binding optional — pick `logback-classic`,
   `slf4j-simple`, etc.).
 
@@ -87,14 +91,14 @@ library solves orchestration."
 <dependency>
   <groupId>io.github.async-java</groupId>
   <artifactId>async-java</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.10</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```kotlin
-implementation("io.github.async-java:async-java:0.2.0")
+implementation("io.github.async-java:async-java:0.2.10")
 ```
 
 ### Snapshots
@@ -125,7 +129,7 @@ Need to try a branch, tag, or commit SHA before it lands on Central?
 <dependency>
   <groupId>com.github.async-java</groupId>
   <artifactId>async.java</artifactId>
-  <version>v0.2.0</version>  <!-- or a branch name, or a 10-char commit SHA -->
+  <version>v0.2.10</version>  <!-- or a branch name, or a 10-char commit SHA -->
 </dependency>
 ```
 
@@ -156,6 +160,109 @@ public class Quickstart {
 Every task receives an `IAsyncCallback<T, E>` and signals completion exactly
 once by calling `cb.done(error, value)`. The final callback runs after the
 last task settles — or immediately when any task surfaces an error.
+
+---
+
+## Future and blocking-task interop
+
+### Plain `Future`: async.java calls `get()` for you
+
+Legacy APIs often return plain JDK `Future<T>`, where the only way to retrieve
+the value is the blocking `future.get()`. Use `WrapFuture` or `AsyncFut` to
+move that blocking wait inside the library:
+
+```java
+ExecutorService legacyPool = Executors.newFixedThreadPool(8);
+ExecutorService waiters = AsyncLoom.isSupported()
+    ? AsyncLoom.newVirtualThreadPerTaskExecutor()
+    : Executors.newCachedThreadPool();
+
+try {
+  List<Future<Row>> futures = List.of(
+      legacyPool.submit(() -> fetchRow("a")),
+      legacyPool.submit(() -> fetchRow("b"))
+  );
+
+  CompletableFuture<List<Row>> rows = AsyncFut.ParallelFutures(waiters, futures);
+  rows.thenAccept(this::reply);
+} finally {
+  waiters.shutdown();
+  legacyPool.shutdown();
+}
+```
+
+For callback-style code, use `WrapFuture.fromFuture(...)`:
+
+```java
+Asyncc.Parallel(List.of(
+    WrapFuture.fromFuture(waiters, legacyPool.submit(() -> fetchA())),
+    WrapFuture.fromFuture(waiters, legacyPool.submit(() -> fetchB()))
+), (err, results) -> {
+    if (err != null) { reply.fail(err); return; }
+    reply.ok(results);
+});
+```
+
+### Blocking work on virtual threads
+
+On JDK 21+, `AsyncLoom` runs blocking `Callable` work on virtual threads and
+returns `CompletableFuture` results:
+
+```java
+CompletableFuture<List<Row>> rows = AsyncLoom.ParallelBlocking(List.of(
+    () -> jdbc.fetch("a"),
+    () -> jdbc.fetch("b")
+));
+
+CompletableFuture<List<Row>> ordered = AsyncLoom.SeriesBlocking(List.of(
+    () -> migrateStep1(),
+    () -> migrateStep2()
+));
+
+CompletableFuture<Integer> total = AsyncLoom.ReduceBlocking(
+    List.of("a", "b", "c"),
+    0,
+    (acc, id) -> acc + scoreBlocking(id));
+
+CompletableFuture<List<Path>> paths = AsyncLoom.ConcatBlocking(
+    tenants,
+    tenant -> listTenantFilesBlocking(tenant));
+```
+
+The same feature is available in callback form:
+
+```java
+Asyncc.SeriesBlocking(List.of(
+    () -> migrateStep1(),
+    () -> migrateStep2()
+), (err, results) -> {
+    if (err != null) { rollback(err); return; }
+    commit(results);
+});
+
+Asyncc.RaceBlocking(List.of(
+    () -> readPrimaryBlocking(key),
+    () -> readReplicaBlocking(key)
+), (err, value) -> {
+    if (err != null) { reply.fail(err); return; }
+    reply.ok(value);
+});
+```
+
+Existing `Parallel`, `Series`, `Reduce`, and `Concat` methods keep their
+current threading contract: tasks run on whichever thread invokes the callback.
+Use the `*Blocking` family when you want async.java to put blocking work on
+virtual threads for you.
+
+The repo also includes compile-checked examples under
+[`src/test/java/examples`](src/test/java/examples):
+
+- `FutureInteropExample` adapts plain JDK `Future` values without user-side
+  `get()` calls.
+- `LoomBlockingExample` shows `ParallelBlocking`, `SeriesBlocking`,
+  `RaceBlocking`, `ReduceBlocking`, and `ConcatBlocking`.
+- `CallbackBlockingExample` shows the callback-style `Asyncc.*Blocking`
+  wrappers.
 
 ---
 
@@ -502,7 +609,11 @@ NeoQueue.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
 // want a hard ceiling on concurrent CPU consumption.
 NeoQueue.setExecutor(Executors.newFixedThreadPool(
     Runtime.getRuntime().availableProcessors(),
-    Thread.ofPlatform().daemon(true).name("neoqueue-cpu-", 0).factory()));
+    r -> {
+      Thread t = new Thread(r, "neoqueue-cpu");
+      t.setDaemon(true);
+      return t;
+    }));
 ```
 
 For Vert.x apps, leave the default in place and let your combinator callbacks
@@ -588,7 +699,7 @@ lock.acquire((err, unlock) -> {
 ### Relationship to `StructuredTaskScope`
 
 `StructuredTaskScope` is the JDK's official structured-concurrency
-primitive — still in preview as of JDK 25 (JEP 505, the fifth preview).
+primitive — still in preview in JDK 26 (JEP 525, the sixth preview).
 A scope owns a set of subtasks, and when the scope's
 `try-with-resources` closes, all subtasks have settled.
 
@@ -793,7 +904,7 @@ consumers don't break:
 <dependency>
   <groupId>io.github.async-java</groupId>
   <artifactId>async-java</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.10</version>
 </dependency>
 ```
 
@@ -819,7 +930,7 @@ What's new since 0.1.1012:
   consistent memory model.
 - Replaced `throw new Error(...)` with `IllegalStateException` /
   `IllegalArgumentException` on application invariants.
-- Dropped JDK 10 baseline, JDK 11+ now required.
+- Dropped the old JDK 10/11-era baseline; JDK 17+ is now required.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
@@ -830,10 +941,10 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 ```bash
 git clone https://github.com/async-java/async.java.git
 cd async.java
-mvn -B test         # 71 tests, ~10s on a warm cache
+mvn -B test         # 207 tests, ~15s on a warm cache
 ```
 
-Pull requests welcome. CI runs `mvn test` on JDK 11, 17, and 21 for every
+Pull requests welcome. CI runs `mvn test` on JDK 17 and 21 for every
 push and PR — see [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 Coding conventions:

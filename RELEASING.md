@@ -8,12 +8,14 @@ the snippet in [README](readme.md#installation).
 | Coordinate                                         | What it is                                | Notes                                       |
 | -------------------------------------------------- | ----------------------------------------- | ------------------------------------------- |
 | `io.github.async-java:async-java:<version>`        | This release line, on **Maven Central**.  | Current `<version>` lives in `pom.xml`.     |
+| `io.github.async-java:async-java:<version>`        | Same artifact on **GitHub Packages**.     | Published by the release workflow with `GITHUB_TOKEN`. |
 | `com.oresoftware:async.0.1:0.1.1012`               | The legacy artifact published in 2019.    | Frozen — kept on Central for compatibility. |
 | `com.github.async-java:async.java:<git-tag>`       | Same source, served by **JitPack**.       | Built on-demand from any git ref.           |
 
 JitPack is automatic — every git tag is buildable as soon as it's pushed
-(see [`jitpack.yml`](jitpack.yml)). The instructions below are only for the
-Maven Central path.
+(see [`jitpack.yml`](jitpack.yml)). GitHub Packages is automatic from the
+release workflow. The only manual credential setup is for the Maven Central /
+Sonatype path.
 
 ## One-time setup
 
@@ -69,16 +71,16 @@ In <https://github.com/async-java/async.java/settings/secrets/actions> add:
 
 ```bash
 # 1. Bump the version (drop the -SNAPSHOT suffix).
-#    Edit pom.xml: <version>0.2.0-SNAPSHOT</version> -> <version>0.2.0</version>
-git commit -am "Release 0.2.0"
+#    Edit pom.xml: <version>0.2.10-SNAPSHOT</version> -> <version>0.2.10</version>
+git commit -am "Release 0.2.10"
 
 # 2. Tag the commit. The release workflow only fires on `v*` tags.
-git tag v0.2.0
+git tag v0.2.10
 git push origin master --tags
 
 # 3. (Optional) Open development on the next version.
-#    Edit pom.xml: <version>0.2.0</version> -> <version>0.2.1-SNAPSHOT</version>
-git commit -am "Begin 0.2.1 development"
+#    Edit pom.xml: <version>0.2.10</version> -> <version>0.2.11-SNAPSHOT</version>
+git commit -am "Begin 0.2.11 development"
 git push
 ```
 
@@ -88,13 +90,17 @@ then:
 1. Verifies the tag matches `pom.xml`'s `<version>`.
 2. Runs `mvn test`.
 3. Imports the GPG key into the runner's agent.
-4. Runs `mvn -P release deploy`, which:
+4. Runs `mvn -P publish-artifacts,release deploy`, which:
    * Builds the jar.
    * Builds `-sources.jar` and `-javadoc.jar` (Maven Central requires both).
    * GPG-signs every artifact (jar / sources / javadoc / pom).
    * Uploads to the Central Portal's staging API.
    * Auto-publishes the staged release (because `<autoPublish>true</autoPublish>`).
-5. Creates a GitHub Release with the jars attached.
+5. Reconfigures Maven credentials for GitHub Packages (GitHub's
+   `setup-java` action rewrites `~/.m2/settings.xml` each time it runs).
+6. Runs `mvn -P publish-artifacts,github-packages deploy`, which publishes the same version to
+   `https://maven.pkg.github.com/async-java/async.java` using `GITHUB_TOKEN`.
+7. Creates a GitHub Release with the jars attached.
 
 The new version shows up on Maven Central within ~30 minutes of the workflow
 finishing.
@@ -135,10 +141,34 @@ Then:
 
 ```bash
 # Verify everything builds and signs locally first.
-mvn -P release -DskipTests verify
+mvn -P publish-artifacts,release -DskipTests verify
 
 # Deploy.
-mvn -P release deploy
+mvn -P publish-artifacts,release deploy
+```
+
+## Publishing to GitHub Packages locally
+
+CI uses the built-in `GITHUB_TOKEN`. For a local deploy, create a classic
+GitHub personal access token with `write:packages`, then add a `github` server
+to `~/.m2/settings.xml`:
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>github</id>
+      <username>YOUR_GITHUB_USERNAME</username>
+      <password>YOUR_CLASSIC_PAT_WITH_WRITE_PACKAGES</password>
+    </server>
+  </servers>
+</settings>
+```
+
+Then:
+
+```bash
+mvn -P publish-artifacts,github-packages -DskipTests -Dgpg.skip=true deploy
 ```
 
 ## Snapshot releases

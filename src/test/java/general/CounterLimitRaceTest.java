@@ -49,9 +49,9 @@ public class CounterLimitRaceTest {
   @Test(timeout = 60_000)
   public void parallelDoesNotLoseFinalCallbackUnderRapidFire() throws Exception {
 
-    // The library targets JDK 11; only run this test when a JDK 21+ runtime gives us
+    // The library targets JDK 17; only run this test when a JDK 21+ runtime gives us
     // virtual threads. Reflection because `Executors.newVirtualThreadPerTaskExecutor()` is
-    // not available in the JDK 11 baseline `release` the maven-compiler-plugin enforces.
+    // not available in the JDK 17 baseline `release` the maven-compiler-plugin enforces.
     final ExecutorService vt = newVirtualThreadPerTaskExecutorOrSkip();
     final int iterations = 500;
     try {

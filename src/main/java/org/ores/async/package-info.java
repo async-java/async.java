@@ -98,17 +98,30 @@
  *
  * <h3>Project Loom</h3>
  *
- * <p>async.java does not own a thread pool. Pass a virtual-thread executor and every fan-out
- * spawns on a virtual thread:
+ * <p>async.java's default callback combinators do not own a thread pool: tasks run on whichever
+ * thread invokes the continuation. For blocking work on Java 21+, use {@link org.ores.async.AsyncLoom}
+ * to run {@link java.util.concurrent.Callable} tasks on virtual threads while preserving the
+ * same orchestration semantics:
  *
  * <pre>
- *   var vt = Executors.newVirtualThreadPerTaskExecutor();
- *   NeoQueue.setExecutor(vt);                 // optional: NeoQueue callbacks via VTs
- *   // Tasks submit directly to `vt` themselves.
+ *   CompletableFuture&lt;List&lt;User&gt;&gt; users = AsyncLoom.ParallelBlocking(List.of(
+ *       () -&gt; jdbc.fetchUser("a"),
+ *       () -&gt; jdbc.fetchUser("b")
+ *   ));
+ *
+ *   Asyncc.SeriesBlocking(List.of(
+ *       () -&gt; migrateStep1(),
+ *       () -&gt; migrateStep2()
+ *   ), (err, results) -&gt; {
+ *       if (err != null) { rollback(err); return; }
+ *       commit(results);
+ *   });
  * </pre>
  *
- * <p>On JDK 21+, virtual-thread spawn is ~250 ns and blocking I/O inside a task is a continuation
- * park (not a kernel thread block). Per-call coordination overhead stays under 50 &micro;s.
+ * <p>For legacy APIs that return plain {@link java.util.concurrent.Future}, use
+ * {@link org.ores.async.WrapFuture#fromFuture(java.util.concurrent.Executor, java.util.concurrent.Future)}
+ * or {@link org.ores.async.AsyncFut#ParallelFutures(java.util.concurrent.Executor, java.util.List)}.
+ * async.java calls {@code Future.get()} inside the adapter on the executor you provide.
  *
  * <h3>Concurrency contract</h3>
  *
@@ -128,6 +141,9 @@
  * <a href="https://github.com/async-java/async.java/issues">github.com/async-java/async.java/issues</a>.
  *
  * @see org.ores.async.Asyncc
+ * @see org.ores.async.AsyncFut
+ * @see org.ores.async.AsyncLoom
+ * @see org.ores.async.WrapFuture
  * @see org.ores.async.NeoQueue
  * @see org.ores.async.NeoLock
  */
