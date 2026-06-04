@@ -53,10 +53,16 @@ check() {
   fi
 }
 
-check "gh authentication" gh auth status
-
 if gh auth status >/dev/null 2>&1; then
-  secret_names="$(gh secret list --repo "$repo" 2>/dev/null | awk '{print $1}')"
+  say "ok: gh authentication"
+else
+  say "missing: gh authentication"
+  fail=1
+fi
+
+if secret_output="$(gh secret list --repo "$repo" 2>&1)"; then
+  say "ok: GitHub repo secret API access ($repo)"
+  secret_names="$(printf '%s\n' "$secret_output" | awk '{print $1}')"
   for name in "${required[@]}"; do
     if printf '%s\n' "$secret_names" | grep -qx "$name"; then
       say "ok: repo secret $name"
@@ -65,6 +71,13 @@ if gh auth status >/dev/null 2>&1; then
       fail=1
     fi
   done
+else
+  say "missing: GitHub repo secret API access ($repo)"
+  printf '%s\n' "$secret_output" | sed 's/^/  gh: /'
+  for name in "${required[@]}"; do
+    say "missing: repo secret $name (unable to verify)"
+  done
+  fail=1
 fi
 
 check "local GPG secret key" sh -c 'gpg --list-secret-keys >/dev/null 2>&1 && [ -n "$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '\''$1 == "sec" { print; exit }'\'')" ]'
