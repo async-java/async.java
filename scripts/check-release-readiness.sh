@@ -37,6 +37,7 @@ required=(
 )
 
 fail=0
+ci_gpg_secret_ready=0
 
 say() {
   printf '%s\n' "$*"
@@ -71,6 +72,10 @@ if secret_output="$(gh secret list --repo "$repo" 2>&1)"; then
       fail=1
     fi
   done
+  if printf '%s\n' "$secret_names" | grep -qx MAVEN_GPG_PRIVATE_KEY \
+      && printf '%s\n' "$secret_names" | grep -qx MAVEN_GPG_PASSPHRASE; then
+    ci_gpg_secret_ready=1
+  fi
 else
   say "missing: GitHub repo secret API access ($repo)"
   printf '%s\n' "$secret_output" | sed 's/^/  gh: /'
@@ -80,7 +85,15 @@ else
   fail=1
 fi
 
-check "local GPG secret key" sh -c 'gpg --list-secret-keys >/dev/null 2>&1 && [ -n "$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '\''$1 == "sec" { print; exit }'\'')" ]'
+if sh -c 'command -v gpg >/dev/null 2>&1 && gpg --list-secret-keys >/dev/null 2>&1 && [ -n "$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '\''$1 == "sec" { print; exit }'\'')" ]'; then
+  say "ok: local GPG secret key"
+elif [ "$ci_gpg_secret_ready" -eq 1 ]; then
+  say "ok: CI GPG signing secrets"
+  say "pending: local GPG secret key (needed only for local deploys)"
+else
+  say "missing: local GPG secret key"
+  fail=1
+fi
 check "current branch is pushed ($branch)" git ls-remote --exit-code origin "refs/heads/$branch"
 
 if git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
