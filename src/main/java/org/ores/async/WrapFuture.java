@@ -271,8 +271,11 @@ public final class WrapFuture {
     final CompletableFuture<V> cf = new CompletableFuture<>() {
       @Override
       public boolean cancel(final boolean mayInterruptIfRunning) {
-        future.cancel(mayInterruptIfRunning);
-        return super.cancel(mayInterruptIfRunning);
+        final boolean cancelled = super.cancel(mayInterruptIfRunning);
+        if (cancelled) {
+          future.cancel(mayInterruptIfRunning);
+        }
+        return cancelled;
       }
     };
 

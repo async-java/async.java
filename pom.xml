@@ -18,7 +18,7 @@
     <groupId>io.github.oresoftware</groupId>
     <artifactId>async-java</artifactId>
     <packaging>jar</packaging>
-    <version>0.2.10</version>
+    <version>0.2.11</version>
     <name>async-java</name>
     <url>https://github.com/async-java/async.java</url>
 
@@ -33,11 +33,11 @@
         <jdk.version>17</jdk.version>
 
         <!--
-          Vert.x 3.9.16 is the final patch of the 3.x line and is API-compatible
-          with the 3.6 baseline this lib was originally written against.
-          The vertx-* dependencies are test-scope only.
+          Vert.x is test-scope only. Keep it current so the test harness does
+          not drag old vulnerable Netty / Vert.x transitive dependencies into
+          CI or local verification.
         -->
-        <vertx.version>3.9.16</vertx.version>
+        <vertx.version>5.1.1</vertx.version>
         <jacoco.version>0.8.14</jacoco.version>
         <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
         <maven.dependency.plugin.version>3.9.0</maven.dependency.plugin.version>
@@ -53,7 +53,7 @@
           reload4j is a community-maintained drop-in replacement that keeps the
           same `log4j` API and class names but ships CVE patches.
         -->
-        <log4j.version>1.2.25</log4j.version>
+        <log4j.version>1.2.26</log4j.version>
     </properties>
 
     <reporting>
@@ -167,12 +167,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.36</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.14.0</version>
         </dependency>
 
         <!--
@@ -315,8 +309,8 @@
                       Attach the -javadoc.jar Maven Central requires. doclint is set to
                       `none` because the existing Asyncc.java javadocs use custom @Version /
                       @exclude tags and embed <script> blocks for code-prettify that don't
-                      survive strict doclint on JDK 17+. A future patch should clean those
-                      up so we can re-enable doclint.
+                      survive strict doclint on JDK 17+. Javadoc generation itself still fails
+                      the build if the plugin cannot produce the jar.
                     -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -332,7 +326,7 @@
                         </executions>
                         <configuration>
                             <doclint>none</doclint>
-                            <failOnError>false</failOnError>
+                            <failOnError>true</failOnError>
                             <additionalJOptions>
                                 <additionalJOption>--allow-script-in-comments</additionalJOption>
                             </additionalJOptions>

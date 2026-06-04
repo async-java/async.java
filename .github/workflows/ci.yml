@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'codex/**'
       - 'feat/**'
       - 'fix/**'
   pull_request:
@@ -33,5 +34,5 @@ jobs:
       - name: Run unit tests
         run: mvn -B -Dgpg.skip=true -Dmaven.javadoc.skip=true test
 
-      - name: Package (skip tests, smoke build only)
-        run: mvn -B -Dgpg.skip=true -Dmaven.javadoc.skip=true -DskipTests package
+      - name: Package with sources and Javadocs (skip tests, smoke build only)
+        run: mvn -B -Dgpg.skip=true -DskipTests -P publish-artifacts package

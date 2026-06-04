@@ -106,9 +106,22 @@ else
 fi
 
 metadata_url="https://repo.maven.apache.org/maven2/$metadata_path"
+artifact_base_url="https://repo.maven.apache.org/maven2/$group_path/$artifact_id/$version"
 if curl -fsSL "$metadata_url" >/tmp/async-java-release-metadata.xml 2>/dev/null; then
   if grep -q "<version>$version</version>" /tmp/async-java-release-metadata.xml; then
     say "present: Maven Central version $version"
+    for artifact_file in \
+      "$artifact_id-$version.pom" \
+      "$artifact_id-$version.jar" \
+      "$artifact_id-$version-sources.jar" \
+      "$artifact_id-$version-javadoc.jar"; do
+      if curl -fsSL "$artifact_base_url/$artifact_file" >/dev/null 2>&1; then
+        say "present: Maven Central artifact $artifact_file"
+      else
+        say "missing: Maven Central artifact $artifact_file"
+        fail=1
+      fi
+    done
   else
     say "missing: Maven Central version $version"
     fail=1

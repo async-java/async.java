@@ -6,6 +6,41 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.11] - 2026-06-04
+
+### Added
+
+* **Stronger plain `Future` cancellation tests.**
+  Covered aggregate cancellation for `AsyncFut.ParallelFutures`, loser
+  cancellation for `AsyncFut.RaceFutures`, and callback-shaped failure for
+  `AsyncLoom.task(...)` on runtimes without virtual-thread support.
+
+### Changed
+
+* **Plain `Future` aggregate cancellation is propagated.**
+  Cancelling the future returned by `AsyncFut.ParallelFutures(...)` now
+  cancels all child bridge futures, and `AsyncFut.RaceFutures(...)` now
+  cancels losing plain futures after the race winner settles.
+
+* **Javadocs are verified earlier.**
+  CI now runs the publish-artifacts package build so `-sources.jar` and
+  `-javadoc.jar` generation is exercised before release; release workflows
+  also verify the public Maven Central POM, jar, sources jar, and javadoc jar
+  URLs after Central publish. CI also runs on `codex/**` hardening branches so
+  these PR-prep branches get the same JDK 17/21 coverage before review.
+
+* **Dependency surface reduced and test dependencies refreshed.**
+  Removed the unused direct runtime dependency on `commons-lang3`, updated the
+  test-only Vert.x stack to `5.1.1`, and bumped test-only `reload4j` to
+  `1.2.26`.
+
+### Removed
+
+* Removed a checked-in compiled test `.class` artifact and added ignore rules
+  for future bytecode / IDE files.
+
+**Total: 218 tests, 0 failures, 9 JDK21/concurrency-gated skips on JDK 17.**
+
 ## [0.2.10] - 2026-06-04
 
 ### Added
@@ -974,7 +1009,8 @@ Initial public release on Maven Central under the
 `com.oresoftware:async.0.1:0.1.1012` coordinate. Frozen — see the new
 `io.github.oresoftware:async-java` line for active development.
 
-[Unreleased]: https://github.com/async-java/async.java/compare/v0.2.10...HEAD
+[Unreleased]: https://github.com/async-java/async.java/compare/v0.2.11...HEAD
+[0.2.11]: https://github.com/async-java/async.java/releases/tag/v0.2.11
 [0.2.10]: https://github.com/async-java/async.java/releases/tag/v0.2.10
 [0.2.9]: https://github.com/async-java/async.java/releases/tag/v0.2.9
 [0.2.0]: https://github.com/async-java/async.java/releases/tag/v0.2.0

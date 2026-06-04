@@ -93,6 +93,32 @@ public class FutureAndLoomInteropTest {
   }
 
   @Test(timeout = 10_000)
+  public void cancelling_completed_completable_future_does_not_cancel_underlying_future() throws Exception {
+    final AtomicInteger cancelCalls = new AtomicInteger();
+    final Future<String> future = new Future<>() {
+      @Override public boolean cancel(boolean mayInterruptIfRunning) {
+        cancelCalls.incrementAndGet();
+        return true;
+      }
+      @Override public boolean isCancelled() { return false; }
+      @Override public boolean isDone() { return true; }
+      @Override public String get() { return "already-done"; }
+      @Override public String get(long timeout, TimeUnit unit) { return "already-done"; }
+    };
+
+    final ExecutorService waitExec = Executors.newSingleThreadExecutor();
+    try {
+      final CompletableFuture<String> cf = WrapFuture.toCompletableFuture(waitExec, future);
+      assertEquals("already-done", cf.get(2, TimeUnit.SECONDS));
+
+      assertFalse(cf.cancel(true));
+      assertEquals(0, cancelCalls.get());
+    } finally {
+      waitExec.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 10_000)
   public void fromFuture_drops_plain_future_into_callback_combinator() throws Exception {
     final ExecutorService workExec = Executors.newFixedThreadPool(2);
     final ExecutorService waitExec = Executors.newFixedThreadPool(2);
@@ -192,6 +218,25 @@ public class FutureAndLoomInteropTest {
   }
 
   @Test(timeout = 10_000)
+  public void parallelFutures_cancels_underlying_futures_when_aggregate_is_cancelled() {
+    final FutureTask<String> future = new FutureTask<>(() -> {
+      Thread.sleep(5_000);
+      return "late";
+    });
+
+    final ExecutorService waitExec = Executors.newSingleThreadExecutor();
+    try {
+      final CompletableFuture<List<String>> aggregate =
+          AsyncFut.ParallelFutures(waitExec, List.of(future));
+
+      assertTrue(aggregate.cancel(true));
+      assertTrue(future.isCancelled());
+    } finally {
+      waitExec.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 10_000)
   public void raceFutures_returns_first_plain_future_result() throws Exception {
     final ExecutorService workExec = Executors.newFixedThreadPool(2);
     final ExecutorService waitExec = Executors.newCachedThreadPool();
@@ -208,6 +253,30 @@ public class FutureAndLoomInteropTest {
     } finally {
       waitExec.shutdownNow();
       workExec.shutdownNow();
+    }
+  }
+
+  @Test(timeout = 10_000)
+  public void raceFutures_cancels_losing_plain_futures_after_winner_completes() throws Exception {
+    final FutureTask<String> slow = new FutureTask<>(() -> {
+      Thread.sleep(5_000);
+      return "slow";
+    });
+    final Thread slowWorker = new Thread(slow, "race-futures-loser");
+    slowWorker.start();
+
+    final FutureTask<String> fast = new FutureTask<>(() -> "fast");
+    fast.run();
+
+    final ExecutorService waitExec = Executors.newCachedThreadPool();
+    try {
+      assertEquals("fast", AsyncFut.RaceFutures(waitExec, List.of(slow, fast))
+          .get(2, TimeUnit.SECONDS));
+
+      assertTrue(slow.isCancelled());
+      slowWorker.join(1_000);
+    } finally {
+      waitExec.shutdownNow();
     }
   }
 
@@ -253,6 +322,16 @@ public class FutureAndLoomInteropTest {
 
     final CompletableFuture<Throwable> err = new CompletableFuture<>();
     Asyncc.SeriesBlocking(List.of(() -> "x"), (e, results) -> err.complete(e));
+
+    assertTrue(err.get(2, TimeUnit.SECONDS) instanceof UnsupportedOperationException);
+  }
+
+  @Test(timeout = 10_000)
+  public void asyncLoom_task_reports_unsupported_through_callback_on_java17() throws Exception {
+    Assume.assumeFalse("only meaningful on Java 17/unsupported runtimes", AsyncLoom.isSupported());
+
+    final CompletableFuture<Throwable> err = new CompletableFuture<>();
+    AsyncLoom.task(() -> "x").run((e, value) -> err.complete(e));
 
     assertTrue(err.get(2, TimeUnit.SECONDS) instanceof UnsupportedOperationException);
   }

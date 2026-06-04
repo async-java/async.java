@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -140,6 +141,7 @@ public final class AsyncLoom {
    * @return a future completed with the callable result
    */
   public static <V> CompletableFuture<V> supply(final Callable<V> callable) {
+    Objects.requireNonNull(callable, "callable");
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     return WrapFuture.toCompletableFuture(exec, callable)
         .whenComplete((value, err) -> exec.shutdown());
@@ -152,6 +154,7 @@ public final class AsyncLoom {
    * @return a future completed when the runnable finishes
    */
   public static CompletableFuture<Void> run(final ThrowingRunnable runnable) {
+    Objects.requireNonNull(runnable, "runnable");
     return supply(() -> {
       runnable.run();
       return null;
@@ -167,13 +170,20 @@ public final class AsyncLoom {
    * @return async.java task
    */
   public static <V> Asyncc.AsyncTask<V, Throwable> task(final Callable<V> callable) {
-    return c -> supply(callable).whenComplete((value, err) -> {
-      if (err != null) {
-        c.fail(err);
-      } else {
-        c.success(value);
+    Objects.requireNonNull(callable, "callable");
+    return c -> {
+      try {
+        supply(callable).whenComplete((value, err) -> {
+          if (err != null) {
+            c.fail(err);
+          } else {
+            c.success(value);
+          }
+        });
+      } catch (Throwable t) {
+        c.fail(t);
       }
-    });
+    };
   }
 
   /**
@@ -186,6 +196,7 @@ public final class AsyncLoom {
   public static <V> CompletableFuture<List<V>> ParallelBlocking(
       final List<? extends Callable<V>> tasks) {
 
+    Objects.requireNonNull(tasks, "tasks");
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     return AsyncFut.Parallel(toStageSuppliers(exec, tasks))
         .whenComplete((value, err) -> exec.shutdown());
@@ -203,6 +214,7 @@ public final class AsyncLoom {
       final int limit,
       final List<? extends Callable<V>> tasks) {
 
+    Objects.requireNonNull(tasks, "tasks");
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     return AsyncFut.ParallelLimit(limit, toStageSuppliers(exec, tasks))
         .whenComplete((value, err) -> exec.shutdown());
@@ -233,6 +245,7 @@ public final class AsyncLoom {
   public static <V> CompletableFuture<List<V>> SeriesBlocking(
       final List<? extends Callable<V>> tasks) {
 
+    Objects.requireNonNull(tasks, "tasks");
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     return AsyncFut.Series(toStageSuppliers(exec, tasks))
         .whenComplete((value, err) -> exec.shutdown());
@@ -248,6 +261,7 @@ public final class AsyncLoom {
   public static <V> CompletableFuture<V> RaceBlocking(
       final List<? extends Callable<V>> tasks) {
 
+    Objects.requireNonNull(tasks, "tasks");
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     return AsyncFut.Race(toStageSuppliers(exec, tasks))
         .whenComplete((value, err) -> exec.shutdown());
@@ -286,9 +300,11 @@ public final class AsyncLoom {
       final Iterable<T> input,
       final BlockingFunction<? super T, V> mapper) {
 
+    Objects.requireNonNull(mapper, "mapper");
+    final List<T> items = toList(input);
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     final List<Supplier<? extends CompletionStage<V>>> suppliers = new ArrayList<>();
-    final Iterator<T> it = input.iterator();
+    final Iterator<T> it = items.iterator();
     while (it.hasNext()) {
       final T item = it.next();
       suppliers.add(() -> WrapFuture.toCompletableFuture(exec, () -> mapper.apply(item)));
@@ -329,6 +345,7 @@ public final class AsyncLoom {
       final Iterable<T> input,
       final BlockingConsumer<? super T> consumer) {
 
+    Objects.requireNonNull(consumer, "consumer");
     return MapLimitBlocking(limit, input, item -> {
       consumer.accept(item);
       return null;
@@ -351,6 +368,8 @@ public final class AsyncLoom {
       final V identity,
       final BlockingReducer<V, ? super T> reducer) {
 
+    Objects.requireNonNull(input, "input");
+    Objects.requireNonNull(reducer, "reducer");
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     return AsyncFut.Reduce(input, identity,
         (acc, item) -> WrapFuture.toCompletableFuture(exec, () -> reducer.reduce(acc, item)))
@@ -370,6 +389,7 @@ public final class AsyncLoom {
       final int n,
       final BlockingIntFunction<V> task) {
 
+    Objects.requireNonNull(task, "task");
     final List<Callable<V>> tasks = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
       final int index = i;
@@ -426,10 +446,12 @@ public final class AsyncLoom {
       final Iterable<T> input,
       final BlockingFunction<? super T, ? extends Collection<? extends V>> mapper) {
 
+    Objects.requireNonNull(mapper, "mapper");
+    final List<T> items = toList(input);
     final ExecutorService exec = newVirtualThreadPerTaskExecutor();
     final List<Supplier<? extends CompletionStage<Collection<? extends V>>>> suppliers =
         new ArrayList<>();
-    final Iterator<T> it = input.iterator();
+    final Iterator<T> it = items.iterator();
     while (it.hasNext()) {
       final T item = it.next();
       suppliers.add(() -> WrapFuture.toCompletableFuture(exec, () -> mapper.apply(item)));
@@ -499,6 +521,19 @@ public final class AsyncLoom {
       if (chunk != null) {
         out.addAll(chunk);
       }
+    }
+    return out;
+  }
+
+  private static <T> List<T> toList(final Iterable<T> input) {
+    Objects.requireNonNull(input, "input");
+    if (input instanceof List<T> list) {
+      return list;
+    }
+    final List<T> out = new ArrayList<>();
+    final Iterator<T> it = input.iterator();
+    while (it.hasNext()) {
+      out.add(it.next());
     }
     return out;
   }

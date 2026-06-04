@@ -94,19 +94,19 @@ release.
 
 ```bash
 # 1. Bump the version (drop the -SNAPSHOT suffix).
-#    Edit pom.xml: <version>0.2.10-SNAPSHOT</version> -> <version>0.2.10</version>
-git commit -am "Release 0.2.10"
+#    Edit pom.xml: <version>0.2.11-SNAPSHOT</version> -> <version>0.2.11</version>
+git commit -am "Release 0.2.11"
 
 # 2. Confirm release prerequisites before tagging.
 scripts/check-release-readiness.sh --pre-tag
 
 # 3. Tag the commit. The release workflow only fires on `v*` tags.
-git tag v0.2.10
+git tag v0.2.11
 git push origin master --tags
 
 # 4. (Optional) Open development on the next version.
-#    Edit pom.xml: <version>0.2.10</version> -> <version>0.2.11-SNAPSHOT</version>
-git commit -am "Begin 0.2.11 development"
+#    Edit pom.xml: <version>0.2.11</version> -> <version>0.2.12-SNAPSHOT</version>
+git commit -am "Begin 0.2.12 development"
 git push
 ```
 
@@ -122,11 +122,13 @@ then:
    * GPG-signs every artifact (jar / sources / javadoc / pom).
    * Uploads to the Central Portal's staging API.
    * Auto-publishes the staged release (because `<autoPublish>true</autoPublish>`).
-5. Reconfigures Maven credentials for GitHub Packages (GitHub's
+5. Verifies the public Maven Central URLs for the POM, jar, sources jar, and
+   Javadoc jar.
+6. Reconfigures Maven credentials for GitHub Packages (GitHub's
    `setup-java` action rewrites `~/.m2/settings.xml` each time it runs).
-6. Runs `mvn -P publish-artifacts,github-packages deploy`, which publishes the same version to
+7. Runs `mvn -P publish-artifacts,github-packages deploy`, which publishes the same version to
    `https://maven.pkg.github.com/async-java/async.java` using `GITHUB_TOKEN`.
-7. Creates a GitHub Release with the jars attached.
+8. Creates a GitHub Release with the jars attached.
 
 The new version shows up on Maven Central within ~30 minutes of the workflow
 finishing.

@@ -82,6 +82,8 @@ library solves orchestration."
 - **JDK 17+** (tested on 17 and 21).
 - SLF4J on the classpath (binding optional — pick `logback-classic`,
   `slf4j-simple`, etc.).
+- Runtime dependencies are intentionally small: async.java depends on
+  `slf4j-api`; Vert.x / reload4j are used by the test suite only.
 
 ## Installation
 
@@ -91,14 +93,29 @@ library solves orchestration."
 <dependency>
   <groupId>io.github.oresoftware</groupId>
   <artifactId>async-java</artifactId>
-  <version>0.2.10</version>
+  <version>0.2.11</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```kotlin
-implementation("io.github.oresoftware:async-java:0.2.10")
+implementation("io.github.oresoftware:async-java:0.2.11")
+```
+
+### API docs
+
+Each Central release publishes the normal jar plus `-sources.jar` and
+`-javadoc.jar`. The current Javadocs are available from Maven Central at:
+
+```text
+https://repo.maven.apache.org/maven2/io/github/oresoftware/async-java/0.2.11/async-java-0.2.11-javadoc.jar
+```
+
+They are also mirrored by javadoc.io once its index catches up:
+
+```text
+https://javadoc.io/doc/io.github.oresoftware/async-java/0.2.11/
 ```
 
 ### Snapshots
@@ -129,7 +146,7 @@ Need to try a branch, tag, or commit SHA before it lands on Central?
 <dependency>
   <groupId>com.github.async-java</groupId>
   <artifactId>async.java</artifactId>
-  <version>v0.2.10</version>  <!-- or a branch name, or a 10-char commit SHA -->
+  <version>v0.2.11</version>  <!-- or a branch name, or a 10-char commit SHA -->
 </dependency>
 ```
 
@@ -190,6 +207,13 @@ try {
   legacyPool.shutdown();
 }
 ```
+
+Cancellation is propagated in the useful direction for legacy futures:
+`WrapFuture.toCompletableFuture(...)` cancels the wrapped `Future` when the
+returned `CompletableFuture` is cancelled, `AsyncFut.ParallelFutures(...)`
+cancels all child waits when the aggregate future is cancelled, and
+`AsyncFut.RaceFutures(...)` cancels losing plain futures after the first
+winner settles.
 
 For callback-style code, use `WrapFuture.fromFuture(...)`:
 
@@ -929,7 +953,7 @@ consumers don't break:
 <dependency>
   <groupId>io.github.oresoftware</groupId>
   <artifactId>async-java</artifactId>
-  <version>0.2.10</version>
+  <version>0.2.11</version>
 </dependency>
 ```
 
@@ -966,11 +990,13 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 ```bash
 git clone https://github.com/async-java/async.java.git
 cd async.java
-mvn -B test         # 207 tests, ~15s on a warm cache
+mvn -B test
+mvn -B -DskipTests -P publish-artifacts package   # also builds sources + Javadocs
 ```
 
 Pull requests welcome. CI runs `mvn test` on JDK 17 and 21 for every
-push and PR — see [.github/workflows/ci.yml](.github/workflows/ci.yml).
+push and PR, then performs a package smoke build with the sources and
+Javadoc jars attached — see [.github/workflows/ci.yml](.github/workflows/ci.yml).
 
 Coding conventions:
 
