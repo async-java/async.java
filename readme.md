@@ -7,7 +7,7 @@
 > RxJava/Reactor.
 
 [![ci](https://github.com/async-java/async.java/actions/workflows/ci.yml/badge.svg)](https://github.com/async-java/async.java/actions/workflows/ci.yml)
-[![maven central](https://img.shields.io/maven-central/v/io.github.async-java/async-java)](https://central.sonatype.com/artifact/io.github.async-java/async-java)
+[![maven central](https://img.shields.io/maven-central/v/io.github.oresoftware/async-java)](https://central.sonatype.com/artifact/io.github.oresoftware/async-java)
 [![jdk](https://img.shields.io/badge/JDK-17%2B-blue)](#requirements)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -89,7 +89,7 @@ library solves orchestration."
 
 ```xml
 <dependency>
-  <groupId>io.github.async-java</groupId>
+  <groupId>io.github.oresoftware</groupId>
   <artifactId>async-java</artifactId>
   <version>0.2.10</version>
 </dependency>
@@ -98,7 +98,7 @@ library solves orchestration."
 ### Gradle
 
 ```kotlin
-implementation("io.github.async-java:async-java:0.2.10")
+implementation("io.github.oresoftware:async-java:0.2.10")
 ```
 
 ### Snapshots
@@ -902,7 +902,7 @@ consumers don't break:
 
 <!-- new -->
 <dependency>
-  <groupId>io.github.async-java</groupId>
+  <groupId>io.github.oresoftware</groupId>
   <artifactId>async-java</artifactId>
   <version>0.2.10</version>
 </dependency>

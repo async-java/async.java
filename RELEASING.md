@@ -7,8 +7,8 @@ the snippet in [README](readme.md#installation).
 
 | Coordinate                                         | What it is                                | Notes                                       |
 | -------------------------------------------------- | ----------------------------------------- | ------------------------------------------- |
-| `io.github.async-java:async-java:<version>`        | This release line, on **Maven Central**.  | Current `<version>` lives in `pom.xml`.     |
-| `io.github.async-java:async-java:<version>`        | Same artifact on **GitHub Packages**.     | Published by the release workflow with `GITHUB_TOKEN`. |
+| `io.github.oresoftware:async-java:<version>`        | This release line, on **Maven Central**.  | Current `<version>` lives in `pom.xml`.     |
+| `io.github.oresoftware:async-java:<version>`        | Same artifact on **GitHub Packages**.     | Published by the release workflow with `GITHUB_TOKEN`. |
 | `com.oresoftware:async.0.1:0.1.1012`               | The legacy artifact published in 2019.    | Frozen — kept on Central for compatibility. |
 | `com.github.async-java:async.java:<git-tag>`       | Same source, served by **JitPack**.       | Built on-demand from any git ref.           |
 
@@ -21,13 +21,13 @@ Sonatype path.
 
 You need three things to publish to Maven Central:
 
-### 1. A Sonatype Central Portal account + the `io.github.async-java` namespace
+### 1. A Sonatype Central Portal account + the `io.github.oresoftware` namespace
 
 * Sign up at <https://central.sonatype.com>.
-* Verify the `io.github.async-java` namespace. The Portal will tell you to
+* Verify the `io.github.oresoftware` namespace. The Portal will tell you to
   either:
-  * create a temporary public repo named `OSSRH-XXXXX` under the
-    [async-java](https://github.com/async-java) GitHub org (easiest), or
+  * confirm the automatically provisioned GitHub namespace for
+    [ORESoftware](https://github.com/ORESoftware), or
   * add a DNS TXT record.
 * Once verified, generate a **User Token** at
   <https://central.sonatype.com/account>. You'll get a *username* string and a
