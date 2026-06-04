@@ -9,6 +9,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Bridge between async.java's error-first callback shape and the JDK's promise primitive
@@ -23,6 +24,9 @@ import java.util.function.Consumer;
  *   <li>{@link #fromStage(CompletionStage)} — {@code CompletionStage} → async.java
  *       {@link Asyncc.AsyncTask}. Useful when consuming a third-party promise-returning API
  *       (a JDBC async driver, an HTTP client) inside an async.java combinator.</li>
+ *   <li>{@link #fromStage(Supplier)} — lazy {@code CompletionStage} supplier → async.java
+ *       task. Use this with {@code Series} / {@code ParallelLimit} when the stage should not be
+ *       created until the combinator actually starts that task.</li>
  *   <li>{@link #fromCallable(Executor, Callable)} — wrap a sync, possibly-blocking
  *       {@link Callable} as an async.java task, dispatching it onto the provided executor.</li>
  *   <li>{@link #fromFuture(Executor, Future)} — wrap a plain JDK {@link Future} as an async.java
@@ -176,6 +180,8 @@ public final class WrapFuture {
   public static <V> Asyncc.AsyncTask<V, Throwable> fromStage(
       final CompletionStage<V> stage) {
 
+    Objects.requireNonNull(stage, "stage");
+
     return c -> stage.whenComplete((value, err) -> {
       if (err != null) {
         c.fail(err);
@@ -183,6 +189,53 @@ public final class WrapFuture {
         c.success(value);
       }
     });
+  }
+
+  /**
+   * Adapt a lazy {@link CompletionStage} supplier to an async.java {@link Asyncc.AsyncTask}.
+   *
+   * <p>This is the supplier-shaped sibling of {@link #fromStage(CompletionStage)}. The supplier
+   * is invoked only when the combinator starts this task, which preserves async.java scheduling
+   * semantics for {@code Series}, {@code ParallelLimit}, {@code RaceLimit}, and other bounded or
+   * sequential combinators.
+   *
+   * <pre>
+   *   Asyncc.Series(List.of(
+   *       WrapFuture.fromStage(() -&gt; client.validateAsync(req)),
+   *       WrapFuture.fromStage(() -&gt; client.persistAsync(req))
+   *   ), finalCallback);
+   * </pre>
+   *
+   * <p>If the supplier throws before returning a stage, the task fails the callback with that
+   * throwable. If it returns {@code null}, the task fails with {@link NullPointerException}.
+   *
+   * @param <V> value type produced by the stage
+   * @param stageSupplier supplier invoked when the async.java task starts
+   * @return an async.java task suitable for callback combinators
+   * @since 0.2.10
+   */
+  public static <V> Asyncc.AsyncTask<V, Throwable> fromStage(
+      final Supplier<? extends CompletionStage<V>> stageSupplier) {
+
+    Objects.requireNonNull(stageSupplier, "stageSupplier");
+
+    return c -> {
+      final CompletionStage<V> stage;
+      try {
+        stage = Objects.requireNonNull(stageSupplier.get(), "stageSupplier.get()");
+      } catch (Throwable t) {
+        c.fail(t);
+        return;
+      }
+
+      stage.whenComplete((value, err) -> {
+        if (err != null) {
+          c.fail(err);
+        } else {
+          c.success(value);
+        }
+      });
+    };
   }
 
   /**

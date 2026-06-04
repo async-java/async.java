@@ -203,6 +203,22 @@ Asyncc.Parallel(List.of(
 });
 ```
 
+### CompletionStage: eager or lazy
+
+Use `WrapFuture.fromStage(stage)` when the `CompletionStage` is already in
+flight. Use `WrapFuture.fromStage(() -> stage)` when async.java should create
+the stage only when the combinator starts that task:
+
+```java
+Asyncc.Series(List.of(
+    WrapFuture.fromStage(() -> client.validateAsync(req)),
+    WrapFuture.fromStage(() -> client.persistAsync(req))
+), (err, results) -> {
+    if (err != null) { reply.fail(err); return; }
+    reply.ok(results);
+});
+```
+
 ### Blocking work on virtual threads
 
 On JDK 21+, `AsyncLoom` runs blocking `Callable` work on virtual threads and

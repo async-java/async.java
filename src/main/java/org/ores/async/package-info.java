@@ -122,6 +122,10 @@
  * {@link org.ores.async.WrapFuture#fromFuture(java.util.concurrent.Executor, java.util.concurrent.Future)}
  * or {@link org.ores.async.AsyncFut#ParallelFutures(java.util.concurrent.Executor, java.util.List)}.
  * async.java calls {@code Future.get()} inside the adapter on the executor you provide.
+ * For promise-returning APIs, use {@link org.ores.async.WrapFuture#fromStage(java.util.concurrent.CompletionStage)}
+ * for already-started work and {@link org.ores.async.WrapFuture#fromStage(java.util.function.Supplier)}
+ * when {@code Series}, {@code ParallelLimit}, or another bounded combinator should decide when
+ * the stage is created.
  *
  * <h3>Concurrency contract</h3>
  *
