@@ -60,16 +60,72 @@ jobs:
 
       - name: Create or refresh GitHub Release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release.outputs.tag }}
         run: |
           set -euo pipefail
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$TAG" dist/* \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$TAG" \
-              --generate-notes \
-              --verify-tag
+          api="https://api.github.com/repos/$GITHUB_REPOSITORY"
+          auth_header="Authorization: Bearer $GITHUB_TOKEN"
+          accept_header="Accept: application/vnd.github+json"
+          version_header="X-GitHub-Api-Version: 2022-11-28"
+
+          status="$(curl --silent --show-error --location \
+            --header "$auth_header" \
+            --header "$accept_header" \
+            --header "$version_header" \
+            --output release.json \
+            --write-out '%{http_code}' \
+            "$api/releases/tags/$TAG")"
+
+          if [ "$status" = "404" ]; then
+            jq -n --arg tag "$TAG" '{
+              tag_name: $tag,
+              name: $tag,
+              generate_release_notes: true
+            }' > release-request.json
+            status="$(curl --silent --show-error --location \
+              --request POST \
+              --header "$auth_header" \
+              --header "$accept_header" \
+              --header "$version_header" \
+              --header "Content-Type: application/json" \
+              --data @release-request.json \
+              --output release.json \
+              --write-out '%{http_code}' \
+              "$api/releases")"
           fi
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            cat release.json >&2
+            exit 1
+          fi
+
+          assets_url="$(jq -r '.assets_url' release.json)"
+          upload_url="$(jq -r '.upload_url | sub("\\{.*"; "")' release.json)"
+
+          for asset in dist/*; do
+            name="$(basename "$asset")"
+            existing_id="$(curl --silent --show-error --location \
+              --header "$auth_header" \
+              --header "$accept_header" \
+              --header "$version_header" \
+              "$assets_url" | jq -r --arg name "$name" '.[] | select(.name == $name) | .id' | head -n 1)"
+
+            if [ -n "$existing_id" ]; then
+              curl --fail --silent --show-error --location \
+                --request DELETE \
+                --header "$auth_header" \
+                --header "$accept_header" \
+                --header "$version_header" \
+                "$api/releases/assets/$existing_id"
+            fi
+
+            curl --fail --silent --show-error --location \
+              --request POST \
+              --header "$auth_header" \
+              --header "$accept_header" \
+              --header "$version_header" \
+              --header "Content-Type: application/java-archive" \
+              --data-binary "@$asset" \
+              "$upload_url?name=$name"
+          done
