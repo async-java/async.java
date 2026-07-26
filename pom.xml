@@ -127,7 +127,7 @@
     <scm>
         <connection>scm:git:https://github.com/async-java/async.java.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/async-java/async.java.git</developerConnection>
-        <url>https://github.com/async-java/async.java/tree/master</url>
+        <url>https://github.com/async-java/async.java/tree/main</url>
         <tag>HEAD</tag>
     </scm>
 

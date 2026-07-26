@@ -9,7 +9,7 @@ on:
         default: v0.2.11
   push:
     branches:
-      - master
+      - main
     paths:
       - '.github/workflows/github-release.yml'
 

@@ -102,7 +102,7 @@ scripts/check-release-readiness.sh --pre-tag
 
 # 3. Tag the commit. The release workflow only fires on `v*` tags.
 git tag v0.2.11
-git push origin master --tags
+git push origin main --tags
 
 # 4. (Optional) Open development on the next version.
 #    Edit pom.xml: <version>0.2.11</version> -> <version>0.2.12-SNAPSHOT</version>

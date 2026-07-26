@@ -42,7 +42,7 @@ public class CounterLimitRaceTest {
 
   /**
    * 500 sequential {@code Asyncc.Parallel} calls, two tasks each, each task sleeps ~2ms. On
-   * the fixed (post-AtomicInteger) implementation this completes in ~400ms; pre-fix master
+   * the fixed (post-AtomicInteger) implementation this completes in ~400ms; the pre-fix branch
    * times out by iteration 40-130 with the lost-update symptom described in the class
    * javadoc.
    */

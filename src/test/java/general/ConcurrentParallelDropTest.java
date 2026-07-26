@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicLong;
  *       invocations.</li>
  * </ul>
  *
- * <p>On the pre-PR-#9 master this test fails with the {@code CounterLimit} lost-update race
- * (already fixed in PR #9). On post-PR-#9 master driven hard (high concurrency × many
+ * <p>On the pre-PR-#9 main branch this test fails with the {@code CounterLimit} lost-update race
+ * (already fixed in PR #9). On the post-PR-#9 main branch driven hard (high concurrency × many
  * iterations) it still drops invocations — that's the secondary bug this test exists to
  * pin down.
  */
