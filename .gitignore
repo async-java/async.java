@@ -3,3 +3,7 @@ target/
 .idea
 *.class
 *.iml
+tmp
+temp
+tmp/worktrees
+temp/worktrees
